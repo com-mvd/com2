@@ -36,11 +36,9 @@ label.l:first-of-type{margin-top:0}
 /* Menú del panel */
 .aviso-ok{background:#E3F5EE;border:1px solid #bfe6d6;color:#137a55;border-radius:12px;padding:10px 14px;font-weight:600;font-size:14px}
 .aviso-ok{max-width:860px;width:100%;margin:0 auto;text-align:center}
-/* Portada del panel: mismo estilo que el index de Dashboard (título, rayita y tarjetas con ícono) */
+/* Portada del panel: tarjetas con ícono como el index de Dashboard, sin título */
 .portada{min-height:calc(100vh - 62px - 62px);min-height:calc(100dvh - 62px - 62px);display:flex;align-items:center;justify-content:center;padding-bottom:6vh}
 .cover{max-width:860px;width:100%;text-align:center}
-.headline{font-size:clamp(32px,5.5vw,48px);font-weight:700;letter-spacing:-1.2px;line-height:1.08}
-.rule{width:42px;height:3px;border-radius:2px;background:#39745E;margin:1.4rem auto 2.6rem}
 .grupo + .grupo{margin-top:2.2rem}
 .grupo h3{font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px}
 /* hasta 3 por renglón; si el último renglón queda incompleto, sus tarjetas van centradas */
@@ -100,8 +98,6 @@ label.l:first-of-type{margin-top:0}
   <section id="vMenu" hidden>
     <div class="aviso-ok" id="okClave" hidden>Contraseña cambiada.</div>
     <div class="portada"><div class="cover">
-      <h1 class="headline" id="tituloPanel"></h1>
-      <div class="rule"></div>
       <div id="menu"></div>
     </div></div>
   </section>
@@ -219,10 +215,8 @@ async function mostrarMenu() {
   dibujarMenu();
   ver('vMenu');
 }
-const TITULO_PANEL = { operador: 'Operación', supervisor: 'Supervisión', admin: 'Administración' };
 function dibujarMenu() {
   $('okClave').hidden = true;
-  $('tituloPanel').textContent = TITULO_PANEL[panel];
   const del = secciones ? secciones.filter(s => s.panel === panel) : [];
   if (!del.length) { $('menu').innerHTML = '<p class="vacio">Todavía no hay nada en este panel.</p>'; return; }
   const grupos = {};
