@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#16213e">
+<title>COM 2 · Usuarios</title>
+<link rel="icon" type="image/png" href="assets/logo-ciemsa.png">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<style>
+/* COM 2 · Usuarios: solo para el admin. Alta, edición de nombre y rol, corrección de cédula,
+   restablecer contraseña y baja. Lo que toca el login (auth.users) lo hacen funciones de Supabase
+   (sql/02-usuarios-admin.sql) que verifican que quien llama es admin. */
+:root{
+  --bg:#F7F6F3; --card:#FFFFFF; --border:#E6E2DA;
+  --text:#1A1714; --text2:#5F5A54; --text3:#9A948C;
+  --azul:#1b3f74; --rojo:#c0392b; --verde:#1baf7a; --ambar:#b7791f;
+  --shadow:0 4px 20px rgba(26,23,20,.05),0 1px 3px rgba(26,23,20,.05);
+  --r:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none!important}
+body{font-family:'DM Sans',system-ui,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased;
+  background:radial-gradient(circle at 12% 0%,#EDEEF9 0%,transparent 40%),radial-gradient(circle at 95% 100%,#E7F3EE 0%,transparent 40%),var(--bg);
+  background-attachment:fixed;min-height:100vh}
+button,input,select{font:inherit;color:inherit}
+.num{font-variant-numeric:tabular-nums}
+
+.barra{position:sticky;top:0;z-index:10;background:linear-gradient(135deg,#0f172a 0%,#16213e 55%,#1b3f74 100%);color:#fff;box-shadow:0 4px 12px rgba(0,0,0,.3);padding-top:env(safe-area-inset-top)}
+.barra-in{max-width:900px;margin:0 auto;padding:14px 16px;display:flex;align-items:center;justify-content:center;position:relative}
+.titulo{display:flex;align-items:center;gap:10px}
+.titulo .ico{font-family:'Segoe UI Emoji','Apple Color Emoji','Noto Color Emoji',sans-serif;font-size:23px;line-height:28px}
+.titulo h1{font-family:'Segoe UI',Arial,sans-serif;font-size:24px;font-weight:700;letter-spacing:-.01em}
+.volver{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:#fff;text-decoration:none;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.35);border-radius:9px;padding:6px 12px;font-size:13px;font-weight:700}
+@media (max-width:600px){.titulo h1{font-size:19px}.titulo .ico{font-size:19px}.volver{left:10px;padding:5px 9px}}
+
+.wrap{max-width:900px;margin:0 auto;padding:18px 16px 40px;display:flex;flex-direction:column;gap:14px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);padding:16px}
+
+/* Barra de búsqueda y filtros */
+.filtros{display:grid;grid-template-columns:1fr 150px 140px auto;gap:8px;align-items:center}
+@media (max-width:700px){.filtros{grid-template-columns:1fr 1fr}.filtros .buscar{grid-column:1/-1}.filtros .btn{grid-column:1/-1}}
+.in,.sel{width:100%;font-size:15px;padding:10px 12px;border:1px solid var(--border);border-radius:11px;background:#fff;outline:none}
+.in:focus,.sel:focus{border-color:var(--azul);box-shadow:0 0 0 3px rgba(27,63,116,.12)}
+.resumen{font-size:13px;color:var(--text2);margin-top:10px}
+
+.btn{border:0;border-radius:11px;padding:10px 16px;font-size:15px;font-weight:700;cursor:pointer;color:#fff;background:linear-gradient(135deg,#0f172a 0%,#16213e 55%,#1b3f74 100%);white-space:nowrap}
+.btn:disabled{opacity:.55;cursor:default}
+.btn.sec{background:#fff;color:var(--azul);border:1px solid var(--border)}
+.btn.peligro{background:#fff;color:var(--rojo);border:1px solid #f0c9c4}
+.btn.verde{background:#fff;color:#137a55;border:1px solid #bfe6d6}
+
+/* Lista */
+.lista{padding:0;overflow:hidden}
+.fila{display:grid;grid-template-columns:1fr 150px 110px 130px;gap:10px;align-items:center;padding:12px 16px;border-top:1px solid var(--border);cursor:pointer;background:#fff;border-left:0;border-right:0;border-bottom:0;width:100%;text-align:left}
+.fila:first-child{border-top:0}
+.fila:hover{background:#F6F8FC}
+.fila.cab{cursor:default;background:#FAFAF8;font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em}
+.fila .nom{font-weight:600}
+.fila .ced{color:var(--text2);white-space:nowrap}
+@media (max-width:700px){
+  .fila{grid-template-columns:1fr auto;row-gap:4px}
+  .fila.cab{display:none}
+  .fila .ced{grid-column:1}.fila .rolc{grid-column:2;grid-row:1;justify-self:end}
+  .fila .est{grid-column:1/-1}
+}
+.tag{display:inline-block;font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap}
+.r-admin{background:#EDE7F8;color:#5b3a9a}.r-supervisor{background:#EEF1F8;color:var(--azul)}.r-operador{background:#F1F0EC;color:var(--text2)}
+.e-ok{background:#E3F5EE;color:#137a55}.e-baja{background:#F1F0EC;color:var(--text3)}.e-clave{background:#FDF3E1;color:var(--ambar)}
+.aviso-ced{color:var(--rojo);font-size:12px;font-weight:700;margin-left:4px}
+.vacio{text-align:center;color:var(--text2);padding:26px 10px}
+
+/* Ventanas */
+dialog{border:0;border-radius:var(--r);padding:0;width:min(480px,calc(100% - 24px));box-shadow:0 20px 60px rgba(0,0,0,.25);margin:auto}
+dialog::backdrop{background:rgba(15,23,42,.45)}
+.dlg{padding:20px}
+.dlg h2{font-size:18px;margin-bottom:2px}
+.dlg .sub{font-size:13px;color:var(--text2);margin-bottom:14px}
+.bloque{border-top:1px solid var(--border);padding-top:14px;margin-top:14px}
+.bloque h3{font-size:13px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+label.l{display:block;font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin:12px 0 6px}
+label.l:first-of-type{margin-top:0}
+.fila2{display:flex;gap:8px}.fila2 .in{flex:1}
+.botones{display:flex;gap:8px;justify-content:flex-end;margin-top:16px;flex-wrap:wrap}
+.ayuda{font-size:12.5px;color:var(--text3);margin-top:6px}
+.error{margin-top:12px;color:var(--rojo);font-size:14px;font-weight:600}
+.okmsg{margin-top:12px;color:var(--verde);font-size:14px;font-weight:600}
+.clave{margin-top:12px;background:#F6F8FC;border:1px dashed #b9c6de;border-radius:12px;padding:14px;text-align:center}
+.clave .valor{font-family:Consolas,'Courier New',monospace;font-size:26px;font-weight:700;letter-spacing:.08em;margin:6px 0 10px;user-select:all}
+.clave p{font-size:13px;color:var(--text2)}
+
+.cargando{display:flex;flex-direction:column;align-items:center;gap:12px;padding:70px 0;color:var(--text2);font-weight:600}
+.rueda{width:34px;height:34px;border:3px solid #D9DEEA;border-top-color:var(--azul);border-radius:50%;animation:girar .8s linear infinite}
+@keyframes girar{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<header class="barra"><div class="barra-in">
+  <a class="volver" href="./">‹ Menú</a>
+  <div class="titulo"><span class="ico">👥</span><h1>Usuarios</h1></div>
+</div></header>
+
+<main class="wrap">
+  <div class="cargando" id="vCargando"><div class="rueda"></div>Cargando información</div>
+
+  <div class="card" id="vError" hidden><p class="error" id="errGeneral" style="margin:0"></p></div>
+
+  <section id="vLista" hidden style="display:flex;flex-direction:column;gap:14px">
+    <div class="card">
+      <div class="filtros">
+        <input class="in buscar" id="buscar" type="search" placeholder="Buscar por nombre o cédula" autocomplete="off">
+        <select class="sel" id="fRol"><option value="">Todos los roles</option><option value="admin">Admin</option><option value="supervisor">Supervisor</option><option value="operador">Operador</option></select>
+        <select class="sel" id="fEstado"><option value="activos">Activos</option><option value="baja">De baja</option><option value="clave">Clave inicial</option><option value="">Todos</option></select>
+        <button class="btn" id="nuevo" type="button">+ Nuevo usuario</button>
+      </div>
+      <div class="resumen" id="resumen"></div>
+    </div>
+    <div class="card lista" id="lista"></div>
+  </section>
+</main>
+
+<!-- Editar usuario -->
+<dialog id="dEditar"><div class="dlg">
+  <h2 id="eNombreTit"></h2>
+  <p class="sub" id="eSub"></p>
+  <form id="fDatos">
+    <label class="l" for="eNombre">Nombre</label>
+    <input class="in" id="eNombre" required maxlength="80">
+    <label class="l" for="eRol">Rol</label>
+    <select class="sel" id="eRol"><option value="operador">Operador</option><option value="supervisor">Supervisor</option><option value="admin">Admin</option></select>
+    <p class="ayuda" id="eRolAyuda" hidden>No podés cambiar tu propio rol.</p>
+    <div class="botones"><button class="btn" id="eGuardar">Guardar cambios</button></div>
+  </form>
+  <div class="bloque">
+    <h3>Cédula (usuario para entrar)</h3>
+    <div class="fila2"><input class="in num" id="eCedula" inputmode="numeric"><button class="btn sec" id="eCedulaBtn" type="button">Corregir</button></div>
+  </div>
+  <div class="bloque">
+    <h3>Contraseña</h3>
+    <button class="btn sec" id="eReset" type="button">Restablecer contraseña</button>
+    <p class="ayuda">Genera una contraseña temporal nueva; al entrar le pide que la cambie.</p>
+    <div class="clave" id="eClave" hidden></div>
+  </div>
+  <div class="bloque" id="eEstadoBloque">
+    <h3>Estado</h3>
+    <button class="btn peligro" id="eBaja" type="button">Dar de baja</button>
+    <button class="btn verde" id="eAlta" type="button">Reactivar</button>
+    <p class="ayuda" id="eEstadoAyuda"></p>
+  </div>
+  <div class="error" id="eError" hidden></div>
+  <div class="okmsg" id="eOk" hidden></div>
+  <div class="botones"><button class="btn sec" type="button" id="eCerrar">Cerrar</button></div>
+</div></dialog>
+
+<!-- Nuevo usuario -->
+<dialog id="dNuevo"><div class="dlg">
+  <h2>Nuevo usuario</h2>
+  <p class="sub">Entra con su cédula y una contraseña temporal que se muestra al crearlo.</p>
+  <form id="fNuevo">
+    <label class="l" for="nNombre">Nombre y apellido</label>
+    <input class="in" id="nNombre" required maxlength="80">
+    <label class="l" for="nCedula">Cédula</label>
+    <input class="in num" id="nCedula" inputmode="numeric" placeholder="Con o sin puntos y guion" required>
+    <label class="l" for="nRol">Rol</label>
+    <select class="sel" id="nRol"><option value="operador">Operador</option><option value="supervisor">Supervisor</option><option value="admin">Admin</option></select>
+    <div class="error" id="nError" hidden></div>
+    <div class="botones"><button class="btn sec" type="button" id="nCancelar">Cancelar</button><button class="btn" id="nCrear">Crear usuario</button></div>
+  </form>
+  <div id="nListo" hidden>
+    <div class="clave" id="nClave"></div>
+    <div class="botones"><button class="btn" type="button" id="nCerrar">Listo</button></div>
+  </div>
+</div></dialog>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+const SUPABASE_URL = 'https://srgduwdvkgqrrmhxpzlx.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_8ZP6-05anDJSBy39IwbSdQ_18iWRnd6';   // clave pública: los datos los protege RLS
+const ROL = { admin: 'Admin', supervisor: 'Supervisor', operador: 'Operador' };
+
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const soloNum = s => String(s || '').replace(/\D/g, '');
+const sinTildes = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+let yo = null, usuarios = [], actual = null;
+
+// Dígito verificador de la cédula uruguaya
+function cedulaValida(c) {
+  c = soloNum(c);
+  if (!/^\d{7,8}$/.test(c)) return false;
+  c = c.padStart(8, '0');
+  const s = [2, 9, 8, 7, 6, 3, 4].reduce((a, p, i) => a + p * +c[i], 0);
+  return (10 - s % 10) % 10 === +c[7];
+}
+// 12345678 → 1.234.567-8
+const cedulaTexto = c => { c = soloNum(c); return c.length < 7 ? c : c.slice(0, -1).replace(/\B(?=(\d{3})+$)/g, '.') + '-' + c.slice(-1); };
+function mensajeError(e) {
+  const m = (e && (e.message || e.msg)) || String(e);
+  return /JWT|token/i.test(m) ? 'Tu sesión venció: volvé a entrar desde el menú.' : m;
+}
+function mostrar(el, msg) { $(el).textContent = msg || ''; $(el).hidden = !msg; }
+
+async function arrancar() {
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) { location.replace('./'); return; }
+    const { data, error } = await sb.from('perfiles').select('id,rol,activo,debe_cambiar_clave').eq('id', session.user.id).maybeSingle();
+    if (error) throw error;
+    if (!data || !data.activo || data.debe_cambiar_clave) { location.replace('./'); return; }
+    if (data.rol !== 'admin') throw new Error('Esta pantalla es solo para el administrador.');
+    yo = data;
+    await cargar();
+    $('vCargando').hidden = true; $('vLista').hidden = false;
+  } catch (e) {
+    $('vCargando').hidden = true;
+    mostrar('errGeneral', mensajeError(e)); $('vError').hidden = false;
+  }
+}
+
+async function cargar() {
+  const { data, error } = await sb.from('perfiles').select('id,usuario,nombre,rol,activo,debe_cambiar_clave,creado').order('nombre');
+  if (error) throw error;
+  usuarios = data;
+  dibujar();
+}
+
+function dibujar() {
+  const q = sinTildes($('buscar').value.trim()), qn = soloNum($('buscar').value);
+  const rol = $('fRol').value, est = $('fEstado').value;
+  const vis = usuarios.filter(u =>
+    (!q || sinTildes(u.nombre).includes(q) || (qn && u.usuario.includes(qn))) &&
+    (!rol || u.rol === rol) &&
+    (est === '' || (est === 'activos' && u.activo) || (est === 'baja' && !u.activo) || (est === 'clave' && u.activo && u.debe_cambiar_clave)));
+  const act = usuarios.filter(u => u.activo), cuenta = r => act.filter(u => u.rol === r).length;
+  $('resumen').textContent = `${act.length} activos: ${cuenta('admin')} admin, ${cuenta('supervisor')} supervisores, ${cuenta('operador')} operadores` +
+    ` · ${act.filter(u => u.debe_cambiar_clave).length} todavía con la clave inicial` +
+    (usuarios.length > act.length ? ` · ${usuarios.length - act.length} de baja` : '') +
+    (vis.length !== usuarios.length ? ` · mostrando ${vis.length}` : '');
+  $('lista').innerHTML = !vis.length ? '<div class="vacio">No hay usuarios con ese filtro.</div>' :
+    '<div class="fila cab"><span>Nombre</span><span>Cédula</span><span>Rol</span><span>Estado</span></div>' +
+    vis.map(u => `<button class="fila" type="button" data-id="${u.id}">
+      <span class="nom">${esc(u.nombre)}${u.id === yo.id ? ' <span class="tag e-ok">vos</span>' : ''}</span>
+      <span class="ced num">${esc(cedulaTexto(u.usuario))}${cedulaValida(u.usuario) ? '' : '<span class="aviso-ced" title="El dígito verificador no coincide">⚠ revisar</span>'}</span>
+      <span class="rolc"><span class="tag r-${u.rol}">${ROL[u.rol]}</span></span>
+      <span class="est">${!u.activo ? '<span class="tag e-baja">De baja</span>' : u.debe_cambiar_clave ? '<span class="tag e-clave">Clave inicial</span>' : '<span class="tag e-ok">Activo</span>'}</span>
+    </button>`).join('');
+}
+['buscar', 'fRol', 'fEstado'].forEach(id => $(id).addEventListener('input', dibujar));
+$('lista').addEventListener('click', ev => { const f = ev.target.closest('.fila[data-id]'); if (f) abrir(f.dataset.id); });
+
+// ---- Editar ----
+function abrir(id) {
+  actual = usuarios.find(u => u.id === id);
+  if (!actual) return;
+  const propio = actual.id === yo.id;
+  $('eNombreTit').textContent = actual.nombre;
+  $('eSub').textContent = `${ROL[actual.rol]} · cédula ${cedulaTexto(actual.usuario)} · alta ${new Date(actual.creado).toLocaleDateString('es-UY')}`;
+  $('eNombre').value = actual.nombre;
+  $('eRol').value = actual.rol; $('eRol').disabled = propio; $('eRolAyuda').hidden = !propio;
+  $('eCedula').value = actual.usuario;
+  $('eClave').hidden = true; $('eClave').innerHTML = '';
+  $('eEstadoBloque').hidden = propio;
+  $('eBaja').hidden = !actual.activo; $('eAlta').hidden = actual.activo;
+  $('eEstadoAyuda').textContent = actual.activo ? 'No va a poder entrar más hasta que lo reactives. No se borra nada.' : 'Está de baja: no puede entrar.';
+  mostrar('eError'); mostrar('eOk');
+  $('dEditar').showModal();
+}
+$('eCerrar').onclick = () => $('dEditar').close();
+
+async function accion(btn, fn, ok) {
+  mostrar('eError'); mostrar('eOk');
+  const txt = btn.textContent; btn.disabled = true; btn.textContent = 'Guardando…';
+  try { await fn(); await cargar(); actual = usuarios.find(u => u.id === actual.id); if (ok) mostrar('eOk', ok); }
+  catch (e) { mostrar('eError', mensajeError(e)); }
+  finally { btn.disabled = false; btn.textContent = txt; }
+}
+
+$('fDatos').addEventListener('submit', ev => {
+  ev.preventDefault();
+  const nombre = $('eNombre').value.trim().replace(/\s+/g, ' ');
+  if (!nombre) return mostrar('eError', 'Falta el nombre.');
+  const cambios = { nombre };
+  if (actual.id !== yo.id) cambios.rol = $('eRol').value;
+  accion($('eGuardar'), async () => {
+    const { error } = await sb.from('perfiles').update(cambios).eq('id', actual.id);
+    if (error) throw error;
+    $('eNombreTit').textContent = nombre;
+  }, 'Cambios guardados.');
+});
+
+$('eCedulaBtn').onclick = () => {
+  const c = soloNum($('eCedula').value);
+  if (c === actual.usuario) return mostrar('eError', 'Es la misma cédula.');
+  if (!cedulaValida(c)) return mostrar('eError', 'Esa cédula no es válida (revisá el dígito verificador).');
+  if (!confirm(`¿Cambiar la cédula de ${actual.nombre} a ${cedulaTexto(c)}?\nDesde ahora va a entrar con esa cédula (la contraseña no cambia).`)) return;
+  accion($('eCedulaBtn'), async () => {
+    const { error } = await sb.rpc('admin_cambiar_cedula', { p_id: actual.id, p_cedula: c });
+    if (error) throw error;
+  }, `Cédula corregida: ahora entra con ${cedulaTexto(c)}.`);
+};
+
+function cajaClave(el, clave, nombre, cedula) {
+  $(el).innerHTML = `<p>Contraseña temporal de <b>${esc(nombre)}</b> (usuario ${esc(cedulaTexto(cedula))}):</p>
+    <div class="valor">${esc(clave)}</div>
+    <button class="btn sec" type="button" data-copiar="${esc(clave)}">Copiar</button>
+    <p style="margin-top:10px">Pasásela ahora: <b>no se vuelve a mostrar</b>. Al entrar, le va a pedir que la cambie.</p>`;
+  $(el).hidden = false;
+}
+document.addEventListener('click', async ev => {
+  const b = ev.target.closest('[data-copiar]'); if (!b) return;
+  try { await navigator.clipboard.writeText(b.dataset.copiar); b.textContent = 'Copiada ✓'; } catch { b.textContent = 'Seleccionala y copiala'; }
+});
+
+$('eReset').onclick = () => {
+  if (!confirm(`¿Restablecer la contraseña de ${actual.nombre}?\nLa actual deja de funcionar.`)) return;
+  accion($('eReset'), async () => {
+    const { data, error } = await sb.rpc('admin_restablecer_clave', { p_id: actual.id });
+    if (error) throw error;
+    cajaClave('eClave', data, actual.nombre, actual.usuario);
+  });
+};
+
+async function cambiarEstado(activo) {
+  if (!activo && !confirm(`¿Dar de baja a ${actual.nombre}?\nNo va a poder entrar hasta que lo reactives.`)) return;
+  await accion($(activo ? 'eAlta' : 'eBaja'), async () => {
+    const { error } = await sb.rpc('admin_activar', { p_id: actual.id, p_activo: activo });
+    if (error) throw error;
+  }, activo ? 'Reactivado: ya puede entrar.' : 'Dado de baja.');
+  $('eBaja').hidden = !actual.activo; $('eAlta').hidden = actual.activo;
+  $('eEstadoAyuda').textContent = actual.activo ? 'No va a poder entrar más hasta que lo reactives. No se borra nada.' : 'Está de baja: no puede entrar.';
+}
+$('eBaja').onclick = () => cambiarEstado(false);
+$('eAlta').onclick = () => cambiarEstado(true);
+
+// ---- Nuevo ----
+$('nuevo').onclick = () => {
+  $('fNuevo').reset(); $('fNuevo').hidden = false; $('nListo').hidden = true; mostrar('nError');
+  $('dNuevo').showModal();
+};
+$('nCancelar').onclick = () => $('dNuevo').close();
+$('nCerrar').onclick = () => $('dNuevo').close();
+$('fNuevo').addEventListener('submit', async ev => {
+  ev.preventDefault(); mostrar('nError');
+  const nombre = $('nNombre').value.trim().replace(/\s+/g, ' '), ced = soloNum($('nCedula').value), rol = $('nRol').value;
+  if (!nombre) return mostrar('nError', 'Falta el nombre.');
+  if (!cedulaValida(ced)) return mostrar('nError', 'Esa cédula no es válida (revisá el dígito verificador).');
+  const ya = usuarios.find(u => u.usuario === ced);
+  if (ya) return mostrar('nError', `Ya existe: ${ya.nombre}${ya.activo ? '' : ' (de baja: reactivalo desde la lista)'}.`);
+  if (rol === 'admin' && !confirm('¿Seguro que querés crearlo como Admin? Va a poder gestionar todos los usuarios.')) return;
+  const btn = $('nCrear'); btn.disabled = true; btn.textContent = 'Creando…';
+  try {
+    const { data, error } = await sb.rpc('admin_crear_usuario', { p_cedula: ced, p_nombre: nombre, p_rol: rol });
+    if (error) throw error;
+    cajaClave('nClave', data, nombre, ced);
+    $('fNuevo').hidden = true; $('nListo').hidden = false;
+    await cargar();
+  } catch (e) { mostrar('nError', mensajeError(e)); }
+  finally { btn.disabled = false; btn.textContent = 'Crear usuario'; }
+});
+
+arrancar();
+</script>
+</body>
+</html>

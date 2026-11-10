@@ -20,10 +20,23 @@ La idea es ir pasando acá las planillas operativas de Google Sheets y, más ade
 ## Archivos
 
 ```
-index.html          Login, cambio de contraseña y menú
-assets/             Logo
-sql/01-base.sql     Roles, perfiles, secciones y reglas (ya corrido en Supabase)
+index.html                  Login, cambio de contraseña y menú
+usuarios.html               Usuarios (solo admin): alta, nombre y rol, corregir cédula, restablecer contraseña, baja
+assets/                     Logo
+sql/01-base.sql             Roles, perfiles, secciones y reglas (ya corrido en Supabase)
+sql/02-usuarios-admin.sql   Funciones de admin para usuarios y la sección del menú (ya corrido en Supabase)
 ```
+
+## Usuarios (pantalla del admin)
+
+- Lo que toca el login (`auth.users`) lo hacen funciones de la base: `admin_crear_usuario`, `admin_restablecer_clave`, `admin_cambiar_cedula` y `admin_activar`. Cada una verifica primero que quien llama sea admin; si no, responde "Solo el administrador puede hacer esto".
+- Nombre y rol se editan con un `update` común, que solo el admin puede hacer por RLS.
+- Un trigger impide:
+  - cambiar la cédula sin pasar por `admin_cambiar_cedula`;
+  - que el admin se quite su propio rol o se dé de baja.
+- **Alta y restablecer** devuelven una contraseña temporal de 10 caracteres, que se muestra **una sola vez**. Al entrar, obliga a cambiarla.
+- **Baja:** marca el perfil como inactivo y además bloquea el login (`banned_until`). No se borra nada; se puede reactivar.
+- La pantalla revisa el dígito verificador de la cédula y marca con "⚠ revisar" las cédulas cargadas que no lo cumplen.
 
 ## Reglas
 
