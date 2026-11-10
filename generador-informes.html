@@ -1,0 +1,392 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>COM</title>
+<link rel="icon" type="image/png" href="assets/logo-ciemsa.png">
+<style>
+:root{--ink:#1d2733;--muted:#5d6b7a;--line:#dfe5ec;--bg:#f4f6f9;--card:#fff;--azul:#1f6feb;--field:#fff;--fline:#c9d2dc;--sec:#e6ebf0;--err:#b3261e}
+:root[data-theme="dark"]{--ink:#e6edf3;--muted:#9aa7b5;--line:#2c3744;--bg:#0f141a;--card:#18202a;--azul:#3b82f6;--field:#0f141a;--fline:#3a4756;--sec:#273241;--err:#ff8b82;color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;font-family:Segoe UI,Roboto,Arial,sans-serif;color:var(--ink);background:var(--bg)}
+.wrap{max-width:1150px;margin:0 auto;padding:16px}
+h1{font-size:21px;margin:4px 0 2px}.sub{color:var(--muted);font-size:13.5px;margin-bottom:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
+input,select{width:100%;max-width:420px;padding:9px 10px;border:1px solid var(--fline);border-radius:8px;font-size:15px;background:var(--field);color:var(--ink)}
+button{padding:9px 16px;border:0;border-radius:8px;background:var(--azul);color:#fff;font-size:15px;font-weight:600;cursor:pointer}
+button.sec{background:var(--sec);color:var(--ink)}button:disabled{opacity:.5;cursor:default}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-top:14px}
+#log{font:12.5px Consolas,monospace;white-space:pre-wrap;color:var(--muted);margin-top:10px;max-height:160px;overflow:auto}
+#err{color:var(--err);font-size:14px;margin-top:10px;white-space:pre-wrap}
+iframe{width:100%;height:88vh;border:1px solid var(--line);border-radius:12px;background:var(--card)}
+.nota{font-size:12px;color:var(--muted);margin-top:10px}
+.hide{display:none}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+.tema{display:flex;align-items:center;gap:7px;margin:8px 0 0;font-size:14px;color:var(--muted);cursor:pointer;white-space:nowrap}
+.tema input{width:auto;max-width:none;margin:0;accent-color:var(--azul)}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="assets/comun.js?v=202611100928"></script>
+<script src="assets/acceso.js?v=202611101530"></script>
+<script>COM2.acceso({ volver: '.top > div' });   // solo supervisores y admin con sesión de COM 2</script>
+</head>
+<body>
+<div class="wrap">
+<div class="top"><div><h1>Generador de informes de avance</h1>
+<div class="sub">Ejecución de recorridos: % de avance (en proceso) o % completado (terminado). Solo lectura del back office.</div></div>
+<label class="tema" title="Tildado: fondo oscuro. Destildado: fondo blanco normal. Se recuerda para la próxima vez."><input type="checkbox" id="chkNoche">Modo nocturno</label></div>
+
+<div class="card" id="loginCard">
+  <b>Ingresá con tu usuario de Garbollect</b>
+  <label>Usuario</label><input id="u" autocomplete="username">
+  <label>Clave</label><input id="p" type="password" autocomplete="current-password">
+  <div class="row"><button id="btnLogin">Entrar</button></div>
+  <div class="nota">Los datos se usan solo para iniciar sesión y se mantienen en memoria mientras la página esté abierta; no se guardan en ningún lado.</div>
+</div>
+
+<div class="card hide" id="mainCard">
+  <label style="margin-top:0">Informe</label><select id="sel"></select>
+  <label>Fecha</label><input id="fecha" type="date">
+  <div class="row">
+    <button id="btnGen">Generar informe</button>
+    <button id="btnDown" class="sec hide">Descargar HTML (para compartir)</button>
+    <button id="btnPrint" class="sec hide">Imprimir / guardar PDF</button>
+    <button id="btnOut" class="sec">Salir</button>
+  </div>
+  <div id="log"></div>
+</div>
+<div id="err"></div>
+<iframe id="vista" class="hide" title="Informe"></iframe>
+</div>
+
+<script>
+const TPL_IND = "<!DOCTYPE html>\n<html lang=\"es\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>Informe de recorrido<\/title>\n<link rel=\"stylesheet\" href=\"https://unpkg.com/leaflet@1.9.4/dist/leaflet.css\">\n<script src=\"https://unpkg.com/leaflet@1.9.4/dist/leaflet.js\"><\/script>\n<style>\n*{-webkit-print-color-adjust:exact;print-color-adjust:exact}\n.btnprint{float:right;padding:7px 14px;border:0;border-radius:8px;background:#1f6feb;color:#fff;font-size:14px;font-weight:600;cursor:pointer}\n.embebido .btnprint{display:none}\n@media print{.btnprint{display:none}}body.pdf .btnprint{display:none}\n:root{--verde:#2e9e5b;--ambar:#e6a100;--gris:#9aa3ad;--azul:#1f6feb;--ink:#1d2733;--muted:#5d6b7a;--line:#dfe5ec;--bg:#f4f6f9;--card:#fff}\n:root[data-theme=\"dark\"]{--ink:#e6edf3;--muted:#9aa7b5;--line:#2c3744;--bg:#0f141a;--card:#18202a;color-scheme:dark}\n[data-theme=\"dark\"] .track{background:#2a3441}\n[data-theme=\"dark\"] .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.92) contrast(.9)}\n@media print{:root[data-theme=\"dark\"]{--ink:#1d2733;--muted:#5d6b7a;--line:#dfe5ec;--bg:#f4f6f9;--card:#fff}[data-theme=\"dark\"] .track{background:#e6ebf0}[data-theme=\"dark\"] .leaflet-tile-pane{filter:none}}\n*{box-sizing:border-box}\nbody{margin:0;font-family:Segoe UI,Roboto,Arial,sans-serif;color:var(--ink);background:var(--bg)}\n.wrap{max-width:1100px;margin:0 auto;padding:16px}\nheader h1{margin:0 0 4px;font-size:22px}\n.sub{color:var(--muted);font-size:14px}\n.chip{display:inline-block;padding:3px 10px;border-radius:999px;font-size:13px;font-weight:600;color:#fff;vertical-align:middle;margin-left:8px}\n.chip.proc{background:var(--azul)}.chip.comp{background:var(--verde)}.chip.no{background:var(--gris)}\n.hero{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin:14px 0;display:flex;gap:20px;align-items:center;flex-wrap:wrap}\n.hero .big{font-size:52px;font-weight:700;line-height:1}\n.hero .lbl{color:var(--muted);font-size:14px}\n.bar{flex:1;min-width:min(220px,100%)}\n.track{height:16px;border-radius:8px;background:#e6ebf0;overflow:hidden}\n.track{display:flex}.seg{height:100%}.leg2{margin-top:6px;font-size:13px;color:var(--ink);display:flex;gap:14px;flex-wrap:wrap}\n.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:14px}\n.stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px}\n.stat .n{font-size:22px;font-weight:700}.stat .t{font-size:12px;color:var(--muted)}\n#map{height:560px;border-radius:12px;border:1px solid var(--line)}\n.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin:8px 2px}\n.dot{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:5px;vertical-align:-1px;border:1px solid #fff;box-shadow:0 0 0 1px #0003}\n.nota{font-size:12.5px;color:var(--muted);margin-top:10px;line-height:1.45}\n.hist{font-size:13px;margin-top:6px}\n.truck{font-size:22px;filter:drop-shadow(0 1px 2px #0006)}\n@page{size:A4 landscape;margin:8mm}\n@media print{body{background:#fff}.wrap{padding:0;max-width:none}#map{height:330px}.hero{margin:6px 0;padding:10px 14px}.stats{margin-bottom:6px}.hero .big{font-size:38px}.nota,.hist{font-size:11px;margin-top:4px}.legend{margin:4px 2px}}\nbody.pdf{background:#fff}body.pdf .wrap{padding:0;width:1060px;max-width:1060px;margin:0}body.pdf #map{height:330px}body.pdf .hero{margin:6px 0;padding:10px 14px}body.pdf .stats{margin-bottom:6px}body.pdf .hero .big{font-size:38px}body.pdf .nota,body.pdf .hist{font-size:11px;margin-top:4px}\n@media (max-width:600px){#map{height:420px}.hero .big{font-size:40px}header h1{font-size:18px}}\n<\/style>\n<\/head>\n<body>\n<div class=\"wrap\">\n<header><button class=\"btnprint\" onclick=\"imprimirInforme()\">Imprimir / guardar PDF<\/button><h1><span id=\"titulo\"><\/span><span id=\"chip\" class=\"chip\"><\/span><\/h1><div class=\"sub\" id=\"sub\"><\/div><\/header>\n<section class=\"hero\">\n  <div><div class=\"big\" id=\"pct\"><\/div><div class=\"lbl\" id=\"pctLbl\"><\/div><\/div>\n  <div class=\"bar\"><div class=\"track\" id=\"track\"><\/div><div class=\"lbl\" id=\"barTxt\" style=\"margin-top:6px\"><\/div><div class=\"leg2\" id=\"leg2\"><\/div><\/div>\n<\/section>\n<section class=\"stats\" id=\"stats\"><\/section>\n<div id=\"map\"><\/div>\n<div class=\"legend\" id=\"legend\"><\/div>\n<div class=\"nota\" id=\"notas\"><\/div>\n<div class=\"hist\" id=\"hist\"><\/div>\n<\/div>\n<script>\nconst D = /*__DATA__*/null;\nconst COL={hecha:'#2e9e5b',actual:'#1f6feb',pendiente:'#9aa3ad',fuera_orden:'#e6a100',no_pasada:'#c0392b'};\nconst $=id=>document.getElementById(id);\nconst esc=s=>String(s==null?'':s).replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]));\nconst proc=D.estado==='En proceso', comp=D.estado==='Completado', no=D.estado==='No iniciado';\n\ndocument.title='Informe '+D.nombre+' '+D.fecha;\n$('titulo').textContent=D.nombre;\n$('chip').textContent=D.estado+(D.pausa?' (en pausa)':'');\n$('chip').className='chip '+(proc?'proc':comp?'comp':'no');\n$('sub').textContent=[D.camion?('Camión '+D.camion.nombre+(D.camion.matricula&&D.camion.matricula!==D.camion.nombre?' ('+D.camion.matricula+')':'')):'Camión sin identificar',D.fecha_txt,'Generado '+D.generado].join('  ·  ');\n$('pct').textContent=D.pct+'%';\n$('pctLbl').textContent=proc?'de avance hasta ahora':comp?'completado':'sin ejecución';\nconst n=k=>D.paradas.filter(p=>p.estado===k).length;\nconst pc=v=>(v/D.total*100).toFixed(2)+'%';\nconst dot=c=>'<i class=\"dot\" style=\"background:'+c+'\"><\/i>';\nlet segs=[], leg=[], txt='';\nif(comp){\n  segs=[[D.hechas,COL.hecha],[n('fuera_orden'),COL.fuera_orden],[n('no_pasada'),COL.no_pasada]];\n  txt=D.visitadas+' de '+D.total+' paradas visitadas';\n  leg.push(dot(COL.hecha)+D.hechas+' en orden ('+D.pct_orden+'%)');\n  if(n('fuera_orden'))leg.push(dot(COL.fuera_orden)+n('fuera_orden')+' visitadas fuera de orden');\n  if(n('no_pasada'))leg.push(dot(COL.no_pasada)+n('no_pasada')+' sin pasar');\n}else if(proc){\n  const act=n('actual'), hh=n('hecha'), fo=n('fuera_orden'), pe=D.total-hh-act-fo;\n  segs=[[hh,COL.hecha],[act,COL.actual],[fo,COL.fuera_orden],[pe,'#c3c9d0']];\n  txt=D.hechas+' de '+D.total+' paradas alcanzadas';\n  leg.push(dot(COL.hecha)+hh+' hechas');\n  if(act)leg.push(dot(COL.actual)+'parada actual #'+(D.paradas.findIndex(p=>p.estado==='actual')+1));\n  if(fo)leg.push(dot(COL.fuera_orden)+fo+' visitadas fuera de orden');\n  leg.push(dot(COL.pendiente)+pe+' pendientes');\n}else{\n  segs=[[D.total,'#c3c9d0']]; txt=D.total+' paradas programadas, sin ejecución detectada';\n}\n$('track').innerHTML=segs.filter(x=>x[0]>0).map(x=>'<div class=\"seg\" style=\"width:'+pc(x[0])+';background:'+x[1]+'\"><\/div>').join('');\n$('barTxt').textContent=txt;\n$('leg2').innerHTML=leg.map(x=>'<span>'+x+'<\/span>').join('');\n\n$('stats').innerHTML=(D.stats_h||[]).map(s=>'<div class=\"stat\"><div class=\"n\">'+esc(s[0])+'<\/div><div class=\"t\">'+esc(s[1])+'<\/div><\/div>').join('');\n\nconst L_=[['hecha',proc?'Alcanzada':'Cumplida en orden']];\nif(proc){L_.push(['actual','Parada actual']);if(n('fuera_orden'))L_.push(['fuera_orden','Visitada fuera de orden']);L_.push(['pendiente','Pendiente']);}\nelse if(comp){if(n('fuera_orden'))L_.push(['fuera_orden','Visitada fuera de orden']);if(n('no_pasada'))L_.push(['no_pasada','Sin pasar']);}\nelse{L_.push(['pendiente','Pendiente']);}\n$('legend').innerHTML=L_.map(l=>'<span>'+dot(COL[l[0]])+l[1]+'<\/span>').join('')\n  +(D.traza.length?'<span>'+dot('#6aa6ff')+'Recorrido GPS del camión<\/span>':'');\n\n$('notas').innerHTML=D.notas.filter(n=>!/^Control cruzado/.test(n)).map(esc).join('<br>');\n$('hist').innerHTML='';\n\nconst map=L.map('map',{zoomSnap:0.25,fadeAnimation:false,zoomAnimation:false,markerZoomAnimation:false});\nconst tiles=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',{maxZoom:18,maxNativeZoom:16,attribution:'Tiles © Esri'}).addTo(map);\nlet bounds=[];\nif(D.traza.length)L.polyline(D.traza.map(p=>[p[0],p[1]]),{color:'#1f6feb',weight:3,opacity:.35}).addTo(map);\nconst ord=[...D.paradas].sort((a,b)=>({hecha:1,actual:2}[a.estado]||0)-({hecha:1,actual:2}[b.estado]||0));\nord.forEach(p=>{\n  const c=COL[p.estado], big=p.estado==='actual';\n  const m=L.circleMarker([p.lat,p.lon],{radius:big?11:6,color:'#fff',weight:big?3:1.5,fillColor:c,fillOpacity:1}).addTo(map);\n  const idx=D.paradas.findIndex(q=>q.orden===p.orden)+1;\n  const txt={hecha:proc?'Alcanzada':'Cumplida en orden',actual:'Parada actual',pendiente:'Pendiente',fuera_orden:'Visitada fuera de orden',no_pasada:'Sin pasar (el camión no pasó a menos de '+D.radio+' m)'}[p.estado];\n  m.bindPopup('<b>Parada '+idx+' de '+D.total+'<\/b><br>'+esc(p.dir)+'<br>'+txt+(p.hora?' · '+esc(p.hora):'')+\n    '');\n  bounds.push([p.lat,p.lon]);\n});\nif(D.ultima){\n  L.marker([D.ultima.lat,D.ultima.lon],{icon:L.divIcon({className:'',html:'<div class=\"truck\">🚚<\/div>',iconSize:[26,26],iconAnchor:[13,13]})})\n   .addTo(map).bindPopup('Última posición GPS · '+esc(D.ultima.hora));\n  bounds.push([D.ultima.lat,D.ultima.lon]);\n}\nfunction fit(){map.invalidateSize();map.fitBounds(L.latLngBounds(bounds).pad(0.12),{animate:false});}\nfit();\nconst pdf=/[?&]pdf=1/.test(location.search);\nif(pdf)document.body.classList.add('pdf');\nwindow.addEventListener('beforeprint',fit);\nif(window.ResizeObserver){let _t;new ResizeObserver(()=>{clearTimeout(_t);_t=setTimeout(fit,120);}).observe(document.getElementById('map'));}\nif(window.matchMedia)matchMedia('print').addEventListener('change',fit);\nwindow.addEventListener('resize',fit);\nif(pdf)tiles.on('load',()=>setTimeout(fit,300));\nif(window.parent!==window)document.body.classList.add('embebido');\n/* Impresion robusta: fija el layout de PDF, reencuadra y ESPERA a que carguen los tiles antes de imprimir */\nfunction prepararImpresion(){\n  document.body.classList.add('pdf');\n  return new Promise(res=>{\n    fit(); let fin=false;\n    const listo=()=>{if(fin)return;fin=true;fit();setTimeout(res,500);};\n    const pend=document.querySelectorAll('.leaflet-tile-pane .leaflet-tile:not(.leaflet-tile-loaded)').length;\n    if(!pend)return listo();\n    tiles.once('load',listo);setTimeout(listo,7000);\n  });\n}\nfunction imprimirInforme(){prepararImpresion().then(()=>window.print());}\nwindow.addEventListener('afterprint',()=>{if(!pdf){document.body.classList.remove('pdf');fit();}});\n<\/script>\n<\/body>\n<\/html>\n";
+const TPL_TAB = "<!DOCTYPE html>\n<html lang=\"es\">\n<head>\n<meta charset=\"utf-8\">\n<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\">\n<title>Tablero de recorridos<\/title>\n<link rel=\"stylesheet\" href=\"https://unpkg.com/leaflet@1.9.4/dist/leaflet.css\">\n<script src=\"https://unpkg.com/leaflet@1.9.4/dist/leaflet.js\"><\/script>\n<style>\n*{-webkit-print-color-adjust:exact;print-color-adjust:exact}\n.btnprint{float:right;padding:7px 14px;border:0;border-radius:8px;background:#1f6feb;color:#fff;font-size:14px;font-weight:600;cursor:pointer}\n.embebido .btnprint{display:none}\n@media print{.btnprint{display:none}}body.pdf .btnprint{display:none}\n@media print{.mapcol{display:none!important}}\nbody.pdf .mapcol{display:none!important}\n:root{--verde:#2e9e5b;--ambar:#e6a100;--gris:#9aa3ad;--azul:#1f6feb;--ink:#1d2733;--muted:#5d6b7a;--line:#dfe5ec;--bg:#f4f6f9;--card:#fff}\n:root[data-theme=\"dark\"]{--ink:#e6edf3;--muted:#9aa7b5;--line:#2c3744;--bg:#0f141a;--card:#18202a;color-scheme:dark}\n[data-theme=\"dark\"] .track{background:#2a3441}\n[data-theme=\"dark\"] .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(.92) contrast(.9)}\n@media print{:root[data-theme=\"dark\"]{--ink:#1d2733;--muted:#5d6b7a;--line:#dfe5ec;--bg:#f4f6f9;--card:#fff}[data-theme=\"dark\"] .track{background:#e6ebf0}[data-theme=\"dark\"] .leaflet-tile-pane{filter:none}}\n[data-theme=\"dark\"] th{background:#1f2937}[data-theme=\"dark\"] tr.fila:hover{background:#1f2a37}[data-theme=\"dark\"] tr.sel{background:#1e3a5f!important}\n@media print{[data-theme=\"dark\"] th{background:#eaeff4}}\n*{box-sizing:border-box}\nbody{margin:0;font-family:Segoe UI,Roboto,Arial,sans-serif;color:var(--ink);background:var(--bg)}\n.wrap{max-width:1250px;margin:0 auto;padding:16px}\nh1{margin:0 0 4px;font-size:22px}.sub{color:var(--muted);font-size:14px}\n.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:14px 0}\n.kpi{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px 12px}\n.kpi .n{font-size:26px;font-weight:700}.kpi .t{font-size:12px;color:var(--muted)}\n.grid{display:grid;grid-template-columns:minmax(380px,46%) 1fr;gap:14px;align-items:start}\n#map{height:620px;border-radius:12px;border:1px solid var(--line);position:sticky;top:8px}\ntable{width:100%;border-collapse:collapse;background:var(--card);border:1px solid var(--line);border-radius:10px;overflow:hidden;font-size:13.5px}\nth{background:#eaeff4;text-align:left;padding:8px;font-size:12px;color:var(--muted)}\ntd{padding:7px 8px;border-top:1px solid var(--line);vertical-align:middle}\ntr.fila{cursor:pointer}tr.fila:hover{background:#f0f5fb}tr.sel{background:#e3eeff!important}\n.chip{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600;color:#fff;white-space:nowrap}\n.proc{background:var(--azul)}.comp{background:var(--verde)}.no{background:var(--gris)}\n.track{height:10px;border-radius:5px;background:#e6ebf0;overflow:hidden;min-width:90px}.fill{height:100%}\n.pctn{font-weight:700;white-space:nowrap}\n.small{color:var(--muted);font-size:12px}\n.mapcol{order:0}.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--muted);margin:8px 2px}\n.dot{display:inline-block;width:11px;height:11px;border-radius:50%;margin-right:5px;vertical-align:-1px;box-shadow:0 0 0 1px #0003}\n.nota{font-size:12.5px;color:var(--muted);margin-top:10px;line-height:1.45}\n.truck{font-size:20px;filter:drop-shadow(0 1px 2px #0006)}\n@page{size:A4 landscape;margin:8mm}\n@media print{body{background:#fff}.wrap{padding:0;max-width:none}.grid{grid-template-columns:1fr}.mapcol{order:-1}#map{height:340px;position:static}tr{page-break-inside:avoid}.kpis{margin:8px 0}.kpi .n{font-size:20px}.nota{font-size:11px;margin-top:4px}}\nbody.pdf{background:#fff}body.pdf .wrap{padding:0;width:1060px;max-width:1060px;margin:0}body.pdf .grid{grid-template-columns:1fr}body.pdf .mapcol{order:-1}body.pdf #map{height:340px;position:static}body.pdf .kpis{margin:8px 0}body.pdf .kpi .n{font-size:20px}body.pdf .nota{font-size:11px;margin-top:4px}\n@media (max-width:900px){.grid{grid-template-columns:1fr}#map{height:420px;position:static;order:-1}}\n<\/style>\n<\/head>\n<body>\n<div class=\"wrap\">\n<button class=\"btnprint\" onclick=\"window.print()\">Imprimir / guardar PDF<\/button><h1>Tablero de recorridos del día<\/h1>\n<div class=\"sub\" id=\"sub\"><\/div>\n<div class=\"kpis\" id=\"kpis\"><\/div>\n<div class=\"grid\">\n  <div><table><thead><tr><th>Recorrido<\/th><th>Estado<\/th><th>Avance<\/th><th>Camión<\/th><\/tr><\/thead><tbody id=\"tb\"><\/tbody><\/table><\/div>\n  <div class=\"mapcol\"><div id=\"map\"><\/div>\n  <div class=\"legend\"><span><i class=\"dot\" style=\"background:#2e9e5b\"><\/i>Hecha / cumplida en orden<\/span><span><i class=\"dot\" style=\"background:#1f6feb\"><\/i>Parada actual<\/span><span><i class=\"dot\" style=\"background:#9aa3ad\"><\/i>Pendiente<\/span><span><i class=\"dot\" style=\"background:#e6a100\"><\/i>Visitada fuera de orden<\/span><span><i class=\"dot\" style=\"background:#c0392b\"><\/i>Sin pasar<\/span><\/div><\/div>\n<\/div>\n<div class=\"nota\" id=\"notas\"><\/div>\n<\/div>\n<script>\nconst D = /*__DATA__*/null;\nconst COL={hecha:'#2e9e5b',actual:'#1f6feb',pendiente:'#9aa3ad',fuera_orden:'#e6a100',no_pasada:'#c0392b'};\nconst $=id=>document.getElementById(id);\nconst esc=s=>String(s==null?'':s).replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]));\nconst cls=e=>e==='En proceso'?'proc':e==='Completado'?'comp':'no';\nconst FC=e=>e==='En proceso'?'#1f6feb':e==='Completado'?'#2e9e5b':'#9aa3ad';\ndocument.title='Tablero '+D.fecha;\n$('sub').textContent=D.fecha_txt+'  ·  Generado '+D.generado+' (foto del momento)';\nconst R=D.rutas;\nconst cnt=e=>R.filter(r=>r.estado===e).length;\nconst K=[[R.length,'Recorridos con avance hoy'],[cnt('En proceso'),'En proceso'],[cnt('Completado'),'Completados']];\n$('kpis').innerHTML=K.map(k=>'<div class=\"kpi\"><div class=\"n\">'+k[0]+'<\/div><div class=\"t\">'+k[1]+'<\/div><\/div>').join('');\nconst ord={'En proceso':0,'Completado':1,'No iniciado':2};\nR.sort((a,b)=>ord[a.estado]-ord[b.estado]||a.nombre.localeCompare(b.nombre));\n$('tb').innerHTML=R.map((r,i)=>'<tr class=\"fila\" data-i=\"'+i+'\"><td><b>'+esc(r.nombre)+'<\/b><div class=\"small\">'+esc(r.tipo)+'<\/div><\/td>'+\n '<td><span class=\"chip '+cls(r.estado)+'\">'+r.estado+(r.pausa?' (pausa)':'')+'<\/span><div class=\"small\">'+(r.inicio?'desde '+r.inicio:'')+'<\/div><\/td>'+\n '<td><div class=\"pctn\">'+r.pct+'%<\/div><div class=\"track\"><div class=\"fill\" style=\"width:'+r.pct+'%;background:'+FC(r.estado)+'\"><\/div><\/div><div class=\"small\">'+(r.estado==='Completado'?r.visitadas+' de '+r.total+' visitadas · '+r.pct_orden+'% en orden':r.hechas+' de '+r.total)+'<\/div><\/td>'+\n '<td class=\"small\">'+esc(r.camion?r.camion.nombre:'—')+'<\/td><\/tr>').join('');\n$('notas').innerHTML=D.errores.map(e=>'⚠ '+esc(e)).join('<br>');\n\nconst map=L.map('map',{zoomSnap:0.25,fadeAnimation:false,zoomAnimation:false,markerZoomAnimation:false});\nconst tiles=L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}',{maxZoom:18,maxNativeZoom:16,attribution:'Tiles © Esri'}).addTo(map);\nconst grupos=R.map(r=>{\n  const g=L.featureGroup();\n  const ps=[...r.paradas].sort((a,b)=>({hecha:1,actual:2}[a.estado]||0)-({hecha:1,actual:2}[b.estado]||0));\n  ps.forEach(p=>{\n    const m=L.circleMarker([p.lat,p.lon],{radius:p.estado==='actual'?9:5,color:'#fff',weight:p.estado==='actual'?3:1,fillColor:COL[p.estado],fillOpacity:1}).addTo(g);\n    const idx=r.paradas.findIndex(q=>q.orden===p.orden)+1;\n    m.bindPopup('<b>'+esc(r.nombre)+'<\/b><br>Parada '+idx+' de '+r.total+'<br>'+esc(p.dir)+(p.hora?'<br>'+esc(p.hora):''));\n  });\n  if(r.ultima)L.marker([r.ultima.lat,r.ultima.lon],{icon:L.divIcon({className:'',html:'<div class=\"truck\">🚚<\/div>',iconSize:[24,24],iconAnchor:[12,12]})}).addTo(g).bindPopup(esc(r.nombre)+'<br>Última posición GPS · '+esc(r.ultima.hora));\n  return g;\n});\nconst hayAct=R.some(r=>r.estado!=='No iniciado');\nconst visibles=k=>sel===-1?(!hayAct||R[k].estado!=='No iniciado'):k===sel;\nlet sel=-1;\nfunction pintar(){grupos.forEach((g,k)=>{if(visibles(k)){if(!map.hasLayer(g))g.addTo(map);}else map.removeLayer(g);});}\nfunction todo(){const b=L.featureGroup(grupos.filter((g,k)=>visibles(k))).getBounds();if(b.isValid())map.fitBounds(b.pad(0.1),{animate:false});}\nfunction fit(){map.invalidateSize();sel===-1?todo():map.fitBounds(grupos[sel].getBounds().pad(0.12),{animate:false});}\ndocument.querySelectorAll('tr.fila').forEach(tr=>tr.addEventListener('click',()=>{\n  const i=+tr.dataset.i; const ya=sel===i; sel=ya?-1:i;\n  document.querySelectorAll('tr.fila').forEach(x=>x.classList.remove('sel'));\n  pintar();\n  if(sel!==-1)tr.classList.add('sel');\n  fit();\n}));\npintar();todo();\nconst pdf=/[?&]pdf=1/.test(location.search);\nif(pdf)document.body.classList.add('pdf');\nwindow.addEventListener('beforeprint',fit);\nif(window.ResizeObserver){let _t;new ResizeObserver(()=>{clearTimeout(_t);_t=setTimeout(fit,120);}).observe(document.getElementById('map'));}\nif(window.matchMedia)matchMedia('print').addEventListener('change',fit);\nif(pdf)tiles.on('load',()=>setTimeout(fit,300));\n<\/script>\n<\/body>\n<\/html>\n";
+const API = "https://garbage-collector-backoffice-api.srv.ciemsa.com.uy";
+const RADIUS = 50, TZ = "America/Montevideo";
+const MIN_PARADAS = 3, MIN_PCT = 15;
+const $ = id => document.getElementById(id);
+const TABLERO = "TABLERO — todos los recorridos de hoy";
+let TOKEN = null, ULTIMO = null;
+
+/* ---------------- red (SOLO GET; el unico POST es el login) ---------------- */
+async function http(path, opts = {}) {
+  let r;
+  try {
+    r = await fetch(API + path, { method: opts.method || "GET",
+      headers: Object.assign(opts.body ? {"Content-Type": "application/json"} : {},
+                             TOKEN ? {Authorization: "Bearer " + TOKEN} : {}),
+      body: opts.body ? JSON.stringify(opts.body) : undefined });
+  } catch (e) { throw new Error("No hay conexión con Garbollect. Revisá tu internet o la VPN."); }
+  if (!r.ok) {
+    if (r.status === 401) throw new Error("Garbollect rechazó la sesión (401). Volvé a entrar.");
+    if (r.status === 403) throw new Error("Este usuario no tiene permiso para ese dato (403).");
+    if (r.status >= 500) throw new Error("Garbollect tuvo un error interno (" + r.status + "). Probá en unos minutos.");
+    const err = new Error("HTTP " + r.status); err.status = r.status; throw err;
+  }
+  return r;
+}
+const jget = async p => { const b = await (await http(p)).json(); return (b && b.data !== undefined) ? b.data : b; };
+const asList = d => Array.isArray(d) ? d : (d && ["routes","trucks","items","results","content"].map(k=>d[k]).find(Array.isArray)) || [];
+async function login(u, p) {
+  let r;
+  try { r = await http("/auth/login", {method: "POST", body: {userName: u, password: p}}); }
+  catch (e) { if (e.status === 400 || e.status === 404) throw new Error("Usuario y/o clave incorrectos."); throw e; }
+  const b = await r.json();
+  try { return b.data.user.token; } catch { throw new Error("Login OK pero no vino el token."); }
+}
+const listRoutes = async () => asList(await jget("/routes"));
+const routeDetail = id => jget("/routes/" + id);
+const listTrucks = async () => asList(await jget("/trucks"));
+async function fetchGps(fecha, reg) {
+  try { return parseGps(await (await http("/trucks/history/export?date=" + fecha + "&registrationId=" + encodeURIComponent(reg))).text()); }
+  catch (e) { if (e.status === 404 || e.status === 204) return []; throw e; }
+}
+async function pool(items, n, fn) {
+  const out = new Array(items.length); let i = 0;
+  await Promise.all(Array.from({length: Math.min(n, items.length)}, async () => {
+    while (i < items.length) { const k = i++; try { out[k] = await fn(items[k], k); } catch (e) { out[k] = {__err: e}; } }
+  }));
+  return out;
+}
+
+/* ---------------- utilidades ---------------- */
+const norm = s => (s || "").trim().toLowerCase();
+const EXCL = ["copy","copia","viejo","prueba","borrador"];
+const EXCL_TABLERO = ["ecovigilante","top 50","top50"];   // solo para el tablero
+const excluidaTab = n => EXCL_TABLERO.some(s => norm(n).includes(s));
+const excluida = (n, draft) => !!draft || EXCL.some(s => norm(n).includes(s)) || /\btest\b/.test(norm(n));
+const hhmm = ms => new Intl.DateTimeFormat("es-UY", {timeZone: TZ, hour: "2-digit", minute: "2-digit", hour12: false}).format(new Date(ms));
+const isoMs = s => { const t = Date.parse(s); return isNaN(t) ? null : t; };
+const hoyUY = () => new Intl.DateTimeFormat("en-CA", {timeZone: TZ}).format(new Date());
+const DIAS = ["lunes","martes","miércoles","jueves","viernes","sábado","domingo"];
+function fechaLarga(iso) { const [y,m,d] = iso.split("-").map(Number); const wd = (new Date(y,m-1,d).getDay()+6)%7;
+  const c = DIAS[wd]; return c[0].toUpperCase()+c.slice(1)+" "+String(d).padStart(2,"0")+"/"+String(m).padStart(2,"0")+"/"+y; }
+const isoWeekday = iso => { const [y,m,d] = iso.split("-").map(Number); return ((new Date(y,m-1,d).getDay()+6)%7)+1; };
+function haversine(a,b,c,d){const R=6371000,r=Math.PI/180,dl=(c-a)*r,dn=(d-b)*r;
+  const x=Math.sin(dl/2)**2+Math.cos(a*r)*Math.cos(c*r)*Math.sin(dn/2)**2;return 2*R*Math.asin(Math.sqrt(x));}
+function parseGps(text) {
+  const lines = (text||"").replace(/\r/g,"").split("\n").filter(l=>l.trim());
+  if (lines.length < 2) return [];
+  const heads = lines[0].split(",").map(h=>h.trim().toLowerCase());
+  const col = (...c) => { for (const k of c) { const i = heads.findIndex(h=>h.includes(k)); if (i>=0) return i; } return -1; };
+  const iF = col("fecha","timestamp","time","hora"), iLa = col("latitud","lat"), iLo = col("longitud","lon","lng");
+  if (iF<0||iLa<0||iLo<0) throw new Error("El CSV de GPS del back office cambió de formato.");
+  const out = [];
+  for (const ln of lines.slice(1)) { const c = ln.split(","); let f=parseFloat(c[iF]), la=parseFloat(c[iLa]), lo=parseFloat(c[iLo]);
+    if ([f,la,lo].some(isNaN)) continue; if (f>0 && f<1e11) f*=1000; out.push([f,la,lo]); }
+  out.sort((a,b)=>a[0]-b[0]); return out;
+}
+
+/* ---------------- cadena mas larga en orden (igual que la version Python) ---------------- */
+function cadenaEnOrden(stops, gps) {
+  const n = stops.length, dlat = RADIUS/111000;
+  const passes = stops.map(()=>[]);
+  stops.forEach((s,i) => {
+    const dlon = RADIUS/(111000*Math.max(Math.cos(s.lat*Math.PI/180),0.01));
+    for (const [t,la,lo] of gps)
+      if (Math.abs(la-s.lat)<=dlat && Math.abs(lo-s.lon)<=dlon && haversine(s.lat,s.lon,la,lo)<=RADIUS) passes[i].push(t);
+  });
+  const allT = [...new Set(passes.flat())].sort((a,b)=>a-b);
+  const rank = new Map(allT.map((t,r)=>[t,r+1])), size = allT.length;
+  const tree = Array.from({length:size+1},()=>[0,-1]);
+  const query = r => { let best=[0,-1]; while(r>0){ if(tree[r][0]>best[0]) best=tree[r]; r-=r&-r; } return best; };
+  const update = (r,v) => { while(r<=size){ if(v[0]>tree[r][0]) tree[r]=v; r+=r&-r; } };
+  const events = [];
+  for (let i=0;i<n;i++) {
+    const ups = [];
+    for (const t of passes[i]) { const r=rank.get(t); const [bl,be]=query(r);
+      events.push({stop:i,time:t,len:bl+1,prev:be}); ups.push([r,[bl+1,events.length-1]]); }
+    ups.forEach(([r,v])=>update(r,v));
+  }
+  const el = new Map();
+  if (events.length) { let ev=0; events.forEach((e,k)=>{ if(e.len>events[ev].len) ev=k; });
+    while (ev!==-1) { const e=events[ev]; el.set(e.stop,e.time); ev=e.prev; } }
+  return stops.map((_,i) => el.has(i) ? {estado:"hecha",hora:el.get(i)}
+    : passes[i].length ? {estado:"fuera_orden",hora:passes[i][0]} : {estado:"no_pasada",hora:null});
+}
+const contar = res => res.filter(r=>r.estado==="hecha").length;
+
+/* ---------------- analisis ---------------- */
+function stopsDe(detail) {
+  return (detail.points||[]).filter(p=>p.coordinates&&p.coordinates.length>=2&&p.stopIndex!=null&&(p.type||"RECOLECCION")==="RECOLECCION")
+    .map(p=>({orden:+p.stopIndex,lat:p.coordinates[1],lon:p.coordinates[0],dir:p.address||""})).sort((a,b)=>a.orden-b.orden);
+}
+const progHoy = (o, fecha, hoy) => { const rp=o.routeProgress||{}; return (fecha===hoy && String(rp.date||"").slice(0,10)===fecha) ? rp : {}; };
+
+async function camionCandidato(fecha, stops, camiones, pref) {
+  let mejor = null;
+  const ev = async t => { const g = await fetchGps(fecha, t.registrationId); if (g.length<5) return null;
+    const r = cadenaEnOrden(stops,g); return {t, g, r, n: contar(r)}; };
+  if (pref) { const r = await ev(pref); if (r) { mejor=r; if (r.n/Math.max(stops.length,1)>=0.5) return r; } log("  El camión asignado no encaja; pruebo la flota completa..."); }
+  const resto = camiones.filter(t=>t.registrationId && t!==pref);
+  const rs = await pool(resto, 6, ev);
+  rs.forEach(r=>{ if (r && !r.__err && (!mejor || r.n>mejor.n)) mejor=r; });
+  return mejor;
+}
+
+async function analizar(ruta, fecha, hoy, camiones, escanear) {
+  const detail = await routeDetail(ruta.id);
+  const stops = stopsDe(detail);
+  if (!stops.length) throw new Error("El recorrido '"+ruta.name+"' no tiene paradas de recolección cargadas.");
+  const total = stops.length;
+  const rp = Object.keys(progHoy(ruta,fecha,hoy)).length ? progHoy(ruta,fecha,hoy) : progHoy(detail,fecha,hoy);
+  const status = rp.status;
+  const dr = fecha===hoy ? detail.dailyRoute : null;
+  const truckId = (dr&&dr.truckId) || detail.truckId || ruta.truckId;
+  const asignado = camiones.find(t=>t.id===truckId) || null;
+  const notas = [], histMs = (dr&&dr.statusHistories||[]).filter(h=>isoMs(h.createdAt)).map(h=>[h.status,isoMs(h.createdAt)]);
+  const hist = (dr&&dr.statusHistories||[]).map(h=>({estado:h.status,motivo:h.reason||"",hora:isoMs(h.createdAt)?hhmm(isoMs(h.createdAt)):""}));
+  const paradas = stops.map(s=>({orden:s.orden,lat:s.lat,lon:s.lon,dir:s.dir,estado:"pendiente",hora:""}));
+  let gps=[], camion=asignado, res=null, estado, fuente="", actual=null, hechas=0;
+
+  if (status==="IN_PROGRESS"||status==="IN_PAUSE") {
+    if (asignado&&asignado.registrationId) {
+      try { gps = await fetchGps(fecha, asignado.registrationId); } catch(e){ notas.push("Sin traza GPS: "+e.message); }
+      if (gps.length) res = cadenaEnOrden(stops,gps);
+    } else notas.push("El back office no informa camión asignado: sin traza GPS.");
+  } else {
+    if (escanear || fecha!==hoy) { const c = await camionCandidato(fecha,stops,camiones,asignado);
+      if (c) { camion=c.t; gps=c.g; res=c.r; } }
+    if (!res && asignado&&asignado.registrationId) {
+      try { gps = await fetchGps(fecha, asignado.registrationId); } catch(e){ notas.push("Sin GPS: "+e.message); }
+      if (gps.length>=5) { camion=asignado; res=cadenaEnOrden(stops,gps); }
+    }
+  }
+  const aplicar = () => { let h=0; paradas.forEach((p,i)=>{ if(!res){p.estado="pendiente";return;}
+    p.estado=res[i].estado; p.hora=res[i].hora?hhmm(res[i].hora):""; if(p.estado==="hecha")h++; }); return h; };
+
+  if (status==="IN_PROGRESS"||status==="IN_PAUSE") {
+    estado="En proceso";
+    if (rp.currentStopIndex!=null) {
+      actual=+rp.currentStopIndex;
+      for (const p of paradas) {
+        if (p.orden<actual){p.estado="hecha";hechas++;}
+        else if (p.orden===actual){p.estado="actual";hechas++;const ms=isoMs(rp.currentStopArrivalTime);p.hora=ms?hhmm(ms):"";}
+      }
+      fuente="Parada actual informada por el back office"+(status==="IN_PAUSE"?" (recorrido en pausa)":"");
+      if (res) paradas.forEach((p,i)=>{ if (p.estado==="pendiente" && res[i].estado==="fuera_orden") { p.estado="fuera_orden"; p.hora=res[i].hora?hhmm(res[i].hora):""; } });
+      if (res) notas.push("Control cruzado: el GPS confirma "+contar(res)+" de "+total+" paradas en orden (el avance oficial es el del back office).");
+    } else { notas.push("El back office no informó la parada actual: avance calculado con el GPS."); hechas=aplicar(); fuente="GPS (el back office no informó parada actual)"; }
+  } else {
+    hechas=aplicar();
+    const ejec = status==="COMPLETED" || (hechas>=MIN_PARADAS && hechas/total*100>=MIN_PCT);
+    if (ejec) { estado="Completado";
+      fuente = status==="COMPLETED" ? "Cierre informado por el back office + GPS en orden"
+        : fecha===hoy ? "GPS en orden (el back office no marcó el recorrido)" : "GPS histórico en orden";
+    } else { estado="No iniciado"; hechas=0; paradas.forEach(p=>{p.estado="pendiente";p.hora="";});
+      fuente = res ? "Sin ejecución detectada (ni estado del back office ni GPS)" : "Sin datos GPS ni estado del back office"; }
+  }
+  let traza=[], ultima=null;
+  if (gps.length) {
+    const M=0.0045, la0=Math.min(...stops.map(s=>s.lat))-M, la1=Math.max(...stops.map(s=>s.lat))+M,
+          lo0=Math.min(...stops.map(s=>s.lon))-M, lo1=Math.max(...stops.map(s=>s.lon))+M;
+    const zona = gps.filter(([t,la,lo])=>la>=la0&&la<=la1&&lo>=lo0&&lo<=lo1);
+    const paso = Math.max(1,Math.floor(zona.length/1500));
+    traza = zona.filter((_,i)=>i%paso===0).map(([t,la,lo])=>[+la.toFixed(6),+lo.toFixed(6),Math.round(t)]);
+    if (estado==="En proceso") { const [t,la,lo]=gps[gps.length-1]; ultima={lat:la,lon:lo,hora:hhmm(t)}; }
+  }
+  const visitadas = paradas.filter(p=>["hecha","fuera_orden","actual"].includes(p.estado)).length;
+  const fuera_orden = paradas.filter(p=>p.estado==="fuera_orden").length, sin_pasar = paradas.filter(p=>p.estado==="no_pasada").length;
+  const pct_orden = Math.round(hechas/total*100);
+  const pct = estado==="Completado" ? Math.round(visitadas/total*100) : pct_orden;
+  const stats_h = horarios(estado, rp, histMs, res, paradas, ultima);
+  const ini = isoMs(rp.currentRouteStartedAt);
+  return {nombre:ruta.name,id:ruta.id,tipo:ruta.wasteType||detail.wasteType||"",empresa:detail.haulerName||"",
+    estado,alerta:rp.alert,pausa:status==="IN_PAUSE",inicio:ini?hhmm(ini):"",hechas,total,pct,pct_orden,visitadas,fuera_orden,sin_pasar,stats_h,
+    actual,fuente,notas,historial:hist,camion:camion?{nombre:camion.name,matricula:camion.registrationId}:null,paradas,traza,ultima};
+}
+function dur(a,b){ const m=Math.round((b-a)/60000); if(m<0) return null; return m>=60 ? Math.floor(m/60)+" h "+(m%60)+" min" : m+" min"; }
+function horarios(estado, rp, histMs, res, paradas, ultima) {
+  const horasGps = (res||[]).filter(r=>r.estado==="hecha"&&r.hora).map(r=>r.hora), out = [];
+  if (estado==="En proceso") {
+    let ini, src;
+    if (horasGps.length) { ini=Math.min(...horasGps); src="1a parada GPS"; } else { ini=isoMs(rp.currentRouteStartedAt); src="back office"; }
+    if (ini) out.push([hhmm(ini),"Inicio ("+src+")"]);
+    const a = paradas.find(p=>p.estado==="actual"); if (a&&a.hora) out.push([a.hora,"Llegó a la parada actual"]);
+    if (ultima) out.push([ultima.hora,"Última posición GPS"]);
+    if (ini) { const d=dur(ini,Date.now()); if(d) out.push([d,"Tiempo en ruta"]); }
+  } else if (estado==="Completado") {
+    const boI=histMs.filter(h=>h[0]==="IN_PROGRESS").map(h=>h[1]), boF=histMs.filter(h=>h[0]==="COMPLETED").map(h=>h[1]);
+    let ini=null, fin=null, sI="", sF="";
+    if (horasGps.length) { ini=Math.min(...horasGps); sI="1a parada GPS"; fin=Math.max(...horasGps); sF="última parada GPS"; }
+    else { if (boI.length) { ini=Math.min(...boI); sI="back office"; } if (boF.length) { fin=Math.max(...boF); sF="cierre del back office"; } }
+    if (ini) out.push([hhmm(ini),"Inicio ("+sI+")"]);
+    if (fin) out.push([hhmm(fin),"Fin ("+sF+")"]);
+    if (ini&&fin) { const d=dur(ini,fin); if(d) out.push([d,"Duración"]); }
+  }
+  return out;
+}
+
+/* ---------------- informes ---------------- */
+const embeber = (tpl, datos) => tpl.replace("/*__DATA__*/null", () => JSON.stringify(datos).replace(/<\//g,"<\\/"));
+function nombreArchivo(route, fecha, suf) {
+  const p = (route||"").split(" - ").map(x=>x.trim());
+  const barrio = (p[0]||"").replace(/\s+\d+$/,"").trim(), tipo = p[1]||"";
+  return [fecha,barrio,tipo,suf].filter(Boolean).join(" ").replace(/[<>:"/\\|?*]/g,"").replace(/\s+/g," ").trim();
+}
+const horaAhora = () => new Intl.DateTimeFormat("es-UY",{timeZone:TZ,hour:"2-digit",minute:"2-digit",hour12:false}).format(new Date());
+
+async function individual(nombre, fecha) {
+  const hoy = hoyUY();
+  if (fecha>hoy) throw new Error("La fecha es futura: todavía no hay ejecución para informar.");
+  const rutas = await listRoutes();
+  const ruta = rutas.find(r=>norm(r.name)===norm(nombre));
+  if (!ruta) throw new Error("No encontré el recorrido '"+nombre+"' en el back office (puede haberse renombrado).");
+  const camiones = await listTrucks();
+  log("Analizando '"+ruta.name+"' del "+fecha+"...");
+  const d = await analizar(ruta,fecha,hoy,camiones,true);
+  Object.assign(d,{fecha,fecha_txt:fechaLarga(fecha),generado:horaAhora(),radio:RADIUS});
+  log("  Estado: "+d.estado+" | "+d.pct+"% | visitadas "+d.visitadas+"/"+d.total+" | en orden "+d.hechas+" ("+d.pct_orden+"%)");
+  d.notas.forEach(n=>log("  "+n));
+  const suf = {"En proceso":"Seguimiento","Completado":"Final","No iniciado":"No iniciado"}[d.estado];
+  return {html: embeber(TPL_IND,d), nombre: nombreArchivo(ruta.name,fecha,suf)};
+}
+async function tablero() {
+  const hoy = hoyUY(), wd = isoWeekday(hoy);
+  const rutas = (await listRoutes()).filter(r=>{
+    if (excluida(r.name,r.draft) || excluidaTab(r.name)) return false;
+    const prog = progHoy(r,hoy,hoy), prog_ok = ["IN_PROGRESS","IN_PAUSE","COMPLETED"].includes(prog.status);
+    return (r.schedule||[]).some(s=>+s.day===wd) || prog_ok; });
+  if (!rutas.length) throw new Error("No hay recorridos programados ni con actividad para hoy.");
+  const camiones = await listTrucks();
+  log("Recorridos del día: "+rutas.length+". Analizando...");
+  const errores = [];
+  const rs = await pool(rutas, 5, r=>analizar(r,hoy,hoy,camiones,false));
+  const datos = [];
+  rs.forEach((d,i)=>{ if (d && d.__err) errores.push(rutas[i].name+": "+d.__err.message); else if (d) { d.traza=[]; datos.push(d);
+    log("  "+d.nombre+": "+d.estado+" "+d.hechas+"/"+d.total+" = "+d.pct+"%"); } });
+  if (!datos.length) throw new Error("No se pudo analizar ningún recorrido: "+errores.join("; "));
+  const sin_iniciar = datos.filter(d=>d.estado==="No iniciado").length;
+  const activos = datos.filter(d=>d.estado!=="No iniciado");   // solo en proceso o completados
+  if (!activos.length) throw new Error("Todavía no hay recorridos con avance hoy.");
+  const pack = {fecha:hoy,fecha_txt:fechaLarga(hoy),generado:horaAhora(),radio:RADIUS,rutas:activos,errores,sin_iniciar};
+  return {html: embeber(TPL_TAB,pack), nombre: hoy+" Tablero "+horaAhora().replace(":","")};
+}
+
+/* ---------------- UI ---------------- */
+function log(m){ const l=$("log"); l.textContent+=m+"\n"; l.scrollTop=l.scrollHeight; }
+function mostrarError(e){ $("err").textContent = e ? "ERROR: "+(e.message||e) : ""; }
+function actualizarFecha(){ const t=$("sel").value===TABLERO; $("fecha").disabled=t; if(t) $("fecha").value=hoyUY(); }
+async function entrar(){
+  mostrarError(null); $("btnLogin").disabled=true;
+  try {
+    TOKEN = await login($("u").value.trim(), $("p").value);
+    $("p").value=""; $("u").value="";
+    const hoy = hoyUY(), ET = {IN_PROGRESS:["● En proceso — ",0], IN_PAUSE:["● En proceso — ",0], COMPLETED:["✔ Completado — ",1]};
+    const items = (await listRoutes()).filter(r=>r.name&&!excluida(r.name,r.draft)).map(r=>{
+      const e = ET[progHoy(r,hoy,hoy).status] || ["",2]; return {name:r.name, tag:e[0], rank:e[1]}; })
+      .sort((a,b)=>a.rank-b.rank || a.name.localeCompare(b.name));
+    const ea = s => s.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");
+    $("sel").innerHTML = '<option value="'+ea(TABLERO)+'">'+ea(TABLERO)+'</option>'
+      + items.map(i=>'<option value="'+ea(i.name)+'">'+ea(i.tag+i.name)+'</option>').join("");
+    $("fecha").value = hoyUY(); $("fecha").max = hoyUY(); actualizarFecha();
+    $("loginCard").classList.add("hide"); $("mainCard").classList.remove("hide");
+  } catch(e){ TOKEN=null; mostrarError(e); }
+  $("btnLogin").disabled=false;
+}
+async function generar(){
+  mostrarError(null); $("log").textContent=""; $("btnGen").disabled=true; $("btnGen").textContent="Generando...";
+  ["btnDown","btnPrint"].forEach(i=>$(i).classList.add("hide")); $("vista").classList.add("hide");
+  try {
+    const r = $("sel").value===TABLERO ? await tablero() : await individual($("sel").value, $("fecha").value||hoyUY());
+    ULTIMO = r; $("vista").srcdoc = conTema(r.html); $("vista").classList.remove("hide");
+    ["btnDown","btnPrint"].forEach(i=>$(i).classList.remove("hide"));
+    log("Listo."); $("vista").scrollIntoView({behavior:"smooth"});
+  } catch(e){ mostrarError(e); }
+  $("btnGen").disabled=false; $("btnGen").textContent="Generar informe";
+}
+function descargar(){ if(!ULTIMO)return; const a=document.createElement("a");
+  a.href=URL.createObjectURL(new Blob([ULTIMO.html],{type:"text/html"})); a.download=ULTIMO.nombre+".html"; a.click(); setTimeout(()=>URL.revokeObjectURL(a.href),5000); }
+async function imprimir(){
+  const w=$("vista").contentWindow, d=w.document.documentElement, t=d.dataset.theme||"light";
+  let vuelto=false; const volver=()=>{ if(!vuelto){ vuelto=true; d.dataset.theme=t; } };
+  d.dataset.theme="light";                       // el PDF / la impresión siempre van en claro
+  w.addEventListener("afterprint",volver,{once:true}); setTimeout(volver,60000);
+  try { if(w.prepararImpresion) await w.prepararImpresion(); w.focus(); w.print(); } catch(e){ volver(); throw e; }
+}
+function salir(){ TOKEN=null; ULTIMO=null; $("vista").srcdoc=""; $("vista").classList.add("hide"); $("mainCard").classList.add("hide"); $("loginCard").classList.remove("hide"); $("log").textContent=""; }
+const conTema = h => h.replace('<html lang="es">', '<html lang="es" data-theme="' + (document.documentElement.dataset.theme || "light") + '">');   // la vista previa nace con el tema actual; el archivo descargado queda en claro
+/* ---------------- modo nocturno (casilla; se recuerda; sin elegir, sigue al sistema) ---------------- */
+const KEYTEMA = "generador-informes-tema";
+function nocheInicial(){
+  let g = null; try { g = localStorage.getItem(KEYTEMA); } catch(e) {}
+  if (g === "dark") return true; if (g === "light") return false;
+  return !!(window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches);
+}
+function aplicarTema(noche){
+  const t = noche ? "dark" : "light";
+  document.documentElement.dataset.theme = t; $("chkNoche").checked = noche;
+  try { const d = $("vista").contentDocument; if (d && d.documentElement) d.documentElement.dataset.theme = t; } catch(e) {}
+}
+$("chkNoche").onchange = () => { const n = $("chkNoche").checked; try { localStorage.setItem(KEYTEMA, n ? "dark" : "light"); } catch(e) {} aplicarTema(n); };
+$("vista").addEventListener("load", () => aplicarTema($("chkNoche").checked));
+aplicarTema(nocheInicial());
+
+$("btnLogin").onclick=entrar; $("p").addEventListener("keydown",e=>{if(e.key==="Enter")entrar();});
+$("btnGen").onclick=generar; $("btnDown").onclick=descargar; $("btnPrint").onclick=imprimir; $("btnOut").onclick=salir; $("sel").onchange=actualizarFecha;
+</script>
+</body>
+</html>

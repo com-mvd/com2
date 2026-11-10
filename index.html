@@ -58,36 +58,38 @@ label.l:first-of-type{margin-top:0}
 .vacio{color:var(--text3);font-size:15px}
 .pantalla-cargando{min-height:100vh;display:flex;align-items:center;justify-content:center}
 
-/* Panel Supervisor: un recuadro por servicio con su Actualizar, la hora de la última subida y sus páginas
-   (antes, la portada del repo com). Arriba, Actualizar GPS. */
-.sup{max-width:1240px;width:100%;margin:0 auto;padding:26px 0 40px}
-.gps{display:flex;flex-direction:column;align-items:center;gap:6px;margin-bottom:26px}
-.servicios{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px;align-items:start}
-@media (max-width:1100px){.servicios{grid-template-columns:repeat(2,minmax(0,1fr))}}
-@media (max-width:620px){.servicios{grid-template-columns:1fr}}
-.serv{background:#fff;border:1px solid var(--border);border-radius:18px;padding:18px 16px 16px;box-shadow:0 4px 20px rgba(26,23,20,.06),0 1px 3px rgba(26,23,20,.05);text-align:left}
-.serv-t{display:flex;align-items:center;gap:9px}
-.serv-t h2{font-size:19px;font-weight:700;letter-spacing:-.3px}
-.punto{width:11px;height:11px;border-radius:50%;flex:none}
-.serv-a{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 0 14px;padding-bottom:14px;border-bottom:1px solid var(--border)}
-.btn-act{display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:13px;font-weight:600;color:var(--text);background:#fff;border:1px solid var(--border);border-radius:9px;padding:6px 11px;cursor:pointer}
-.btn-act:hover{border-color:#C9C3B9}
-.btn-act:disabled{opacity:.6;cursor:default}
-.btn-act svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
-.btn-act.girando svg{animation:girar 1s linear infinite}
-@keyframes girar{to{transform:rotate(360deg)}}
-.estado{font-size:12.5px;color:var(--text3)}
-.estado.err{color:#B02020;font-weight:600}
-.pags{display:flex;flex-direction:column;gap:10px}
-.pag{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--border);border-radius:14px;text-decoration:none;color:inherit;transition:border-color .15s,box-shadow .15s}
-.pag:hover{border-color:#D0CBCB;box-shadow:0 4px 14px rgba(26,23,20,.07)}
-.pag .tile-icon{width:42px;height:42px;border-radius:12px;flex:none}
-.pag .tile-icon svg{width:21px;height:21px}
-.pag-n{flex:1;font-size:14.5px;font-weight:600;line-height:1.3}
-.pag-f{color:var(--text3);font-size:18px}
-.sin-pags{font-size:14px;color:var(--text3);padding:4px 2px}
+/* Panel Supervisor: un recuadro por servicio con su Actualizar, la hora de la última subida y sus páginas.
+   Mismo dibujo que la portada del repo com (10/11/2026): botones chicos, cuadros semitransparentes, páginas en lista. */
+.sup{max-width:1300px;width:100%;margin:0 auto;padding:clamp(1.6rem,5vh,3rem) 0 2.5rem}
+.sup .rule{width:42px;height:3px;border-radius:2px;background:#C4BEB5;margin:1.4rem auto}
+.sup .gps{display:flex;flex-direction:column;align-items:center;gap:6px}
+.btn-act{display:inline-flex;align-items:center;gap:4px;flex:none;background:#fff;color:var(--text);border:1px solid var(--border);border-radius:6px;padding:3px 8px;font:600 10.5px 'DM Sans',system-ui,sans-serif;cursor:pointer;transition:border-color .15s,background-color .15s}
+.btn-act:hover{border-color:#D0CBCB;background:#FBFAF8}
+.btn-act:disabled{cursor:default}
+.btn-act svg{width:10px;height:10px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.btn-act.girando svg{animation:gira .9s linear infinite}
+@keyframes gira{to{transform:rotate(360deg)}}
+.sup .estado{font-size:10px;color:var(--text3);white-space:nowrap;font-variant-numeric:tabular-nums}
+.sup .estado.err{color:#B02020}
+.servicios{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;align-items:start;text-align:left}
+@media (max-width:960px){.servicios{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:480px){.servicios{grid-template-columns:1fr}}
+.serv{background:rgba(255,255,255,.55);border:1px solid var(--border);border-radius:18px;padding:1rem .85rem;box-shadow:0 4px 20px rgba(26,23,20,.06),0 1px 3px rgba(26,23,20,.05)}
+.serv-h{margin-bottom:.8rem;padding-bottom:.8rem;border-bottom:1px solid var(--border)}
+.serv-t{display:flex;align-items:center;gap:8px}
+.serv-dot{flex:none;width:10px;height:10px;border-radius:50%;background:var(--c)}
+.serv-n{font-size:17px;font-weight:700;letter-spacing:-.2px}
+.serv-a{display:flex;align-items:center;flex-wrap:wrap;gap:4px 7px;margin-top:.55rem}
+.list{display:flex;flex-direction:column;gap:8px}
+.item{display:flex;align-items:center;gap:.65rem;background:#fff;border:1px solid var(--border);border-radius:14px;padding:.7rem .75rem;text-decoration:none;color:inherit;box-shadow:0 1px 3px rgba(26,23,20,.05);transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
+.item:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(26,23,20,.10),0 2px 6px rgba(26,23,20,.06);border-color:#D0CBCB}
+.item-icon{flex:none;width:36px;height:36px;border-radius:10px;background:var(--cb);display:flex;align-items:center;justify-content:center}
+.item-icon svg{width:18px;height:18px;fill:none;stroke:var(--c);stroke-width:1.6;stroke-linecap:round;stroke-linejoin:round}
+.item-name{flex:1;min-width:0;font-size:14px;font-weight:600;letter-spacing:-.1px;line-height:1.25}
+.item-arrow{flex:none;color:var(--text3);font-size:18px}
+.sin{font-size:13px;color:var(--text3);padding:.4rem .2rem}
 .sup .grupo{margin-top:2.4rem}
-.cover:has(.sup){max-width:1240px}
+.cover:has(.sup){max-width:1300px}
 .portada:has(.sup){align-items:flex-start;padding-bottom:0}
 </style>
 </head>
@@ -252,11 +254,11 @@ async function mostrarMenu() {
 // Sus páginas son las filas de secciones con panel 'supervisor' y grupo = nombre del servicio.
 const BASES = COM2.URL + '/storage/v1/object/public/bases/';
 const N8N = 'https://blatancy-scouting-virtuous.ngrok-free.dev/webhook/';
-const SERVICIOS = [
-  { id: 'bolsones', nombre: 'Bolsones', color: '#C9631C', acc: 'amber' },
-  { id: 'agenda', nombre: 'Agenda', color: '#346A92', acc: 'blue' },
-  { id: 'zona-limpia', nombre: 'Zona Limpia', color: '#39745E', acc: 'teal' },
-  { id: 'reclamos', nombre: 'Reclamos', color: '#39745E', acc: 'teal' },
+const SERVICIOS = [   // colores de la portada de com: c = punto e ícono, cb = fondo del ícono
+  { id: 'bolsones', nombre: 'Bolsones', c: '#D2691E', cb: '#FCE3CD' },
+  { id: 'agenda', nombre: 'Agenda', c: '#346A92', cb: '#DDECF4' },
+  { id: 'zona-limpia', nombre: 'Zona Limpia', c: '#39745E', cb: '#DCEDE4' },
+  { id: 'reclamos', nombre: 'Reclamos', c: '#39745E', cb: '#DCEDE4' },
 ];
 const GPS_WEBHOOK = null;   // "Actualizar GPS": todavía sin armar
 const ICONO_ACT = '<svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 4v5h-5"/></svg>';
@@ -282,14 +284,17 @@ function dibujarSupervisor(del) {
   otros.forEach(s => (otrosGrupos[s.grupo] ||= []).push(s));
   $('menu').innerHTML = `<div class="sup">
     <div class="gps"><button type="button" class="btn-act" id="gps">${ICONO_GPS}Actualizar GPS</button><span class="estado" id="gpsEstado">Última actualización —</span></div>
+    <div class="rule"></div>
     <div class="servicios">${SERVICIOS.map(s => {
       const ps = paginas(s.nombre);
-      return `<section class="serv" data-id="${s.id}">
-        <div class="serv-t"><span class="punto" style="background:${s.color}"></span><h2>${esc(s.nombre)}</h2></div>
-        <div class="serv-a"><button type="button" class="btn-act">${ICONO_ACT}Actualizar</button><span class="estado">…</span></div>
-        <div class="pags">${ps.length ? ps.map(p => `<a class="pag acc-${esc(p.color || s.acc)}" href="${esc(p.archivo)}">
-          <div class="tile-icon">${COM2.icono(p.icono)}</div><div class="pag-n">${esc(p.nombre)}</div><div class="pag-f">›</div></a>`).join('')
-          : '<div class="sin-pags">Todavía no hay páginas.</div>'}</div>
+      return `<section class="serv" data-id="${s.id}" style="--c:${s.c};--cb:${s.cb}">
+        <div class="serv-h">
+          <div class="serv-t"><span class="serv-dot"></span><h2 class="serv-n">${esc(s.nombre)}</h2></div>
+          <div class="serv-a"><button type="button" class="btn-act">${ICONO_ACT}Actualizar</button><span class="estado">…</span></div>
+        </div>
+        <div class="list">${ps.length ? ps.map(p => `<a class="item" href="${esc(p.archivo)}">
+          <div class="item-icon">${COM2.icono(p.icono)}</div><div class="item-name">${esc(p.nombre)}</div><div class="item-arrow">›</div></a>`).join('')
+          : '<div class="sin">Todavía no hay páginas.</div>'}</div>
       </section>`;
     }).join('')}</div>
     ${Object.entries(otrosGrupos).map(([g, ss]) => `<div class="grupo"><h3>${esc(g)}</h3><div class="grid">${ss.map(s =>
