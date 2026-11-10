@@ -18,7 +18,7 @@ La idea es ir pasando acá las planillas operativas de Google Sheets y, más ade
   - el operador tiene uno solo, así que no le aparecen.
 
   Cada sección del menú (tabla `secciones`) tiene su `panel`. Para sumar una página se agrega una fila; no hace falta tocar `index.html`. Quién ve qué lo controla RLS en la base: `mi_rol() <= panel`.
-- **Barra:** `assets/comun.js` y `assets/comun.css` son compartidos por todas las páginas. La barra tiene "COM 2", los paneles y el usuario; al tocar el usuario aparecen Cambiar contraseña y Cerrar sesión.
+- **Barra:** `assets/comun.js` y `assets/comun.css` son compartidos por todas las páginas. Las páginas los cargan con `?v=AAAAMMDDHHMM`. **Al cambiarlos hay que subir ese número en todas las páginas**: GitHub Pages deja que el navegador guarde los archivos 10 minutos, y sin el número nuevo se sigue viendo la versión vieja. La barra tiene "COM 2", los paneles y el usuario; al tocar el usuario aparecen Cambiar contraseña y Cerrar sesión.
 - **Login:** solo el recuadro con el logo, Usuario y Contraseña.
 - **Seguridad:** la clave que está en el código es la *publishable*, que es pública. Los datos los protegen las reglas RLS de la base:
   - sin login no se lee nada;
