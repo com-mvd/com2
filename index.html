@@ -59,10 +59,9 @@ label.l:first-of-type{margin-top:0}
 .pantalla-cargando{min-height:100vh;display:flex;align-items:center;justify-content:center}
 
 /* Panel Supervisor: un recuadro por servicio con su Actualizar, la hora de la última subida y sus páginas.
-   Mismo dibujo que la portada del repo com (10/11/2026): botones chicos, cuadros semitransparentes, páginas en lista. */
+   Mismo dibujo que la portada del repo com (10/11/2026): botones chicos, cuadros semitransparentes, páginas en lista.
+   El botón Actualizar GPS se sacó a pedido del usuario (10/11): se verá más adelante si se agrega. */
 .sup{max-width:1300px;width:100%;margin:0 auto;padding:clamp(1.6rem,5vh,3rem) 0 2.5rem}
-.sup .rule{width:42px;height:3px;border-radius:2px;background:#C4BEB5;margin:1.4rem auto}
-.sup .gps{display:flex;flex-direction:column;align-items:center;gap:6px}
 .btn-act{display:inline-flex;align-items:center;gap:4px;flex:none;background:#fff;color:var(--text);border:1px solid var(--border);border-radius:6px;padding:3px 8px;font:600 10.5px 'DM Sans',system-ui,sans-serif;cursor:pointer;transition:border-color .15s,background-color .15s}
 .btn-act:hover{border-color:#D0CBCB;background:#FBFAF8}
 .btn-act:disabled{cursor:default}
@@ -260,9 +259,7 @@ const SERVICIOS = [   // colores de la portada de com: c = punto e ícono, cb = 
   { id: 'zona-limpia', nombre: 'Zona Limpia', c: '#39745E', cb: '#DCEDE4' },
   { id: 'reclamos', nombre: 'Reclamos', c: '#39745E', cb: '#DCEDE4' },
 ];
-const GPS_WEBHOOK = null;   // "Actualizar GPS": todavía sin armar
 const ICONO_ACT = '<svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 4v5h-5"/></svg>';
-const ICONO_GPS = '<svg viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>';
 
 // "10/11 12:33" en hora de Montevideo
 function horaLocal(iso) {
@@ -283,8 +280,6 @@ function dibujarSupervisor(del) {
   const otrosGrupos = {};
   otros.forEach(s => (otrosGrupos[s.grupo] ||= []).push(s));
   $('menu').innerHTML = `<div class="sup">
-    <div class="gps"><button type="button" class="btn-act" id="gps">${ICONO_GPS}Actualizar GPS</button><span class="estado" id="gpsEstado">Última actualización —</span></div>
-    <div class="rule"></div>
     <div class="servicios">${SERVICIOS.map(s => {
       const ps = paginas(s.nombre);
       return `<section class="serv" data-id="${s.id}" style="--c:${s.c};--cb:${s.cb}">
@@ -304,7 +299,6 @@ function dibujarSupervisor(del) {
     const s = SERVICIOS.find(x => x.id === sec.dataset.id);
     sec.querySelector('.btn-act').onclick = () => actualizar(s, sec);
   });
-  $('gps').onclick = () => { if (GPS_WEBHOOK) { /* se arma más adelante */ } };
   mostrarHoras();
 }
 async function mostrarHoras() {

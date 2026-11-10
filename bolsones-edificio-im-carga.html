@@ -111,8 +111,8 @@ input[type=datetime-local].in::-webkit-date-and-time-value{text-align:left}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="assets/comun.js?v=202611100928"></script>
-<script src="assets/acceso.js?v=202611101530"></script>
-<script>COM2.acceso({ volver: '.barra', absoluto: true });   // solo supervisores y admin con sesión de COM 2</script>
+<script src="assets/acceso.js?v=202611101600"></script>
+<script>COM2.acceso({ roles: ['admin'], panel: 'admin', volver: '.barra', absoluto: true });   // solo admin (panel Admin)</script>
 </head>
 <body>
 

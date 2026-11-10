@@ -3,9 +3,10 @@
 //
 // Uso:  COM2.acceso({ volver: '.header' });                 // pone "‹ COM 2" al principio de ese elemento
 //       COM2.acceso({ volver: '.barra-in', absoluto: true }); // en una barra centrada: a la izquierda, sin correr el título
+//       COM2.acceso({ roles: ['admin'], panel: 'admin', ... }); // solo admin; "‹ COM 2" vuelve al panel Admin
 //
-// Si no hay sesión, o el usuario no es supervisor ni admin, o todavía tiene la contraseña inicial,
-// manda al login / menú de COM 2. Devuelve el perfil (o null si redirige).
+// Si no hay sesión, o el rol no está en roles (por defecto supervisor y admin), o todavía tiene la contraseña
+// inicial, manda al login / menú de COM 2. Devuelve el perfil (o null si redirige).
 (function () {
   const css = document.createElement('style');
   css.textContent = `
@@ -28,7 +29,7 @@
         if (!en || en.querySelector('.com2-volver')) return;
         const a = document.createElement('a');
         a.className = 'com2-volver' + (o.absoluto ? ' abs' : '');
-        a.href = './?panel=supervisor';
+        a.href = './?panel=' + (o.panel || 'supervisor');
         a.title = 'Volver a COM 2';
         a.innerHTML = '‹<span> COM 2</span>';
         if (o.absoluto && getComputedStyle(en).position === 'static') en.style.position = 'relative';
