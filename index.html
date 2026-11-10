@@ -8,90 +8,60 @@
 <title>COM 2</title>
 <link rel="icon" type="image/png" href="assets/logo-ciemsa.png">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/comun.css">
 <style>
-/* COM 2: login con cédula + contraseña (Supabase Auth) y menú según el rol.
-   Los usuarios, roles y el menú están en Supabase (tablas perfiles y secciones).
-   Lo que protege los datos son las reglas RLS de la base, no lo que muestra esta página. */
-:root{
-  --bg:#F7F6F3; --card:#FFFFFF; --border:#E6E2DA;
-  --text:#1A1714; --text2:#5F5A54; --text3:#9A948C;
-  --azul:#1b3f74; --rojo:#c0392b; --verde:#1baf7a;
-  --shadow:0 4px 20px rgba(26,23,20,.05),0 1px 3px rgba(26,23,20,.05);
-  --r:16px;
-}
-*{box-sizing:border-box;margin:0;padding:0}
-[hidden]{display:none!important}
-body{font-family:'DM Sans',system-ui,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased;
-  background:radial-gradient(circle at 12% 0%,#EDEEF9 0%,transparent 40%),radial-gradient(circle at 95% 100%,#E7F3EE 0%,transparent 40%),var(--bg);
-  background-attachment:fixed;min-height:100vh}
-button,input{font:inherit;color:inherit}
+/* COM 2: login con cédula + contraseña (Supabase Auth) y menú por paneles (Operador / Supervisor / Admin).
+   El menú sale de la tabla secciones; cada rol ve su panel y los de abajo (lo controla RLS en la base). */
 
-.barra{position:sticky;top:0;z-index:10;background:linear-gradient(135deg,#0f172a 0%,#16213e 55%,#1b3f74 100%);color:#fff;box-shadow:0 4px 12px rgba(0,0,0,.3);padding-top:env(safe-area-inset-top)}
-.barra-in{max-width:760px;margin:0 auto;padding:14px 16px;display:flex;align-items:center;justify-content:center;gap:12px;position:relative}
-.titulo{display:flex;align-items:center;gap:10px}
-.titulo .ico{font-family:'Segoe UI Emoji','Apple Color Emoji','Noto Color Emoji',sans-serif;font-size:23px;line-height:28px}
-.titulo h1{font-family:'Segoe UI',Arial,sans-serif;font-size:24px;font-weight:700;letter-spacing:-.01em}
-.salir{position:absolute;right:16px;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:9px;padding:6px 12px;font-size:13px;font-weight:700;cursor:pointer}
-@media (max-width:600px){.titulo h1{font-size:19px}.titulo .ico{font-size:19px}.salir{right:10px;padding:5px 9px}}
-
-.wrap{max-width:760px;margin:0 auto;padding:18px 16px 40px;display:flex;flex-direction:column;gap:14px}
-.angosto{max-width:420px;width:100%;margin:0 auto}
-.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);padding:18px}
-.card h2{font-size:17px;font-weight:700;margin-bottom:4px}
-.card p.sub{font-size:14px;color:var(--text2);margin-bottom:14px}
-.logo{display:block;height:44px;margin:4px auto 14px}
-
-label.l{display:block;font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin:14px 0 6px}
+/* Login: solo el recuadro blanco, centrado en la pantalla */
+.centro{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:20px}
+.login{width:100%;max-width:380px;background:#fff;border:1px solid var(--border);border-radius:20px;box-shadow:0 10px 40px rgba(26,23,20,.08);padding:30px 26px 26px}
+.login .logo{display:block;height:58px;margin:0 auto 22px}
+label.l{display:block;font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin:16px 0 6px}
 label.l:first-of-type{margin-top:0}
-.in{width:100%;font-size:16px;padding:12px 13px;border:1px solid var(--border);border-radius:11px;background:#fff;outline:none}
-.in:focus{border-color:var(--azul);box-shadow:0 0 0 3px rgba(27,63,116,.12)}
-.ayuda{font-size:12.5px;color:var(--text3);margin-top:6px}
-.btn{width:100%;margin-top:18px;border:0;border-radius:12px;padding:14px;font-size:16px;font-weight:700;cursor:pointer;color:#fff;background:linear-gradient(135deg,#0f172a 0%,#16213e 55%,#1b3f74 100%)}
-.btn:disabled{opacity:.55;cursor:default}
-.link{background:none;border:0;color:var(--azul);font-weight:600;font-size:14px;cursor:pointer;text-decoration:underline;margin-top:12px}
-.error{margin-top:12px;color:var(--rojo);font-size:14px;font-weight:600}
-.okmsg{margin-top:12px;color:var(--verde);font-size:14px;font-weight:600}
+.in{font-size:16px;padding:12px 13px}
+.btn.ancho{width:100%;margin-top:22px;padding:14px;font-size:16px}
+.login .error{margin-top:14px;text-align:center}
 
-/* Bienvenida y menú */
-.hola{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
-.hola b{font-size:18px}
-.rol{display:inline-block;font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;padding:4px 10px;border-radius:999px;background:#EEF1F8;color:var(--azul)}
-.grupo h3{font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin:6px 2px 8px}
-.secciones{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:10px}
-.seccion{display:block;text-decoration:none;color:inherit;background:#fff;border:1px solid var(--border);border-radius:14px;padding:16px;box-shadow:var(--shadow);font-weight:700;font-size:15px;transition:border-color .15s,transform .15s}
-.seccion:hover{border-color:var(--azul);transform:translateY(-1px)}
-.vacio{text-align:center;color:var(--text2);font-size:15px;padding:26px 10px}
+/* Cambio de contraseña */
+.clave{width:100%;max-width:420px;margin:30px auto 0;padding:22px}
+.clave h2{font-size:18px;margin-bottom:4px}
+.clave p.sub{font-size:14px;color:var(--text2);margin-bottom:16px}
+.clave .ayuda{font-size:12.5px;color:var(--text3);margin-top:6px}
+.clave .error{margin-top:12px}
+.link{background:none;border:0;color:var(--azul);font-weight:600;font-size:14px;cursor:pointer;text-decoration:underline;margin-top:14px}
 
-.cargando{display:flex;flex-direction:column;align-items:center;gap:12px;padding:70px 0;color:var(--text2);font-weight:600}
-.rueda{width:34px;height:34px;border:3px solid #D9DEEA;border-top-color:var(--azul);border-radius:50%;animation:girar .8s linear infinite}
-@keyframes girar{to{transform:rotate(360deg)}}
+/* Menú del panel */
+.aviso-ok{background:#E3F5EE;border:1px solid #bfe6d6;color:#137a55;border-radius:12px;padding:10px 14px;font-weight:600;font-size:14px}
+.grupo h3{font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.07em;margin:4px 2px 10px}
+.secciones{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
+.seccion{display:block;text-decoration:none;color:inherit;background:#fff;border:1px solid var(--border);border-radius:14px;padding:18px;box-shadow:var(--shadow);font-weight:700;font-size:15.5px;transition:border-color .15s,transform .15s}
+.seccion:hover{border-color:var(--azul2);transform:translateY(-1px)}
+.vacio{text-align:center;color:var(--text2);font-size:15px;padding:30px 10px}
+.pantalla-cargando{min-height:100vh;display:flex;align-items:center;justify-content:center}
 </style>
 </head>
 <body>
-<header class="barra"><div class="barra-in">
-  <div class="titulo"><span class="ico">📋</span><h1>COM 2</h1></div>
-  <button class="salir" id="salir" hidden>Salir</button>
-</div></header>
+<header id="barra" hidden></header>
 
-<main class="wrap">
-  <div class="cargando" id="vCargando"><div class="rueda"></div>Cargando información</div>
+<div class="pantalla-cargando" id="vCargando"><div class="cargando"><div class="rueda"></div>Cargando información</div></div>
 
-  <!-- Login -->
-  <form class="card angosto" id="vLogin" hidden autocomplete="on">
+<!-- Login -->
+<div class="centro" id="vLogin" hidden>
+  <form class="login" id="fLogin" autocomplete="on">
     <img class="logo" src="assets/logo-ciemsa.png" alt="CIEMSA">
-    <h2>Ingresar</h2>
-    <p class="sub">Con tu cédula y tu contraseña.</p>
-    <label class="l" for="usuario">Usuario (cédula)</label>
-    <input class="in" id="usuario" name="username" inputmode="numeric" autocomplete="username" placeholder="Sin puntos ni guion" required>
+    <label class="l" for="usuario">Usuario</label>
+    <input class="in num" id="usuario" name="username" inputmode="numeric" autocomplete="username" required>
     <label class="l" for="clave">Contraseña</label>
     <input class="in" id="clave" name="password" type="password" autocomplete="current-password" required>
-    <button class="btn" id="entrar">Entrar</button>
+    <button class="btn ancho" id="entrar">Entrar</button>
     <div class="error" id="errLogin" hidden></div>
-    <p class="ayuda" style="margin-top:14px">¿Olvidaste la contraseña? Pedile al administrador que te la restablezca.</p>
   </form>
+</div>
 
+<main class="wrap" id="vApp" hidden>
   <!-- Cambio de contraseña (obligatorio en el primer ingreso) -->
-  <form class="card angosto" id="vClave" hidden>
+  <form class="card clave" id="vClave" hidden>
     <h2 id="claveTitulo">Elegí tu contraseña</h2>
     <p class="sub" id="claveSub">Es tu primer ingreso: cambiá la contraseña que te dieron por una tuya.</p>
     <label class="l" for="cActual">Contraseña actual</label>
@@ -101,94 +71,90 @@ label.l:first-of-type{margin-top:0}
     <p class="ayuda">Mínimo 8 caracteres, con letras y números.</p>
     <label class="l" for="cRepite">Repetí la contraseña nueva</label>
     <input class="in" id="cRepite" type="password" autocomplete="new-password" required>
-    <button class="btn" id="guardarClave">Guardar contraseña</button>
+    <button class="btn ancho" id="guardarClave">Guardar contraseña</button>
     <button class="link" type="button" id="cancelarClave" hidden>Volver</button>
     <div class="error" id="errClave" hidden></div>
   </form>
 
-  <!-- Menú -->
-  <section id="vMenu" hidden>
-    <div class="card hola" style="margin-bottom:14px">
-      <div><b id="nombre"></b><div style="margin-top:6px"><span class="rol" id="rol"></span></div></div>
-      <button class="link" type="button" id="irClave" style="margin:0">Cambiar contraseña</button>
-    </div>
-    <div class="okmsg" id="okClave" hidden style="margin:0 0 12px">Contraseña cambiada.</div>
-    <div id="menu"></div>
+  <!-- Menú del panel elegido -->
+  <section id="vMenu" hidden style="display:flex;flex-direction:column;gap:18px">
+    <div class="aviso-ok" id="okClave" hidden>Contraseña cambiada.</div>
+    <div id="menu" style="display:flex;flex-direction:column;gap:22px"></div>
   </section>
-
-  <div class="card angosto" id="vError" hidden>
-    <h2>No se pudo cargar</h2>
-    <p class="error" id="errGeneral"></p>
-    <button class="btn" type="button" onclick="location.reload()">Reintentar</button>
-  </div>
 </main>
 
+<div class="centro" id="vError" hidden>
+  <div class="login" style="text-align:center">
+    <img class="logo" src="assets/logo-ciemsa.png" alt="CIEMSA">
+    <p class="error" id="errGeneral"></p>
+    <button class="btn ancho" type="button" onclick="location.reload()">Reintentar</button>
+  </div>
+</div>
+
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="assets/comun.js"></script>
 <script>
-const SUPABASE_URL = 'https://srgduwdvkgqrrmhxpzlx.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_8ZP6-05anDJSBy39IwbSdQ_18iWRnd6';   // clave pública: los datos los protege RLS
+const { sb, esc } = COM2;
 const DOMINIO = '@com.local';   // el usuario es la cédula; por dentro, cédula@com.local
-const NOMBRE_ROL = { admin: 'Administrador', supervisor: 'Supervisor', operador: 'Operador' };
-
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 const $ = id => document.getElementById(id);
-const VISTAS = ['vCargando', 'vLogin', 'vClave', 'vMenu', 'vError'];
-let perfil = null;
+let perfil = null, panel = null, secciones = null;
 
-function ver(v) { VISTAS.forEach(x => $(x).hidden = x !== v); $('salir').hidden = !['vClave', 'vMenu'].includes(v); }
-function error(el, msg) { $(el).textContent = msg; $(el).hidden = !msg; }
-const cedula = s => s.replace(/\D/g, '');
-const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+function ver(v) {
+  ['vCargando', 'vLogin', 'vError'].forEach(x => $(x).hidden = x !== v);
+  $('vApp').hidden = !['vClave', 'vMenu'].includes(v);
+  $('vClave').hidden = v !== 'vClave';
+  $('vMenu').hidden = v !== 'vMenu';
+  if (!['vClave', 'vMenu'].includes(v)) $('barra').hidden = true;
+}
+function error(el, msg) { $(el).textContent = msg || ''; $(el).hidden = !msg; }
+function dibujarBarra() {
+  COM2.barra({ perfil, panel, paneles: !perfil.debe_cambiar_clave, alCambiarPanel: p => { panel = p; mostrarMenu(); }, alCambiarClave: () => mostrarClave(false) });
+}
 
 async function arrancar() {
   ver('vCargando');
   try {
-    const { data: { session } } = await sb.auth.getSession();
-    if (!session) return ver('vLogin');
-    const { data, error: e } = await sb.from('perfiles').select('usuario,nombre,rol,activo,debe_cambiar_clave').eq('id', session.user.id).maybeSingle();
-    if (e) throw e;
-    if (!data || !data.activo) {
-      await sb.auth.signOut();
-      ver('vLogin');
-      return error('errLogin', !data ? 'Tu usuario no tiene perfil. Avisale al administrador.' : 'Tu usuario está dado de baja.');
-    }
-    perfil = data;
+    perfil = await COM2.perfil();
+    if (!perfil) return ver('vLogin');
+    panel = COM2.panelInicial(perfil);
+    dibujarBarra();
     if (perfil.debe_cambiar_clave) return mostrarClave(true);
+    if (new URLSearchParams(location.search).get('clave')) { history.replaceState(null, '', './'); return mostrarClave(false); }
     await mostrarMenu();
   } catch (e) {
     console.error(e);
-    error('errGeneral', 'Revisá la conexión e intentá de nuevo.');
+    if (e.sinAcceso) { ver('vLogin'); return error('errLogin', e.message); }
+    error('errGeneral', 'No se pudo cargar. Revisá la conexión e intentá de nuevo.');
     ver('vError');
   }
 }
 
-// Login
-$('vLogin').addEventListener('submit', async ev => {
+// ---- Login ----
+$('fLogin').addEventListener('submit', async ev => {
   ev.preventDefault();
-  error('errLogin', '');
-  const u = cedula($('usuario').value);
-  if (u.length < 7) return error('errLogin', 'La cédula tiene que tener 7 u 8 números.');
+  error('errLogin');
+  const u = $('usuario').value.replace(/\D/g, '');
+  if (u.length < 7) return error('errLogin', 'Usuario o contraseña incorrectos.');
   $('entrar').disabled = true; $('entrar').textContent = 'Entrando…';
   const { error: e } = await sb.auth.signInWithPassword({ email: u + DOMINIO, password: $('clave').value });
   $('entrar').disabled = false; $('entrar').textContent = 'Entrar';
-  if (e) return error('errLogin', /invalid/i.test(e.message) ? 'Usuario o contraseña incorrectos.' : 'No se pudo entrar: ' + e.message);
+  if (e) return error('errLogin', /invalid|banned/i.test(e.message) ? 'Usuario o contraseña incorrectos.' : 'No se pudo entrar. Revisá la conexión.');
   $('clave').value = '';
   arrancar();
 });
 
-// Cambio de contraseña
+// ---- Cambio de contraseña ----
 function mostrarClave(obligatorio) {
-  $('vClave').reset(); error('errClave', '');
+  $('vClave').reset(); error('errClave'); $('okClave').hidden = true;
   $('claveTitulo').textContent = obligatorio ? 'Elegí tu contraseña' : 'Cambiar contraseña';
   $('claveSub').textContent = obligatorio ? 'Es tu primer ingreso: cambiá la contraseña que te dieron por una tuya.' : 'Para cambiarla, poné primero la actual.';
   $('cancelarClave').hidden = obligatorio;
   ver('vClave');
 }
-$('irClave').onclick = () => { $('okClave').hidden = true; mostrarClave(false); };
-$('cancelarClave').onclick = () => ver('vMenu');
+$('cancelarClave').onclick = () => mostrarMenu();
 $('vClave').addEventListener('submit', async ev => {
   ev.preventDefault();
-  error('errClave', '');
+  error('errClave');
   const actual = $('cActual').value, nueva = $('cNueva').value;
   if (nueva.length < 8 || !/[a-zA-Z]/.test(nueva) || !/\d/.test(nueva)) return error('errClave', 'La contraseña nueva tiene que tener al menos 8 caracteres, con letras y números.');
   if (nueva !== $('cRepite').value) return error('errClave', 'Las dos contraseñas nuevas no coinciden.');
@@ -197,9 +163,9 @@ $('vClave').addEventListener('submit', async ev => {
   try {
     // Supabase exige la contraseña actual (current_password) para cambiarla.
     const { data: { session } } = await sb.auth.getSession();
-    const r = await fetch(SUPABASE_URL + '/auth/v1/user', {
+    const r = await fetch(COM2.URL + '/auth/v1/user', {
       method: 'PUT',
-      headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + session.access_token, 'Content-Type': 'application/json' },
+      headers: { apikey: COM2.KEY, Authorization: 'Bearer ' + session.access_token, 'Content-Type': 'application/json' },
       body: JSON.stringify({ password: nueva, current_password: actual })
     });
     if (!r.ok) {
@@ -210,6 +176,7 @@ $('vClave').addEventListener('submit', async ev => {
     if (perfil.debe_cambiar_clave) {
       await sb.rpc('clave_cambiada');
       perfil.debe_cambiar_clave = false;
+      dibujarBarra();   // ahora sí, con los paneles
     }
     await mostrarMenu();
     $('okClave').hidden = false;
@@ -220,25 +187,26 @@ $('vClave').addEventListener('submit', async ev => {
   }
 });
 
-// Menú según el rol (la tabla secciones solo devuelve lo que el rol puede ver)
+// ---- Menú ----
 async function mostrarMenu() {
-  $('nombre').textContent = perfil.nombre;
-  $('rol').textContent = NOMBRE_ROL[perfil.rol] || perfil.rol;
-  const { data, error: e } = await sb.from('secciones').select('nombre,archivo,grupo,orden').order('grupo').order('orden').order('nombre');
-  if (e) throw e;
-  if (!data.length) {
-    $('menu').innerHTML = '<div class="card vacio">Todavía no hay planillas para tu usuario.</div>';
-  } else {
-    const grupos = {};
-    data.forEach(s => (grupos[s.grupo] ||= []).push(s));
-    $('menu').innerHTML = Object.entries(grupos).map(([g, ss]) =>
-      `<div class="grupo"><h3>${esc(g)}</h3><div class="secciones">${ss.map(s => `<a class="seccion" href="${esc(s.archivo)}">${esc(s.nombre)}</a>`).join('')}</div></div>`
-    ).join('');
+  if (!secciones) {
+    const { data, error: e } = await sb.from('secciones').select('nombre,archivo,grupo,orden,panel').order('grupo').order('orden').order('nombre');
+    if (e) throw e;
+    secciones = data;
   }
+  dibujarMenu();
   ver('vMenu');
 }
-
-$('salir').onclick = async () => { await sb.auth.signOut(); perfil = null; $('vLogin').reset(); error('errLogin', ''); ver('vLogin'); };
+function dibujarMenu() {
+  $('okClave').hidden = true;
+  const del = secciones ? secciones.filter(s => s.panel === panel) : [];
+  if (!del.length) { $('menu').innerHTML = '<div class="card vacio">Todavía no hay nada en este panel.</div>'; return; }
+  const grupos = {};
+  del.forEach(s => (grupos[s.grupo] ||= []).push(s));
+  $('menu').innerHTML = Object.entries(grupos).map(([g, ss]) =>
+    `<div class="grupo"><h3>${esc(g)}</h3><div class="secciones">${ss.map(s => `<a class="seccion" href="${esc(s.archivo)}">${esc(s.nombre)}</a>`).join('')}</div></div>`
+  ).join('');
+}
 
 arrancar();
 </script>

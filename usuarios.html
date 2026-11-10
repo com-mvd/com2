@@ -8,45 +8,18 @@
 <title>COM 2 · Usuarios</title>
 <link rel="icon" type="image/png" href="assets/logo-ciemsa.png">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/comun.css">
 <style>
 /* COM 2 · Usuarios: solo para el admin. Alta, edición de nombre y rol, corrección de cédula,
    restablecer contraseña y baja. Lo que toca el login (auth.users) lo hacen funciones de Supabase
    (sql/02-usuarios-admin.sql) que verifican que quien llama es admin. */
-:root{
-  --bg:#F7F6F3; --card:#FFFFFF; --border:#E6E2DA;
-  --text:#1A1714; --text2:#5F5A54; --text3:#9A948C;
-  --azul:#1b3f74; --rojo:#c0392b; --verde:#1baf7a; --ambar:#b7791f;
-  --shadow:0 4px 20px rgba(26,23,20,.05),0 1px 3px rgba(26,23,20,.05);
-  --r:16px;
-}
-*{box-sizing:border-box;margin:0;padding:0}
-[hidden]{display:none!important}
-body{font-family:'DM Sans',system-ui,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased;
-  background:radial-gradient(circle at 12% 0%,#EDEEF9 0%,transparent 40%),radial-gradient(circle at 95% 100%,#E7F3EE 0%,transparent 40%),var(--bg);
-  background-attachment:fixed;min-height:100vh}
-button,input,select{font:inherit;color:inherit}
-.num{font-variant-numeric:tabular-nums}
-
-.barra{position:sticky;top:0;z-index:10;background:linear-gradient(135deg,#0f172a 0%,#16213e 55%,#1b3f74 100%);color:#fff;box-shadow:0 4px 12px rgba(0,0,0,.3);padding-top:env(safe-area-inset-top)}
-.barra-in{max-width:900px;margin:0 auto;padding:14px 16px;display:flex;align-items:center;justify-content:center;position:relative}
-.titulo{display:flex;align-items:center;gap:10px}
-.titulo .ico{font-family:'Segoe UI Emoji','Apple Color Emoji','Noto Color Emoji',sans-serif;font-size:23px;line-height:28px}
-.titulo h1{font-family:'Segoe UI',Arial,sans-serif;font-size:24px;font-weight:700;letter-spacing:-.01em}
-.volver{position:absolute;left:16px;top:50%;transform:translateY(-50%);color:#fff;text-decoration:none;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.35);border-radius:9px;padding:6px 12px;font-size:13px;font-weight:700}
-@media (max-width:600px){.titulo h1{font-size:19px}.titulo .ico{font-size:19px}.volver{left:10px;padding:5px 9px}}
-
-.wrap{max-width:900px;margin:0 auto;padding:18px 16px 40px;display:flex;flex-direction:column;gap:14px}
-.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);padding:16px}
+.titulo-pag{font-size:22px;font-weight:700;letter-spacing:-.01em}
 
 /* Barra de búsqueda y filtros */
 .filtros{display:grid;grid-template-columns:1fr 150px 140px auto;gap:8px;align-items:center}
 @media (max-width:700px){.filtros{grid-template-columns:1fr 1fr}.filtros .buscar{grid-column:1/-1}.filtros .btn{grid-column:1/-1}}
-.in,.sel{width:100%;font-size:15px;padding:10px 12px;border:1px solid var(--border);border-radius:11px;background:#fff;outline:none}
-.in:focus,.sel:focus{border-color:var(--azul);box-shadow:0 0 0 3px rgba(27,63,116,.12)}
 .resumen{font-size:13px;color:var(--text2);margin-top:10px}
 
-.btn{border:0;border-radius:11px;padding:10px 16px;font-size:15px;font-weight:700;cursor:pointer;color:#fff;background:linear-gradient(135deg,#0f172a 0%,#16213e 55%,#1b3f74 100%);white-space:nowrap}
-.btn:disabled{opacity:.55;cursor:default}
 .btn.sec{background:#fff;color:var(--azul);border:1px solid var(--border)}
 .btn.peligro{background:#fff;color:var(--rojo);border:1px solid #f0c9c4}
 .btn.verde{background:#fff;color:#137a55;border:1px solid #bfe6d6}
@@ -90,16 +63,10 @@ label.l:first-of-type{margin-top:0}
 .clave .valor{font-family:Consolas,'Courier New',monospace;font-size:26px;font-weight:700;letter-spacing:.08em;margin:6px 0 10px;user-select:all}
 .clave p{font-size:13px;color:var(--text2)}
 
-.cargando{display:flex;flex-direction:column;align-items:center;gap:12px;padding:70px 0;color:var(--text2);font-weight:600}
-.rueda{width:34px;height:34px;border:3px solid #D9DEEA;border-top-color:var(--azul);border-radius:50%;animation:girar .8s linear infinite}
-@keyframes girar{to{transform:rotate(360deg)}}
 </style>
 </head>
 <body>
-<header class="barra"><div class="barra-in">
-  <a class="volver" href="./">‹ Menú</a>
-  <div class="titulo"><span class="ico">👥</span><h1>Usuarios</h1></div>
-</div></header>
+<header id="barra" hidden></header>
 
 <main class="wrap">
   <div class="cargando" id="vCargando"><div class="rueda"></div>Cargando información</div>
@@ -107,6 +74,7 @@ label.l:first-of-type{margin-top:0}
   <div class="card" id="vError" hidden><p class="error" id="errGeneral" style="margin:0"></p></div>
 
   <section id="vLista" hidden style="display:flex;flex-direction:column;gap:14px">
+    <h1 class="titulo-pag">Usuarios</h1>
     <div class="card">
       <div class="filtros">
         <input class="in buscar" id="buscar" type="search" placeholder="Buscar por nombre o cédula" autocomplete="off">
@@ -174,14 +142,11 @@ label.l:first-of-type{margin-top:0}
 </div></dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="assets/comun.js"></script>
 <script>
-const SUPABASE_URL = 'https://srgduwdvkgqrrmhxpzlx.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_8ZP6-05anDJSBy39IwbSdQ_18iWRnd6';   // clave pública: los datos los protege RLS
 const ROL = { admin: 'Admin', supervisor: 'Supervisor', operador: 'Operador' };
-
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const { sb, esc } = COM2;
 const $ = id => document.getElementById(id);
-const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const soloNum = s => String(s || '').replace(/\D/g, '');
 const sinTildes = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
@@ -205,11 +170,9 @@ function mostrar(el, msg) { $(el).textContent = msg || ''; $(el).hidden = !msg; 
 
 async function arrancar() {
   try {
-    const { data: { session } } = await sb.auth.getSession();
-    if (!session) { location.replace('./'); return; }
-    const { data, error } = await sb.from('perfiles').select('id,rol,activo,debe_cambiar_clave').eq('id', session.user.id).maybeSingle();
-    if (error) throw error;
-    if (!data || !data.activo || data.debe_cambiar_clave) { location.replace('./'); return; }
+    const data = await COM2.perfil().catch(() => null);
+    if (!data || data.debe_cambiar_clave) { location.replace('./'); return; }
+    COM2.barra({ perfil: data, panel: 'admin' });
     if (data.rol !== 'admin') throw new Error('Esta pantalla es solo para el administrador.');
     yo = data;
     await cargar();

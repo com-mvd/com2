@@ -158,8 +158,5 @@ revoke execute on function public.admin_crear_usuario(text, text, public.rol), p
 grant execute on function public.admin_crear_usuario(text, text, public.rol), public.admin_restablecer_clave(uuid),
   public.admin_cambiar_cedula(uuid, text), public.admin_activar(uuid, boolean) to authenticated;
 
--- Menú: la pantalla de usuarios, solo para admin.
-insert into public.secciones (id, nombre, archivo, grupo, orden, roles)
-values ('usuarios', 'Usuarios', 'usuarios.html', 'Administración', 10, '{admin}')
-on conflict (id) do update set nombre = excluded.nombre, archivo = excluded.archivo, grupo = excluded.grupo,
-  orden = excluded.orden, roles = excluded.roles;
+-- Menú: la pantalla de usuarios va en el panel Admin. Se carga en 03-paneles.sql, que es
+-- donde se creó la columna panel (antes la sección se cargaba acá, con la columna roles, que ya no existe).
