@@ -38,7 +38,21 @@
     return permitidos.includes(ultimo) ? ultimo : p.rol;
   }
 
-  const ICONO_PERSONA = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>';
+  // Íconos de las tarjetas del menú (columna icono de la tabla secciones). Mismo trazo que el index de Dashboard.
+  const ICONOS = {
+    usuarios: '<path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/>',
+    planilla: '<rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/>',
+    documento: '<path d="M6 3h9l3 3v15H6z"/><path d="M15 3v4h3"/><path d="M9 12h6M9 16h4"/>',
+    tareas: '<path d="M6 3h9l3 3v15H6z"/><path d="M15 3v4h3"/><path d="m9 11 1.2 1.2 2.3-2.3"/><path d="M14 11h2"/><path d="m9 16 1.2 1.2 2.3-2.3"/><path d="M14 16h2"/>',
+    calendario: '<rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>',
+    camion: '<rect x="1" y="7" width="14" height="10" rx="1"/><path d="M15 10h4l3 3v4h-7z"/><circle cx="6" cy="19" r="2"/><circle cx="18" cy="19" r="2"/>',
+    mapa: '<path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2z"/><path d="M9 4v14M15 6v14"/>',
+    bolsa: '<path d="m12 17-2 2 2 2"/><path d="M10 19h9a2 2 0 0 0 1.75-2.75l-.55-1"/><path d="m8.54 11-.74-2.73-2.73.73"/><path d="m7.8 8.27-4.8 8.4A2 2 0 0 0 4.7 19.5H10"/><path d="m15.46 11 2.74.73.73-2.73"/><path d="m18.2 11.73-4.8-8.4a2 2 0 0 0-3.5 0L7.2 8.03"/>',
+    grafico: '<path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/>'
+  };
+  const icono = nombre => `<svg viewBox="0 0 24 24" stroke-linecap="round" stroke-linejoin="round">${ICONOS[nombre] || ICONOS.planilla}</svg>`;
+
+  const ICONO_PERSONA ='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>';
 
   // Dibuja la barra en <header id="barra">.
   // opciones: perfil, panel (el activo), paneles (false para ocultarlos), alCambiarPanel(p), alCambiarClave()
@@ -80,5 +94,5 @@
     document.getElementById('mSalir').onclick = async () => { await sb.auth.signOut(); location.href = './'; };
   }
 
-  window.COM2 = { URL, KEY, sb, ROL_NOMBRE, PANEL_NOMBRE, PANELES, esc, perfil, panelInicial, barra, guardar, leer };
+  window.COM2 = { URL, KEY, sb, ROL_NOMBRE, PANEL_NOMBRE, PANELES, esc, perfil, panelInicial, barra, guardar, leer, icono };
 })();

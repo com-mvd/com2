@@ -8,7 +8,7 @@
 <title>COM 2</title>
 <link rel="icon" type="image/png" href="assets/logo-ciemsa.png">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/comun.css?v=202611100921">
+<link rel="stylesheet" href="assets/comun.css?v=202611100928">
 <style>
 /* COM 2: login con cédula + contraseña (Supabase Auth) y menú por paneles (Operador / Supervisor / Admin).
    El menú sale de la tabla secciones; cada rol ve su panel y los de abajo (lo controla RLS en la base). */
@@ -35,11 +35,29 @@ label.l:first-of-type{margin-top:0}
 
 /* Menú del panel */
 .aviso-ok{background:#E3F5EE;border:1px solid #bfe6d6;color:#137a55;border-radius:12px;padding:10px 14px;font-weight:600;font-size:14px}
-.grupo h3{font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.07em;margin:4px 2px 10px}
-.secciones{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:12px}
-.seccion{display:block;text-decoration:none;color:inherit;background:#fff;border:1px solid var(--border);border-radius:14px;padding:18px;box-shadow:var(--shadow);font-weight:700;font-size:15.5px;transition:border-color .15s,transform .15s}
-.seccion:hover{border-color:var(--azul2);transform:translateY(-1px)}
-.vacio{text-align:center;color:var(--text2);font-size:15px;padding:30px 10px}
+.aviso-ok{max-width:860px;width:100%;margin:0 auto;text-align:center}
+/* Portada del panel: mismo estilo que el index de Dashboard (título, rayita y tarjetas con ícono) */
+.portada{min-height:calc(100vh - 62px - 62px);min-height:calc(100dvh - 62px - 62px);display:flex;align-items:center;justify-content:center;padding-bottom:6vh}
+.cover{max-width:860px;width:100%;text-align:center}
+.headline{font-size:clamp(32px,5.5vw,48px);font-weight:700;letter-spacing:-1.2px;line-height:1.08}
+.rule{width:42px;height:3px;border-radius:2px;background:#39745E;margin:1.4rem auto 2.6rem}
+.grupo + .grupo{margin-top:2.2rem}
+.grupo h3{font-size:12px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.08em;margin-bottom:12px}
+/* hasta 3 por renglón; si el último renglón queda incompleto, sus tarjetas van centradas */
+.grid{display:flex;flex-wrap:wrap;justify-content:center;gap:16px;max-width:812px;margin:0 auto}
+.grid .tile{flex:0 1 260px}
+@media (max-width:680px){.grid .tile{flex:0 1 calc(50% - 8px)}}
+@media (max-width:420px){.grid .tile{flex:1 1 100%}}
+.tile{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.8rem;background:#fff;border:1px solid #E2DED6;border-radius:18px;padding:2rem 1rem 1.6rem;text-decoration:none;color:inherit;box-shadow:0 4px 20px rgba(26,23,20,.06),0 1px 3px rgba(26,23,20,.05);transition:transform .18s ease,box-shadow .18s ease,border-color .18s ease}
+.tile:hover{transform:translateY(-4px);box-shadow:0 12px 32px rgba(26,23,20,.10),0 2px 6px rgba(26,23,20,.06);border-color:#D0CBCB}
+.tile-icon{width:56px;height:56px;border-radius:16px;display:flex;align-items:center;justify-content:center}
+.tile-icon svg{width:26px;height:26px;fill:none;stroke-width:1.6}
+.tile-name{font-size:14.5px;font-weight:600;letter-spacing:-.1px}
+.acc-teal .tile-icon{background:#DCEDE4}.acc-teal .tile-icon svg{stroke:#39745E}
+.acc-blue .tile-icon{background:#DDECF4}.acc-blue .tile-icon svg{stroke:#346A92}
+.acc-amber .tile-icon{background:#F5E4CF}.acc-amber .tile-icon svg{stroke:#9A642A}
+.acc-violet .tile-icon{background:#E5DDF0}.acc-violet .tile-icon svg{stroke:#6C5790}
+.vacio{color:var(--text3);font-size:15px}
 .pantalla-cargando{min-height:100vh;display:flex;align-items:center;justify-content:center}
 </style>
 </head>
@@ -79,9 +97,13 @@ label.l:first-of-type{margin-top:0}
   </div>
 
   <!-- Menú del panel elegido -->
-  <section id="vMenu" hidden style="display:flex;flex-direction:column;gap:18px">
+  <section id="vMenu" hidden>
     <div class="aviso-ok" id="okClave" hidden>Contraseña cambiada.</div>
-    <div id="menu" style="display:flex;flex-direction:column;gap:22px"></div>
+    <div class="portada"><div class="cover">
+      <h1 class="headline" id="tituloPanel"></h1>
+      <div class="rule"></div>
+      <div id="menu"></div>
+    </div></div>
   </section>
 </main>
 
@@ -94,7 +116,7 @@ label.l:first-of-type{margin-top:0}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="assets/comun.js?v=202611100921"></script>
+<script src="assets/comun.js?v=202611100928"></script>
 <script>
 const { sb, esc } = COM2;
 const DOMINIO = '@com.local';   // el usuario es la cédula; por dentro, cédula@com.local
@@ -190,21 +212,25 @@ $('fClave').addEventListener('submit', async ev => {
 // ---- Menú ----
 async function mostrarMenu() {
   if (!secciones) {
-    const { data, error: e } = await sb.from('secciones').select('nombre,archivo,grupo,orden,panel').order('grupo').order('orden').order('nombre');
+    const { data, error: e } = await sb.from('secciones').select('nombre,archivo,grupo,orden,panel,icono,color').order('grupo').order('orden').order('nombre');
     if (e) throw e;
     secciones = data;
   }
   dibujarMenu();
   ver('vMenu');
 }
+const TITULO_PANEL = { operador: 'Operación', supervisor: 'Supervisión', admin: 'Administración' };
 function dibujarMenu() {
   $('okClave').hidden = true;
+  $('tituloPanel').textContent = TITULO_PANEL[panel];
   const del = secciones ? secciones.filter(s => s.panel === panel) : [];
-  if (!del.length) { $('menu').innerHTML = '<div class="card vacio">Todavía no hay nada en este panel.</div>'; return; }
+  if (!del.length) { $('menu').innerHTML = '<p class="vacio">Todavía no hay nada en este panel.</p>'; return; }
   const grupos = {};
   del.forEach(s => (grupos[s.grupo] ||= []).push(s));
+  const conTitulos = Object.keys(grupos).length > 1;   // con un solo grupo no hace falta el subtítulo
   $('menu').innerHTML = Object.entries(grupos).map(([g, ss]) =>
-    `<div class="grupo"><h3>${esc(g)}</h3><div class="secciones">${ss.map(s => `<a class="seccion" href="${esc(s.archivo)}">${esc(s.nombre)}</a>`).join('')}</div></div>`
+    `<div class="grupo">${conTitulos ? `<h3>${esc(g)}</h3>` : ''}<div class="grid">${ss.map(s =>
+      `<a class="tile acc-${esc(s.color)}" href="${esc(s.archivo)}"><div class="tile-icon">${COM2.icono(s.icono)}</div><div class="tile-name">${esc(s.nombre)}</div></a>`).join('')}</div></div>`
   ).join('');
 }
 
