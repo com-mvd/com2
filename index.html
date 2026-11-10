@@ -13,8 +13,9 @@
 /* COM 2: login con cédula + contraseña (Supabase Auth) y menú por paneles (Operador / Supervisor / Admin).
    El menú sale de la tabla secciones; cada rol ve su panel y los de abajo (lo controla RLS en la base). */
 
-/* Login: solo el recuadro blanco, centrado en la pantalla */
-.centro{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:20px}
+/* Login: solo el recuadro blanco, centrado en la pantalla.
+   Un poco por encima del centro exacto: centrado al milímetro se ve más abajo. */
+.centro{min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:20px 20px calc(20px + 9vh)}
 .login{width:100%;max-width:380px;background:#fff;border:1px solid var(--border);border-radius:20px;box-shadow:0 10px 40px rgba(26,23,20,.08);padding:30px 26px 26px}
 .login .logo{display:block;height:58px;margin:0 auto 22px}
 label.l{display:block;font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.08em;margin:16px 0 6px}
@@ -24,12 +25,13 @@ label.l:first-of-type{margin-top:0}
 .login .error{margin-top:14px;text-align:center}
 
 /* Cambio de contraseña */
-.clave{width:100%;max-width:420px;margin:30px auto 0;padding:22px}
-.clave h2{font-size:18px;margin-bottom:4px}
-.clave p.sub{font-size:14px;color:var(--text2);margin-bottom:16px}
-.clave .ayuda{font-size:12.5px;color:var(--text3);margin-top:6px}
+/* centrado en el espacio debajo de la barra, igual que el login */
+.centro-clave{min-height:calc(100vh - 62px - 62px);min-height:calc(100dvh - 62px - 62px);display:flex;align-items:center;justify-content:center;padding-bottom:9vh}
+.clave{width:100%;max-width:420px;padding:24px}
+.clave h2{font-size:18px;margin-bottom:16px}
+.clave p.sub{font-size:14px;color:var(--text2);margin:-10px 0 16px}
+.clave label.l small{text-transform:none;letter-spacing:0;font-weight:500;color:var(--text3);font-size:11.5px}
 .clave .error{margin-top:12px}
-.link{background:none;border:0;color:var(--azul);font-weight:600;font-size:14px;cursor:pointer;text-decoration:underline;margin-top:14px}
 
 /* Menú del panel */
 .aviso-ok{background:#E3F5EE;border:1px solid #bfe6d6;color:#137a55;border-radius:12px;padding:10px 14px;font-weight:600;font-size:14px}
@@ -61,20 +63,20 @@ label.l:first-of-type{margin-top:0}
 
 <main class="wrap" id="vApp" hidden>
   <!-- Cambio de contraseña (obligatorio en el primer ingreso) -->
-  <form class="card clave" id="vClave" hidden>
-    <h2 id="claveTitulo">Elegí tu contraseña</h2>
-    <p class="sub" id="claveSub">Es tu primer ingreso: cambiá la contraseña que te dieron por una tuya.</p>
+  <div class="centro-clave" id="vClave" hidden>
+  <form class="card clave" id="fClave">
+    <h2 id="claveTitulo">Cambiar contraseña</h2>
+    <p class="sub" id="claveSub" hidden>Es tu primer ingreso: cambiá la contraseña que te dieron por una tuya.</p>
     <label class="l" for="cActual">Contraseña actual</label>
     <input class="in" id="cActual" type="password" autocomplete="current-password" required>
-    <label class="l" for="cNueva">Contraseña nueva</label>
+    <label class="l" for="cNueva">Contraseña nueva <small>(mín. 8, con letras y números)</small></label>
     <input class="in" id="cNueva" type="password" autocomplete="new-password" required>
-    <p class="ayuda">Mínimo 8 caracteres, con letras y números.</p>
     <label class="l" for="cRepite">Repetí la contraseña nueva</label>
     <input class="in" id="cRepite" type="password" autocomplete="new-password" required>
     <button class="btn ancho" id="guardarClave">Guardar contraseña</button>
-    <button class="link" type="button" id="cancelarClave" hidden>Volver</button>
     <div class="error" id="errClave" hidden></div>
   </form>
+  </div>
 
   <!-- Menú del panel elegido -->
   <section id="vMenu" hidden style="display:flex;flex-direction:column;gap:18px">
@@ -145,14 +147,12 @@ $('fLogin').addEventListener('submit', async ev => {
 
 // ---- Cambio de contraseña ----
 function mostrarClave(obligatorio) {
-  $('vClave').reset(); error('errClave'); $('okClave').hidden = true;
+  $('fClave').reset(); error('errClave'); $('okClave').hidden = true;
   $('claveTitulo').textContent = obligatorio ? 'Elegí tu contraseña' : 'Cambiar contraseña';
-  $('claveSub').textContent = obligatorio ? 'Es tu primer ingreso: cambiá la contraseña que te dieron por una tuya.' : 'Para cambiarla, poné primero la actual.';
-  $('cancelarClave').hidden = obligatorio;
+  $('claveSub').hidden = !obligatorio;   // solo en el primer ingreso se explica por qué
   ver('vClave');
 }
-$('cancelarClave').onclick = () => mostrarMenu();
-$('vClave').addEventListener('submit', async ev => {
+$('fClave').addEventListener('submit', async ev => {
   ev.preventDefault();
   error('errClave');
   const actual = $('cActual').value, nueva = $('cNueva').value;

@@ -55,7 +55,6 @@
           <span class="avatar">${ICONO_PERSONA}</span><span class="nombre">${esc(o.perfil.nombre)}</span><span class="flecha">▾</span>
         </button>
         <div class="menu-usuario" id="menuUsuario" role="menu" hidden>
-          <div class="quien"><b>${esc(o.perfil.nombre)}</b><span>${ROL_NOMBRE[o.perfil.rol]} · ${esc(o.perfil.usuario)}</span></div>
           <button type="button" role="menuitem" id="mCambiarClave">Cambiar contraseña</button>
           <button type="button" role="menuitem" class="salir" id="mSalir">Cerrar sesión</button>
         </div>
