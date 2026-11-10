@@ -1,0 +1,1423 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<title>COM</title>
+<link rel="icon" type="image/png" href="assets/logo-ciemsa.png">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="assets/comun.js?v=202611100928"></script>
+<style>
+:root{
+  --bg:#F7F6F3; --card:#FFFFFF; --border:#E6E2DA; --border2:#D6D1C8;
+  --text:#1A1714; --text2:#5F5A54; --text3:#9A948C; --grid:#EEEBE5;
+  --teal:#39745E; --teal-bg:#DCEDE4;
+  --pend:#eb6834; --pend-bg:#FCE9DF;
+  --atr:#d03b3b;  --atr-bg:#F9E1E0;
+  --asig:#2a78d6; --asig-bg:#E1ECFA;
+  --hecho:#1baf7a;--hecho-bg:#DDF3EA;
+  --gris:#B5AFA6;
+  --shadow:0 4px 20px rgba(26,23,20,.05),0 1px 3px rgba(26,23,20,.05);
+  --r:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none!important}
+/* Lugar de la barra de desplazamiento siempre reservado: el ancho de la página no cambia entre pestañas cortas y largas */
+html{scroll-behavior:smooth;overflow-y:scroll;scrollbar-gutter:stable}
+body{font-family:'DM Sans',system-ui,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased;
+  background:radial-gradient(circle at 12% 0%,#EDEEF9 0%,transparent 40%),radial-gradient(circle at 95% 100%,#E7F3EE 0%,transparent 40%),var(--bg);
+  background-attachment:fixed;min-height:100vh}
+.wrap{max-width:1440px;margin:0 auto;padding:1.5rem clamp(16px,2.5vw,2rem) 3rem}
+button{font:inherit;color:inherit;cursor:pointer}
+.num{font-variant-numeric:tabular-nums}
+
+/* Barra del título: igual a la de los dashboards de com-mvd/dashboard */
+/* El título queda fijo arriba al bajar, y la barra de pestañas fija justo abajo (--alto-barra lo pone el script) */
+.barra{position:sticky;top:0;z-index:1200;background:linear-gradient(135deg,#0f172a 0%,#16213e 55%,#1b3f74 100%);color:#fff;box-shadow:0 4px 12px rgba(0,0,0,.3)}
+/* Mismo ancho y márgenes que .wrap; el título va centrado (se actualiza y se vuelve desde el menú principal) */
+.barra-in{max-width:1440px;margin:0 auto;min-height:84px;padding:12px clamp(16px,2.5vw,2rem);display:flex;justify-content:center;align-items:center;position:relative}
+/* Volver al menú de COM 2 (panel Supervisor) */
+.volver{position:absolute;left:clamp(16px,2.5vw,2rem);top:50%;transform:translateY(-50%);color:#fff;text-decoration:none;font-weight:700;font-size:15px;display:flex;align-items:center;gap:4px;padding:6px 10px;border-radius:9px;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.18)}
+.volver:hover{background:rgba(255,255,255,.18)}
+@media (max-width:760px){.volver{font-size:13px;padding:5px 8px}.volver span{display:none}}
+.titulo{display:flex;align-items:center;gap:10px;min-width:0}
+/* ♻ en versión emoji a color, igual que en com-mvd/dashboard/bolsones.html */
+.titulo .ico{display:flex;align-items:center;justify-content:center;flex-shrink:0;width:32px;height:32px;font-family:'Segoe UI Emoji','Apple Color Emoji','Noto Color Emoji',sans-serif;font-size:26px;font-weight:700;line-height:32px;color:#fff;filter:drop-shadow(0 1px 1px rgba(0,0,0,.18))}
+.titulo h1{font-family:'Segoe UI',Arial,sans-serif;font-size:27px;font-weight:700;letter-spacing:-.01em;line-height:1.15}
+
+/* Botoneras segmentadas (capas del mapa) */
+.seg{display:inline-flex;background:var(--card);border:1px solid var(--border);border-radius:11px;padding:3px;box-shadow:var(--shadow)}
+.seg button{border:0;background:transparent;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:600;color:var(--text2);white-space:nowrap}
+.seg button.on{background:var(--text);color:#fff}
+.seg input[type=date]{border:0;background:transparent;font:inherit;font-size:13px;color:var(--text2);padding:0 8px;outline:none}
+.seg input.on{color:var(--text);font-weight:600}
+
+/* Semana */
+.semana{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:14px}
+/* Tarjetas de la semana (solo informativas): municipios con su planta y vaciados fijos del día */
+.dia{display:flex;flex-direction:column;min-width:0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:.75rem .75rem .8rem;box-shadow:var(--shadow)}
+.dia.hoy{border-color:var(--teal);background:linear-gradient(180deg,#F1F8F4 0%,var(--card) 70%);box-shadow:0 0 0 3px var(--teal-bg),var(--shadow)}
+.dia-n{display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:14px;font-weight:700;color:var(--text);letter-spacing:-.1px;padding-bottom:.55rem;margin-bottom:.6rem;border-bottom:1px solid #F0EDE7}
+.dia.hoy .dia-n{color:var(--teal);border-bottom-color:#D5E8DD}
+.dia-sec{font-size:10.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.45rem}
+.dia-sec.sig{margin-top:.8rem;padding-top:.7rem;border-top:1px solid #F0EDE7}
+.dia.hoy .dia-sec.sig{border-top-color:#D5E8DD}
+.dia-fijos{display:flex;flex-direction:column;gap:6px}
+.dia-hoy{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#fff;background:var(--teal);border-radius:99px;padding:1px 8px 3px}
+/* Un renglón por municipio: etiqueta "Municipio X" → planta donde descarga */
+.dia-rows{display:grid;grid-template-columns:auto auto minmax(0,1fr);grid-auto-rows:22px;align-items:center;gap:7px 6px}
+.dia-rows .mb{font-size:11.5px;padding:0 12px 0 8px;min-width:100px} /* mismo ancho en todas: las plantas arrancan en la misma vertical */
+/* Subtítulo "Municipios → Descarga" en una línea, con la misma flecha que los renglones */
+.dia-sec-cols{display:flex;align-items:center;gap:6px}
+.dia-fl{width:13px;height:13px;stroke:var(--text3);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.dia-p{font-size:12.5px;font-weight:600;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fv{display:flex;align-items:center;justify-content:space-between;gap:6px;background:#FAF9F6;border:1px solid #EFECE6;border-left:4px solid var(--c,var(--gris));border-radius:9px;padding:.4rem .45rem .4rem .55rem}
+.fv-n{font-size:12px;font-weight:700;line-height:1.3;color:var(--text2);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fv .mb{flex:none;order:2;height:20px;min-width:22px;padding:0 8px 0 4px;font-size:11px}
+.dia-vacio{font-size:12px;color:var(--text3);padding:.2rem .15rem}
+.mb{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:22px;padding:0 10px 0 6px;border-radius:7px;border-left:4px solid transparent;background:#F0EDE7;color:var(--text);font-size:12px;font-weight:700}
+
+/* Tarjetas y mapa */
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow)}
+.mapa-card{position:relative;overflow:hidden;isolation:isolate;height:640px;display:flex;flex-direction:column}
+.mapa-bar{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;padding:.7rem .8rem;border-bottom:1px solid var(--border)}
+.toggles{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+.tg{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--card);border-radius:99px;padding:4px 10px;font-size:12px;font-weight:600;color:var(--text2)}
+.tg i{width:9px;height:9px;border-radius:50%;background:var(--c)}
+.tg.off{opacity:.42}
+.tg.off i{background:transparent;box-shadow:inset 0 0 0 1.5px var(--c)}
+/* Filtro por transportista: la marca es una rayita del color de su línea */
+.tg-t i{width:14px;height:3px;border-radius:2px}
+.tg-t.off i{box-shadow:none;background:var(--c);opacity:.5}
+.seg-modo{margin-left:auto;box-shadow:none}
+.mapa-op .mapa{flex:1;background:#EFEDE8}
+.mapa-op{height:600px;margin-bottom:14px}
+.mapa-op .toggles{margin-left:0}
+/* Pestaña Pendientes: panel con los municipios a la izquierda del mapa */
+.pen-card{display:grid;grid-template-columns:220px minmax(0,1fr)}
+.pen-lado{border-right:1px solid var(--border);padding:1rem .9rem;overflow-y:auto;display:flex;flex-direction:column;gap:6px}
+/* El total, con la misma forma que las filas de municipio pero con la marca en el azul de la barra */
+.pen-tot{display:flex;align-items:baseline;gap:6px;border:1px solid #E6E2DA;border-left:4px solid #1b3f74;background:#F3F4F8;border-radius:9px;padding:.55rem .7rem;margin-bottom:6px;font-size:13px;font-weight:700;color:var(--text)}
+.pen-tot b{margin-left:auto;font-size:15px;color:var(--text)}
+.pen-tot small{font-size:12px;font-weight:600;color:var(--text3)}
+.pen-fila{display:flex;align-items:center;gap:8px;width:100%;border:1px solid #EFECE6;border-left:4px solid var(--c);background:#FAF9F6;border-radius:9px;padding:.5rem .7rem;font-size:13px;font-weight:600;color:var(--text2);text-align:left}
+.pen-fila b{margin-left:auto;font-size:14px;color:var(--text)}
+.pen-mapa{position:relative;min-width:0;display:flex}
+.pen-mapa .mapa{flex:1}
+/* Operación del día e Informe: el selector Estado / Transportistas y los filtros van en un panel a la
+   izquierda del mapa (como en Pendientes), uno abajo del otro */
+/* Sin barra para desplazar: si los botones no entran, la tarjeta crece y el mapa se estira con ella */
+.mapa-op.pen-card{height:auto;min-height:600px}
+.vista-lado{overflow:visible}
+.vista-lado .op-munis:empty{display:none}
+/* Referencia de los círculos en el modo Transportistas: lleno = realizado, con borde = asignado */
+/* Son botones de filtro como los de arriba, uno al lado del otro */
+.ley{display:flex;gap:6px;margin-top:8px;padding-top:10px;border-top:1px solid var(--border)}
+.ley:empty{display:none}
+/* entran los dos en el ancho del panel: se reparten el lugar y llevan menos relleno a los costados */
+.vista-lado .ley .tg{flex:1 1 0;min-width:0;width:auto;justify-content:center;gap:6px;padding:.5rem .35rem;font-size:12.5px;white-space:nowrap}
+.ley .tg i,.ley .tg.off i{width:11px;height:11px;border-radius:50%;background:var(--text2);box-shadow:none}
+.ley .tg i.asig,.ley .tg.off i.asig{background:#fff;box-shadow:inset 0 0 0 2.5px var(--text2)}
+.lado-fecha{padding-bottom:10px;margin-bottom:6px;border-bottom:1px solid var(--border)}
+.lado-fecha .ing-f{display:flex}
+.lado-fecha input{flex:1;min-width:0}
+.vista-lado .seg-modo{margin:0 0 6px;display:flex}
+.vista-lado .seg-modo button{flex:1}
+.vista-lado .toggles{flex-direction:column;flex-wrap:nowrap;gap:6px;margin:0}
+.vista-lado .tg{width:100%;border-radius:9px;padding:.5rem .7rem;font-size:13px;text-align:left}
+.vista-lado .tg i{flex:none}
+.vista-lado .tg b{margin-left:auto;font-size:14px;color:var(--text)}
+.leaflet-container{font:inherit}
+.pt-num{pointer-events:none!important;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700;line-height:1}
+.leaflet-tooltip{border-radius:8px;border:1px solid var(--border);box-shadow:var(--shadow);font-size:12px;color:var(--text);padding:4px 8px}
+.ficha{position:absolute;left:12px;bottom:12px;z-index:900;width:min(340px,calc(100% - 24px));background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:0 12px 32px rgba(26,23,20,.16);padding:.9rem 1rem;display:none}
+.ficha.on{display:block}
+.ficha-x{position:absolute;top:8px;right:10px;border:0;background:none;font-size:18px;color:var(--text3);line-height:1}
+.ficha h3{font-size:15px;font-weight:700;padding-right:18px;line-height:1.25}
+.ficha .sub{font-size:12px;color:var(--text2);margin-top:2px}
+.ficha .sub .mb{height:19px;min-width:22px;font-size:11px;vertical-align:1px;margin-left:2px}
+.ficha hr{border:0;border-top:1px solid var(--border);margin:.6rem 0}
+.ficha dl{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:12.5px}
+.ficha dt{color:var(--text3)}
+.ficha dd{color:var(--text);min-width:0;overflow-wrap:anywhere}
+.est{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;border-radius:99px;padding:2px 9px;background:var(--bg-c);color:var(--c)}
+.est::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--c)}
+/* Pestañas Para borrar e Ingreso */
+.sec-t{font-size:15px;font-weight:700;letter-spacing:-.2px;margin-bottom:.8rem}
+.rep-sol{display:flex;flex-direction:column;gap:6px}
+.rep-fila{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;font-size:12px;color:var(--text2)}
+.rep-fila b{font-weight:700;color:var(--text)}
+.ing-bar{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:.9rem}
+.ing-f{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--text2)}
+.ing-f input{font:inherit;font-size:13px;font-weight:600;color:var(--text);border:1px solid var(--border);border-radius:9px;padding:6px 10px;background:var(--card)}
+/* El texto arriba y el campo abajo a lo ancho, así la lista tiene lugar también en el celular */
+.bus-f{flex:1 1 260px;min-width:0;max-width:560px;flex-direction:column;align-items:stretch;gap:6px}
+.bus-caja{position:relative;display:flex}
+.bus-caja input{flex:1;width:0}
+/* Lista de direcciones que coinciden, abajo del campo */
+.bus-lista{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:1000;max-height:360px;overflow-y:auto;background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:0 12px 28px rgba(26,23,20,.14);padding:4px}
+.bus-lista button{display:flex;align-items:center;gap:8px;width:100%;border:0;background:none;border-radius:7px;padding:7px 8px;text-align:left;font:inherit;font-size:13px;color:var(--text);cursor:pointer}
+.bus-lista button:hover,.bus-lista button.sel{background:#F3F4F8}
+.bus-dir{flex:1;min-width:0;display:flex;flex-direction:column;font-weight:600}
+.bus-dir small{font-size:11.5px;font-weight:500;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bus-lista b{font-size:12px;color:var(--text2)}
+.bus-nada{padding:7px 8px;font-size:12.5px;font-weight:500;color:var(--text3)}
+.ing-tot{font-size:13px;color:var(--text2)}
+.ing-tot b{font-size:15px;color:var(--text)}
+.tabla-wrap+.tabla-wrap{margin-top:1.4rem} /* separa la tabla de "falta algo" de la de completas */
+/* Cada columna mide lo justo (width:1% + sin cortes de línea) y la última se queda con el espacio que sobra.
+   Todo centrado menos la última. El ancho común entre las dos tablas lo pone igualarColumnas(). */
+/* (.tabla.tabla-ing para ganarle al text-align:left de .tabla th, que está más abajo) */
+.tabla.tabla-ing th,.tabla.tabla-ing td{text-align:center}
+.tabla.tabla-ing th:not(:last-child),.tabla.tabla-ing td:not(:last-child){width:1%;white-space:nowrap}
+.tabla.tabla-ing th:last-child,.tabla.tabla-ing td:last-child{text-align:left}
+.tabla.tabla-ing td.at-vacio{text-align:center}
+.falta{display:inline-block;font-size:11px;font-weight:700;color:#B4521E;background:#FCE9DF;border-radius:99px;padding:2px 9px 3px;margin:2px 2px;white-space:nowrap}
+/* Tabla cerrada tipo planilla: todas las celdas con línea gris clara, borde exterior redondeado */
+.tabla-wrap{overflow-x:auto;overflow-y:hidden;border:1px solid #E6E2DA;border-radius:10px}
+.tabla{width:100%;border-collapse:collapse;font-size:13px}
+/* Como en las gráficas: títulos en negro y el contenido en gris (en todas las tablas y recuadros de la página) */
+.tabla th{font-size:10.5px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.06em;text-align:left;padding:.55rem .7rem;background:#F7F6F3;border:1px solid #E6E2DA;white-space:nowrap}
+.tabla td{padding:.5rem .7rem;border:1px solid #ECE9E3;vertical-align:middle;color:var(--text2)}
+/* El borde exterior lo pone .tabla-wrap: se sacan los de las celdas de los costados para que no quede doble */
+.tabla tr>:first-child{border-left:0}
+.tabla tr>:last-child{border-right:0}
+.tabla thead th{border-top:0}
+.tabla tbody tr:last-child td{border-bottom:0}
+.tabla .c{text-align:center}
+.tabla .dir{font-weight:700;white-space:nowrap}
+.tabla .hora{font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--text2)}
+.tabla .desc{color:var(--text2);min-width:240px}
+/* Tabla de gestiones (columnas de la hoja "Seguimiento gestiones"): todo centrado y en una línea,
+   menos "Dirección", "Datos de solicitud" y "Observaciones", que bajan de renglón (también centrados) */
+.tabla.tabla-ges th,.tabla.tabla-ges td{text-align:center;white-space:nowrap}
+.tabla.tabla-ges th{white-space:normal;padding:.55rem .5rem}
+.tabla.tabla-ges td{padding:.5rem .5rem}
+.tabla.tabla-ges td.desc{white-space:normal;min-width:170px}
+.tabla.tabla-ges td.obs{white-space:normal;min-width:100px}
+.tabla.tabla-ges td.dir{white-space:normal;min-width:170px}
+.tabla.tabla-ges td.at-vacio{white-space:normal}
+
+/* Pestaña Atrasados */
+.atr-card{padding:1.1rem 1.2rem 1.2rem;margin-bottom:14px}
+/* Matriz municipio × antigüedad como mapa de calor */
+.hm-wrap{overflow-x:auto;overflow-y:hidden} /* barra solo si de verdad no entra (celular) */
+.hm{display:grid;grid-template-columns:max-content repeat(8,minmax(46px,1fr));gap:6px;align-items:center;min-width:520px}
+.hm-h{font-size:10.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;text-align:center}
+.hm-h.izq{text-align:left}
+.hm-l{display:flex;align-items:center;padding-right:8px;font-size:13px;font-weight:600;white-space:nowrap;min-width:0;overflow:hidden;text-overflow:ellipsis}
+.hc{height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;background:#F5F3EF;color:var(--text)}
+.hc.cero{color:transparent}
+/* Detalle: una tarjeta por dirección atrasada */
+.at-lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:10px}
+.at-it{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;background:#FAF9F6;border:1px solid #EFECE6;border-left:5px solid var(--m);border-radius:12px;padding:.85rem 1rem}
+.at-dir{font-size:15px;font-weight:700;letter-spacing:-.2px;line-height:1.25}
+.at-sub{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;font-size:12px;color:var(--text2)}
+.at-sub span{display:inline-flex;align-items:center;gap:4px}
+.at-sub svg{width:13px;height:13px;stroke:var(--text3);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.at-vacio{text-align:center;color:var(--text2);font-size:14px;font-weight:600;padding:1.4rem 1rem}
+.at-desc{grid-column:1/-1;font-size:12.5px;color:var(--text2);background:var(--card);border:1px solid #EFECE6;border-radius:9px;padding:.5rem .65rem;line-height:1.4}
+@media (max-width:760px){.at-lista{grid-template-columns:1fr}}
+
+/* Gráficas */
+/* Barra de categorías (mismo azul que la barra del título) */
+.cats{position:sticky;top:calc(var(--alto-barra,84px) + 10px);z-index:1100;display:flex;gap:6px;padding:6px;margin-bottom:14px;border-radius:14px;background:linear-gradient(135deg,#0f172a 0%,#16213e 55%,#1b3f74 100%);box-shadow:0 4px 12px rgba(15,23,42,.25);overflow-x:auto;scrollbar-width:none}
+.cats button{display:inline-flex;align-items:center;gap:8px;border:0;background:transparent;color:#c7d5ea;font-size:13.5px;font-weight:600;padding:9px 16px;border-radius:10px;white-space:nowrap;transition:background-color .15s,color .15s}
+.cats button:hover{background:rgba(255,255,255,.08);color:#fff}
+.cats button.on{background:#fff;color:#0f172a;box-shadow:0 2px 6px rgba(0,0,0,.18)}
+.cats svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.cat{display:none}
+.cat.on{display:block}
+.graficas{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.g{padding:1rem 1.1rem 1.1rem;min-width:0}
+.g.ancha{grid-column:1/-1}
+.g-h{display:flex;align-items:baseline;justify-content:space-between;gap:1rem;margin-bottom:.7rem;flex-wrap:wrap}
+.g-t{font-size:15px;font-weight:700;letter-spacing:-.2px}
+.g-k{display:flex;gap:12px;font-size:12px;color:var(--text2);flex-wrap:wrap}
+.g-k span{display:inline-flex;align-items:center;gap:5px}
+.g-k i{width:10px;height:10px;border-radius:3px;background:var(--c)}
+.g-c{position:relative;height:280px}
+.g-vacio{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:13px}
+
+.graficas.tres{grid-template-columns:repeat(3,minmax(0,1fr))}
+/* Total justo abajo de las barras, con la letra del título (un poco más chica): el número arranca en la
+   misma vertical que las barras y "Total" va a su izquierda (el ancho de los nombres lo pone alinearTotal) */
+.g-col{display:flex;flex-direction:column}
+.g-col .g-h{margin-bottom:.5rem}
+.g-tot{margin-top:.6rem;display:grid;grid-template-columns:auto 1fr;align-items:baseline;font-size:13px;font-weight:700;letter-spacing:-.2px;color:var(--text)}
+.g-tot span{text-align:right;padding-right:8px}
+.g-tot b{font-weight:700}
+.g-tot:empty{display:none}
+/* Municipios del día arriba del mapa */
+.op-munis{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--text2)}
+
+.cargador{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg);z-index:5000;font-size:14px;color:var(--text2)}
+
+/* 6 días por fila solo cuando entran los nombres de las plantas en un renglón */
+@media (max-width:1439px){
+  .semana{grid-template-columns:repeat(3,minmax(0,1fr))}
+}
+@media (max-width:760px){
+  .seg{max-width:100%;overflow-x:auto;scrollbar-width:none}
+  .semana{grid-template-columns:repeat(2,minmax(0,1fr))}
+  .dia{min-width:0}
+  .graficas,.graficas.tres{grid-template-columns:1fr}
+  .mapa-card{height:540px}
+  .pen-card{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr);height:auto}
+  .pen-lado{border-right:0;border-bottom:1px solid var(--border)}
+  .pen-mapa{height:460px}
+  .barra-in{padding:10px 16px;min-height:64px}
+  .titulo h1{font-size:21px}
+  .titulo .ico{width:26px;height:26px;font-size:21px;line-height:26px}
+  .toggles{margin-left:0}
+}
+</style>
+</head>
+<body>
+<div class="cargador" id="cargador">Cargando datos…</div>
+<header class="barra">
+  <div class="barra-in">
+    <a class="volver" href="./?panel=supervisor" title="Volver a COM 2">‹<span> COM 2</span></a>
+    <div class="titulo">
+      <span class="ico" aria-hidden="true">♻</span>
+      <h1>Supervisión de Bolsones</h1>
+    </div>
+  </div>
+</header>
+
+<div class="wrap">
+
+  <!-- Categorías: cada botón muestra uno de los bloques .cat de abajo -->
+  <nav class="cats" id="cats">
+    <button data-cat="organizacion" class="on"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Organización del servicio</button>
+    <button data-cat="pendientes"><svg viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>Pendientes</button>
+    <button data-cat="atrasados"><svg viewBox="0 0 24 24"><path d="M12 3 2.5 20h19z"/><path d="M12 10v4.5"/><path d="M12 17.5v.01"/></svg>Atrasados</button>
+    <button data-cat="borrar"><svg viewBox="0 0 24 24"><path d="M4 7h16"/><path d="M10 11v6M14 11v6"/><path d="M6 7l1 13h10l1-13"/><path d="M9 7V4h6v3"/></svg>Para borrar</button>
+    <button data-cat="ingreso"><svg viewBox="0 0 24 24"><path d="M4 13h4l2 3h4l2-3h4"/><path d="M4 13 6.5 5h11L20 13v6H4z"/><path d="M12 3v7M9.5 7.5 12 10l2.5-2.5"/></svg>Seguimiento ingreso</button>
+    <button data-cat="informe"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="m9 13 2 2 4-4"/></svg>Informe realizados</button>
+    <button data-cat="operacion"><svg viewBox="0 0 24 24"><path d="M3 7h11v9H3z"/><path d="M14 10h4l3 3v3h-7"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg>Operación del día</button>
+    <button data-cat="buscador"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>Buscador dirección</button>
+  </nav>
+
+  <!-- Datos fijos del servicio: municipios y planta de cada día, vaciados fijos -->
+  <div class="cat on" data-cat="organizacion">
+  <section class="semana" id="semana"></section>
+  </div>
+
+  <!-- Todo lo que está en estado Nuevo: a la izquierda cuántos hay por municipio (filtra el mapa) -->
+  <div class="cat" data-cat="pendientes">
+  <div class="card mapa-card pen-card">
+    <aside class="pen-lado" id="penLado"></aside>
+    <div class="pen-mapa"><div class="mapa" id="penMapa"></div><div class="ficha" id="penFicha"></div></div>
+  </div>
+  </div>
+
+  <!-- Réplica de la hoja "Atrasados": vaciados pendientes por antigüedad y municipio, y el detalle -->
+  <div class="cat" data-cat="atrasados">
+  <section class="card atr-card">
+    <div class="hm-wrap"><div class="hm" id="hmAtraso"></div></div>
+  </section>
+  <section class="card atr-card">
+    <div id="atLista"></div>
+  </section>
+  <!-- Mapa de los atrasados (solo si hay alguno) -->
+  <div class="card mapa-card mapa-op" id="atrMapaCard" hidden>
+    <div class="mapa" id="atrMapa"></div>
+    <div class="ficha" id="atrFicha"></div>
+  </div>
+  </div>
+
+  <!-- Hoy: mapa como la hoja "Realizar hoy" y seguimiento de gestiones (el contenido lo arma vistaHTML) -->
+  <div class="cat" data-cat="operacion" id="vOp"></div>
+
+  <!-- Lo mismo para un día que ya pasó (como la hoja "Informe realizados"). Solo días anteriores a hoy -->
+  <div class="cat" data-cat="informe">
+  <div id="vInf"></div>
+  </div>
+
+  <!-- Réplica de la hoja "Repetidos": direcciones con más de una solicitud abierta y descripciones que piden borrar -->
+  <div class="cat" data-cat="borrar">
+  <section class="card atr-card">
+    <div class="sec-t">Direcciones repetidas</div>
+    <div id="repLista"></div>
+  </section>
+  <section class="card atr-card">
+    <div class="sec-t">Descripción para borrar</div>
+    <div id="borLista"></div>
+  </section>
+  </div>
+
+  <!-- Réplica de la hoja "Seguimiento ingreso": solicitudes ingresadas en la fecha elegida -->
+  <div class="cat" data-cat="ingreso">
+  <section class="card atr-card">
+    <div class="ing-bar">
+      <label class="ing-f">Fecha <input type="date" id="ingDia"></label>
+      <span class="ing-tot" id="ingTot"></span>
+    </div>
+    <div class="tabla-wrap"><table class="tabla tabla-ing" id="tIngFalta"></table></div>
+    <div class="tabla-wrap"><table class="tabla tabla-ing" id="tIngOk"></table></div>
+  </section>
+  </div>
+
+  <!-- Buscar una dirección o edificio y ver todas sus solicitudes, con las columnas de Operación del día -->
+  <div class="cat" data-cat="buscador">
+  <section class="card atr-card">
+    <div class="ing-bar">
+      <label class="ing-f bus-f">Dirección o edificio <span class="bus-caja"><input type="search" id="busQ" placeholder="Ej: Quijote 2562 o Cecoed" autocomplete="off"><div class="bus-lista" id="busLista" hidden></div></span></label>
+      <span class="ing-tot" id="busTot"></span>
+    </div>
+    <div class="tabla-wrap"><table class="tabla tabla-ges" id="busTabla"></table></div>
+  </section>
+  </div>
+
+</div>
+
+<script>
+// ─────────────────────────────────────────────────────────────────────────────
+// Fuente de datos: la base pública de Bolsones (sin datos personales) que sube n8n a Supabase
+// Storage con el botón Actualizar de la portada. Lo privado (teléfonos, notas) se abre aparte
+// con la contraseña del sitio (ver privados()).
+const CONFIG = {
+  fuente: 'https://srgduwdvkgqrrmhxpzlx.supabase.co/storage/v1/object/public/bases/bolsones.json',   // Supabase Storage (desde el 10/11/2026)
+};
+
+// ── Calendario del servicio (se edita a mano acá) ──
+// Un día por entrada, de lunes a domingo, en ese orden. En cada día: qué municipios se atienden y en qué
+// planta descargan, y los vaciados fijos (detalle es opcional: líneas de texto debajo del nombre).
+// Hasta el 10/11/2026 estaba en bolsones-calendario.json del repo com-mvd/bases.
+const CALENDARIO = [
+  { dia: 'Lunes',
+    municipios: [{ municipio: 'B', planta: 'La Paloma' }, { municipio: 'F', planta: 'Geminis' }],
+    vaciadosFijos: [
+      { nombre: 'Cooperativa Mesa 1', municipio: 'F' },
+      { nombre: 'Plaza Alba Roballo', municipio: 'F', detalle: ['14:00 a 21:00'] },
+      { nombre: 'Torre de los Caudillos', municipio: 'CH', detalle: ['Retiro por Enrique Rodó 2395 bis', '10:00 a 12:00'] },
+      { nombre: 'Edificio IM', municipio: 'B' },
+    ] },
+  { dia: 'Martes',
+    municipios: [{ municipio: 'A', planta: 'La Paloma' }, { municipio: 'G', planta: 'Duran' }],
+    vaciadosFijos: [
+      { nombre: 'PTI Cerro', municipio: 'A', detalle: ['Edificio Verde 217 - Solytex', '10:30 a 15:00', 'Descargar en Durán'] },
+      { nombre: 'Viviendas BPS', municipio: 'G', detalle: ['Bv. José Batlle y Ordóñez 6320', '8:00'] },
+      { nombre: 'Edificio IM', municipio: 'B' },
+    ] },
+  { dia: 'Miércoles',
+    municipios: [{ municipio: 'E', planta: 'Geminis' }],
+    vaciadosFijos: [
+      { nombre: 'Cooperativa Mesa 1', municipio: 'F' },
+      { nombre: 'Edificio IM', municipio: 'B' },
+    ] },
+  { dia: 'Jueves',
+    municipios: [{ municipio: 'C', planta: 'Burgues' }, { municipio: 'D', planta: 'Duran' }],
+    vaciadosFijos: [
+      { nombre: 'Recorrido La Teja', municipio: 'A', detalle: ['Primer jueves del mes: de mañana', 'Tercer jueves del mes: de tarde'] },
+      { nombre: 'Edificio IM', municipio: 'B' },
+    ] },
+  { dia: 'Viernes',
+    municipios: [{ municipio: 'CH', planta: 'Geminis' }],
+    vaciadosFijos: [
+      { nombre: 'Cooperativa Mesa 1', municipio: 'F' },
+      { nombre: 'Torre de los Caudillos', municipio: 'CH', detalle: ['Retiro por Enrique Rodó 2395 bis', '10:00 a 12:00'] },
+      { nombre: 'Edificio IM', municipio: 'B' },
+    ] },
+  { dia: 'Sábado',
+    municipios: [{ municipio: 'CH', planta: 'Usina 5' }],
+    vaciadosFijos: [] },
+  { dia: 'Domingo',
+    municipios: [],
+    vaciadosFijos: [] },
+];
+const CARTO_KEY = 'cb1_4dpf_1_b2ca9299be611862d5d23c88';
+// ─────────────────────────────────────────────────────────────────────────────
+
+const MUNIS = ['A', 'B', 'C', 'CH', 'D', 'E', 'F', 'G'];
+
+// Color de cada municipio: el mismo del formato condicional de la hoja Indicadores
+// de SUPERVISION BOLSONES. Se usa en todas las etiquetas de municipio de la página.
+const COLOR_MUNI = { A: '#C2A289', B: '#FFE599', C: '#B6D7A8', CH: '#6D9EEB', D: '#F9CB9C', E: '#93C47D', F: '#B4A7D6', G: '#A64D79' };
+// Etiqueta de municipio: fondo neutro con la marca de color a la izquierda (como los vaciados fijos)
+const chipMuni = (m, largo) => `<span class="mb" style="border-left-color:${COLOR_MUNI[m] || 'var(--gris)'}">${largo ? 'Municipio ' : ''}${esc(m)}</span>`;
+// Día de servicio de cada municipio (ISO: 1 = lunes). CH va viernes y sábado;
+// la planilla toma el sábado para calcular el atraso, se replica igual.
+const DIA_SERVICIO = { B: 1, F: 1, A: 2, G: 2, E: 3, C: 4, D: 4, CH: 6 };
+const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+const ATRASO = [
+  { n: 'Sin atraso', c: '#F2C29C' },
+  { n: '1 semana', c: '#E98A4F' },
+  { n: '2 semanas', c: '#D45E26' },
+  { n: '3 semanas', c: '#A8431A' },
+  { n: '4 semanas o más', c: '#6E2A0F' },
+];
+const COL = { pend: '#eb6834', atr: '#d03b3b', asig: '#2a78d6', hecho: '#1baf7a', gris: '#B5AFA6' };
+const RE_ENTREGA = /entrega|cambio/i;
+
+const st = {
+  munis: new Set(), q: '',  // filtros por municipio y búsqueda (sin controles por ahora)
+  ingDia: null,             // fecha elegida en la pestaña Ingreso (por defecto hoy)
+  infDia: null,             // día elegido en Informe realizados (por defecto ayer)
+};
+let D, HOY, HOYk;
+
+// ── utilidades ──────────────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+const fmt = n => (n ?? 0).toLocaleString('es-UY', { maximumFractionDigits: 1 });
+const pad = n => String(n).padStart(2, '0');
+const clave = d => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const desdeClave = k => { const [y, m, d] = k.split('-').map(Number); return new Date(y, m - 1, d); };
+const sumarDias = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+const diaISO = d => (d.getDay() + 6) % 7 + 1;
+const fCorta = d => d ? `${pad(d.getDate())}/${pad(d.getMonth() + 1)}` : '';
+const fHora = d => d ? `${fCorta(d)} ${pad(d.getHours())}:${pad(d.getMinutes())}` : '';
+const diasEntre = (a, b) => Math.round((b - a) / 864e5);
+const norm = s => (s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+const nomTransp = t => (t || '').replace(/-\d+$/, '').trim();
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+
+function preparar(json) {
+  const ix = Object.fromEntries(json.columnas.map((c, i) => [c, i]));
+  const filas = json.registros.map(a => {
+    const r = {};
+    for (const c in ix) r[c] = a[ix[c]];
+    r.fSolD = r.fSol ? new Date(r.fSol) : null;
+    r.fGesD = r.fGes ? new Date(r.fGes) : null;
+    r.solK = r.fSolD ? clave(r.fSolD) : '';
+    r.gesK = r.fGesD ? clave(r.fGesD) : '';
+    r.entrega = RE_ENTREGA.test(r.nota);
+    r.pendiente = r.estado === 'Nuevo' || r.estado === 'Asignado';
+    r.txt = norm([r.dir, r.edif, r.transp, r.nota, r.obs, r.mun].join(' '));
+    return r;
+  });
+  const gen = new Date(json.generado);
+  // "Hoy" va según el reloj de Montevideo: generado es la fecha más nueva de los datos,
+  // y a primera hora todavía no hay solicitudes del día (quedaba en ayer)
+  HOYk = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Montevideo' });
+  HOY = desdeClave(HOYk);
+  // Atraso igual que la hoja "Atrasados": semanas desde el último día de
+  // servicio del municipio anterior a hoy (si hoy es el día, cuenta el de la semana pasada).
+  // A diferencia de la planilla, también cuentan las entregas y cambios (pedido del usuario).
+  for (const r of filas) {
+    r.semanas = null;
+    if (r.estado !== 'Nuevo' || !r.fSolD) continue;
+    const delta0 = ((diaISO(HOY) - (DIA_SERVICIO[r.mun] || 1)) % 7 + 7) % 7;
+    const prev = sumarDias(HOY, -(delta0 === 0 ? 7 : delta0));
+    const d = desdeClave(r.solK);
+    r.semanas = d >= prev ? 0 : Math.min(4, Math.ceil(diasEntre(d, prev) / 7));
+  }
+  return { filas, calendario: [], generado: gen };
+}
+
+// ── filtros ─────────────────────────────────────────────────────────────────
+const pasaMuni = r => !st.munis.size || st.munis.has(r.mun);
+const pasaQ = r => !st.q || r.txt.includes(st.q);
+const base = () => D.filas.filter(r => pasaMuni(r) && pasaQ(r));
+
+// ── conjuntos que replican las hojas de la planilla ─────────────────────────
+function conjuntos() {
+  const B = base();
+  return {
+    B,
+    pendientes: B.filter(r => r.pendiente),
+    atrasados: B.filter(r => r.semanas >= 1).sort((a, b) => a.fSolD - b.fSolD),
+  };
+}
+
+// ── semana ──────────────────────────────────────────────────────────────────
+
+function renderSemana(C) {
+  // El calendario es fijo: "Hoy" va según el reloj, no según la fecha de la copia de datos
+  const hoyIso = diaISO(new Date());
+  $('semana').innerHTML = D.calendario.slice(0, 6).map((c, i) => {
+    const fijos = c.vaciadosFijos || [];
+    return `<div class="dia ${i + 1 === hoyIso ? 'hoy' : ''}">
+      <div class="dia-n"><span>${DIAS[i]}</span>${i + 1 === hoyIso ? '<span class="dia-hoy">Hoy</span>' : ''}</div>
+      <div class="dia-sec dia-sec-cols"><span>Municipios</span><svg class="dia-fl" viewBox="0 0 24 24" aria-hidden="true"><line x1="4" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/></svg><span>Descarga</span></div>
+      <div class="dia-rows">${c.municipios.map(x => `
+        ${chipMuni(x.municipio, true)}
+        <svg class="dia-fl" viewBox="0 0 24 24" aria-hidden="true"><line x1="4" y1="12" x2="19" y2="12"/><polyline points="13 6 19 12 13 18"/></svg>
+        <span class="dia-p">${esc(x.planta)}</span>`).join('')}
+      </div>
+      <div class="dia-sec sig">Vaciados fijos</div>
+      <div class="dia-fijos">${fijos.length ? fijos.map(v => `
+        <div class="fv" style="--c:${COLOR_MUNI[v.municipio] || COL.gris}">
+          <span class="mb">${esc(v.municipio)}</span>
+          <div class="fv-n">${esc(v.nombre)}</div>
+        </div>`).join('') : '<div class="dia-vacio">Sin vaciados fijos</div>'}
+      </div></div>`;
+  }).join('');
+}
+
+// ── ficha de un punto del mapa ──────────────────────────────────────────────
+// Operación del día e Informe realizados. Arriba de la línea, igual que la ficha de Pendientes
+// (dirección, edificio y tipo, municipio en su renglón); abajo, el estado, la fecha de gestión y el
+// transportista (pedido del 05/11)
+function fichaHTML(r) {
+  const estado = r.estado === 'Nuevo' && r.semanas >= 1 ? ['Atrasado ' + (r.semanas >= 4 ? '4+ sem.' : r.semanas + ' sem.'), COL.atr, '#F9E1E0']
+    : r.estado === 'Nuevo' ? ['Nuevo', COL.pend, '#FCE9DF']
+    : r.estado === 'Asignado' ? ['Asignado', COL.asig, '#E1ECFA'] : [r.estado, '#0f7a55', '#DDF3EA'];
+  const fila = (k, v) => v || v === 0 ? `<dt>${k}</dt><dd>${esc(v)}</dd>` : '';
+  const transp = r.transp === '-' ? '' : nomTransp(r.transp);
+  const datos = fila('Fecha de gestión', r.fGesD ? fHora(r.fGesD) : '') + fila('Transportista', transp);
+  return fichaArriba(r) + `
+    <div style="margin-bottom:.5rem"><span class="est" style="--c:${estado[1]};--bg-c:${estado[2]}">${esc(estado[0])}</span></div>
+    ${datos ? `<dl>${datos}</dl>` : ''}`;
+}
+
+// Lo de arriba de la línea gris, igual en todas las fichas: dirección, edificio y tipo, y el municipio
+function fichaArriba(r) {
+  const edif = [r.edif && norm(r.edif) !== norm(r.dir) ? r.edif : '', r.tipoEdif].filter(Boolean).join(' · ');
+  return `<button class="ficha-x" aria-label="Cerrar">×</button>
+    <h3>${esc(r.dir)}</h3>
+    ${edif ? `<div class="sub">${esc(edif)}</div>` : ''}
+    <div class="sub" style="margin-top:6px">${chipMuni(r.mun, true)}</div>
+    <hr>`;
+}
+
+// ── mapa y seguimiento de un día (Operación del día = hoy, Informe realizados = un día pasado) ──
+// Las dos pestañas muestran lo mismo; cada una tiene su propio mapa, gráficas y tabla (prefijo p en los id).
+// arriba: lo que va primero en el panel de la izquierda (en Informe, la fecha).
+// conGraficas: las tres gráficas van solo en Informe realizados
+function vistaHTML(p, arriba = '', conGraficas = true) {
+  return `
+  <div class="card mapa-card mapa-op pen-card">
+    <aside class="pen-lado vista-lado">${arriba}<div class="op-munis" id="${p}Munis"></div><div class="seg seg-modo" id="${p}Modo"></div><div class="toggles" id="${p}Toggles"></div><div class="ley" id="${p}Ley"></div></aside>
+    <div class="pen-mapa"><div class="mapa" id="${p}Mapa"></div><div class="ficha" id="${p}Ficha"></div></div>
+  </div>
+  ${conGraficas ? `<section class="graficas tres" style="margin-top:14px">
+    <div class="card g g-col">
+      <div class="g-h"><div class="g-t">Solicitudes por transportista</div></div>
+      <div class="g-c"><canvas id="${p}Transp"></canvas></div>
+      <div class="g-tot" id="${p}TranspTot"></div>
+    </div>
+    <div class="card g g-col">
+      <div class="g-h"><div class="g-t">Bolsones por transportista</div></div>
+      <div class="g-c"><canvas id="${p}BolT"></canvas></div>
+      <div class="g-tot" id="${p}BolTTot"></div>
+    </div>
+    <div class="card g g-col">
+      <div class="g-h"><div class="g-t">Bolsones por planta</div></div>
+      <div class="g-c"><canvas id="${p}Planta"></canvas></div>
+      <div class="g-tot" id="${p}PlantaTot"></div>
+    </div>
+  </section>` : ''}
+  <section class="card atr-card" style="margin-top:14px">
+    <div class="tabla-wrap"><table class="tabla tabla-ges" id="${p}Tabla"></table></div>
+  </section>`;
+}
+
+// dia() da la clave del día que muestra la vista; nombre() lo que va antes de los municipios.
+// pasado: en un día que ya pasó no se puede saber qué estaba asignado, así que no hay grupo Asignados,
+// y no se muestra el día ni el aviso de "no hay municipios" (la fecha ya está en el selector)
+function crearVista(p, contenedor, dia, nombre, pasado = false, arriba = '') {
+  $(contenedor).innerHTML = vistaHTML(p, arriba, pasado);
+  return { p, dia, nombre, pasado, mapa: null, capa: null, marc: new Map(), sel: null, encuadrar: false,
+    grupo: (r, d) => r.gesK === d ? 'realizados' : !pasado && r.estado === 'Asignado' ? 'asignados' : 'pendientes',
+    modo: 'estado',      // 'estado' o 'transp' (selector arriba a la derecha del mapa)
+    ocultos: new Set(), // transportistas apagados en el filtro (arranca con todos prendidos)
+    verPend: true,     // pendientes visibles en el modo Transportistas
+    verTipo: { realizados: true, asignados: true }, // filtro de la referencia de círculos (modo Transportistas)
+    rend: L.canvas({ padding: .3 }), // cada mapa necesita su propio dibujador
+    ver: { realizados: true, asignados: true, pendientes: true } };
+}
+const VOp = crearVista('op', 'vOp', () => HOYk, () => ''); // "Hoy" se sobreentiende
+const VInf = crearVista('inf', 'vInf', () => st.infDia, () => '', true,
+  `<div class="lado-fecha"><label class="ing-f">Fecha <input type="date" id="infDia"></label></div>`);
+
+// Hoja "Realizar hoy": municipios que se atienden ese día según el calendario, solicitudes Nuevo o
+// Asignado de antes de ese día. Se suman las que se gestionaron ese día en esos municipios.
+// En un día pasado, lo que se gestionó después estaba pendiente en ese momento.
+// Un día sin servicio (domingo) no tiene pendientes: solo lo que se gestionó igual ese día.
+// Con gestión ese día = realizado, aunque siga "Asignado" sin cerrar (igual que la hoja "Informe realizados")
+// otros: también lo realizado y lo asignado en municipios que no tocan ese día (solo Operación del día,
+// pedido del 05/11: que se vea si se trabajó o se asignó algo fuera del calendario). Los pendientes
+// siguen siendo solo los de los municipios del día.
+const munisDe = dia => (D.calendario[diaISO(desdeClave(dia)) - 1]?.municipios || []).map(x => x.municipio);
+const realizarDia = (dia, munis, otros = false) => base().filter(r =>
+  (munis.length && munis.includes(r.mun) && (r.gesK === dia || (r.solK < dia && (r.pendiente || r.gesK > dia))))
+  || ((otros || !munis.length) && r.gesK === dia)
+  || (otros && r.estado === 'Asignado'));
+
+function renderVista(v) {
+  renderSeguimiento(v); renderMapa(v);
+}
+
+// Dos formas de ver el mapa (selector arriba a la derecha):
+//  - Estado: cada punto con el color de su estado y los botones Realizados / Asignados / Pendientes.
+//  - Transportistas: cada transportista con su color (realizados rellenos, asignados con borde);
+//    los pendientes en naranja. Se puede filtrar por transportista.
+// Las líneas que unían los puntos de cada transportista están apagadas a prueba (CON_LINEAS).
+const CON_LINEAS = false;
+// Número de orden en los realizados del modo Transportistas (Operación del día e Informe realizados)
+const CON_NUMEROS = true;
+// El mapa se crea recién cuando la pestaña está visible (Leaflet necesita tamaño real).
+// Devuelve true la primera vez, para encuadrar los puntos.
+function prepararMapa(v) {
+  if (v.mapa) { v.mapa.invalidateSize(); return false; }
+  // Sin botones de zoom (se hace con la rueda) ni el texto de créditos de abajo a la derecha.
+  // zoomSnap en cuartos: al encuadrar los puntos el mapa se acerca lo justo, sin dejar tanto borde vacío
+  v.mapa = L.map(v.p + 'Mapa', { zoomControl: false, attributionControl: false, preferCanvas: true, zoomSnap: .25 }).setView([-34.86, -56.16], 12);
+  L.tileLayer(`https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=${CARTO_KEY}`, {
+    maxNativeZoom: 18, maxZoom: 20, subdomains: 'abcd',
+  }).addTo(v.mapa);
+  v.capa = L.layerGroup().addTo(v.mapa);
+  v.mapa.on('click', () => cerrarFicha(v));
+  return true;
+}
+
+function renderMapa(v) {
+  const p = v.p;
+  if (!$(p + 'Mapa').offsetWidth) return;
+  const primera = prepararMapa(v);
+  const dia = v.dia(), munis = munisDe(dia), todos = realizarDia(dia, munis, !v.pasado);
+  const nom = v.nombre();
+  // Sin etiquetas de municipio (pedido del usuario); solo se avisa si ese día no hay servicio
+  $(p + 'Munis').innerHTML = munis.length ? esc(nom) : (nom ? nom + ': no' : 'No') + ' hay municipios de servicio';
+  $(p + 'Munis').hidden = v.pasado || (munis.length && !nom);
+
+  $(p + 'Modo').innerHTML = [['estado', 'Estado'], ['transp', 'Transportistas']]
+    .map(([k, l]) => `<button class="${v.modo === k ? 'on' : ''}" data-m="${k}">${l}</button>`).join('');
+  $(p + 'Modo').querySelectorAll('button').forEach(b => b.onclick = () => { v.modo = b.dataset.m; v.encuadrar = true; renderVista(v); });
+
+  // Operación del día, modo Transportistas: abajo de los filtros, qué es cada círculo. También filtra
+  // (como los demás: el primer toque deja solo ese), para ver por ejemplo solo los asignados
+  $(p + 'Ley').innerHTML = v.modo === 'transp' && !v.pasado
+    ? [['realizados', '', 'Realizado'], ['asignados', 'asig', 'Asignado']]
+      .map(([k, c, l]) => `<button class="tg ${v.verTipo[k] ? '' : 'off'}" data-k="${k}"><i class="${c}"></i>${l}</button>`).join('') : '';
+  // Al dejar solo uno, arriba quedan prendidos solo los transportistas que tienen de eso (y los pendientes
+  // apagados); con los dos, vuelven todos
+  $(p + 'Ley').querySelectorAll('button').forEach(b => b.onclick = () => {
+    elegirFiltro(['realizados', 'asignados'], k => v.verTipo[k], (k, si) => v.verTipo[k] = si, b.dataset.k);
+    const ambos = v.verTipo.realizados && v.verTipo.asignados;
+    v.ocultos = new Set(ambos ? [] : Object.keys(v.porT || {}).filter(t => !v.porT[t][v.verTipo.asignados ? 'asignados' : 'realizados'].length));
+    v.verPend = ambos;
+    v.encuadrar = true;
+    renderVista(v);
+  });
+
+  v.capa.clearLayers(); v.marc.clear();
+  const P = v.modo === 'transp' ? mapaTransportistas(v, todos, dia, munis.length) : mapaEstado(v, todos, dia, munis.length);
+  // Los botones del panel pueden haber cambiado el alto de la tarjeta (y con él el del mapa)
+  v.mapa.invalidateSize();
+  // Al abrir, al cambiar de día, de modo o de filtro, el mapa se acomoda a los puntos
+  if ((primera || v.encuadrar) && P.length) v.mapa.fitBounds(L.latLngBounds(P.map(r => [r.lat, r.lng])), { padding: [30, 30] });
+  v.encuadrar = false;
+  if (v.sel) { if (v.marc.has(v.sel.id)) seleccionar(v, v.sel); else cerrarFicha(v); }
+}
+
+// ── pestaña Pendientes: todas las solicitudes en estado Nuevo ────────────────
+// Cada punto con el color de su municipio (los de la hoja Indicadores). A la izquierda del mapa, un
+// panel con el total y cuántas hay por municipio (solo informativo).
+const VPen = { p: 'pen', mapa: null, capa: null, marc: new Map(), sel: null, encuadrar: false,
+  rend: L.canvas({ padding: .3 }), ficha: fichaPendiente };
+
+function renderPendientes() {
+  const v = VPen;
+  if (!$('penMapa').offsetWidth) return;
+  const primera = prepararMapa(v);
+  const nuevos = base().filter(r => r.estado === 'Nuevo' && r.lat && r.lng);
+  const n = {};
+  for (const r of nuevos) n[r.mun] = (n[r.mun] || 0) + 1;
+
+  // Municipios en el orden en que se atienden en la semana (según el calendario): B F A G E C D CH
+  const orden = [...new Set(D.calendario.flatMap(c => c.municipios.map(x => x.municipio)))].filter(m => MUNIS.includes(m));
+  $('penLado').innerHTML = `
+    <div class="pen-tot"><span>Total</span><b class="num">${nuevos.length}</b></div>
+    ${orden.map(m => `<div class="pen-fila" style="--c:${COLOR_MUNI[m]}"><span>Municipio ${m}</span><b class="num">${n[m] || 0}</b></div>`).join('')}`;
+
+  v.capa.clearLayers(); v.marc.clear();
+  for (const r of nuevos) punto(v, r, COLOR_MUNI[r.mun] || COL.gris);
+  // Al abrir, el mapa se centra para que entren todos los puntos. Se repite en el cuadro siguiente,
+  // cuando la página ya terminó de acomodarse, por si el mapa cambió de tamaño al aparecer.
+  if (primera && nuevos.length) {
+    const encuadrar = () => v.mapa.fitBounds(L.latLngBounds(nuevos.map(r => [r.lat, r.lng])), { padding: [24, 24], maxZoom: 15 });
+    encuadrar();
+    requestAnimationFrame(() => { v.mapa.invalidateSize(); encuadrar(); });
+  }
+  if (v.sel) { if (v.marc.has(v.sel.id)) seleccionar(v, v.sel); else cerrarFicha(v); }
+}
+
+// Ficha de un punto de Pendientes: sin etiqueta de estado (todos son Nuevo), el municipio en su propio
+// renglón y solo fecha de solicitud, cantidad de bolsones y observaciones
+function fichaPendiente(r) {
+  const fila = (k, val) => val || val === 0 ? `<dt>${k}</dt><dd>${esc(val)}</dd>` : '';
+  return fichaArriba(r) + `
+    <dl>
+      ${fila('Fecha de solicitud', r.fSolD ? fHora(r.fSolD) : '')}
+      ${fila('Cantidad de bolsones', r.cantSol != null ? fmt(r.cantSol) : '')}
+      ${fila('Observaciones', r.nota)}
+    </dl>`;
+}
+
+// Un punto del mapa. relleno/borde: color de adentro y del contorno
+// n: número que va escrito adentro (el punto se agranda para que entre)
+function punto(v, r, relleno, borde = '#fff', n = null) {
+  const m = L.circleMarker([r.lat, r.lng], {
+    renderer: v.rend, radius: n == null ? 6 : 9, color: borde, weight: borde === '#fff' ? 1.5 : 2.5, fillColor: relleno, fillOpacity: .95,
+  }).bindTooltip(esc(r.dir), { direction: 'top', offset: [0, -6] })
+    .on('click', e => { L.DomEvent.stopPropagation(e); seleccionar(v, r); });
+  m.borde = { color: borde, weight: borde === '#fff' ? 1.5 : 2.5 };
+  m.addTo(v.capa); v.marc.set(r.id, m);
+  // El número va encima y deja pasar el mouse al punto (tooltip y clic siguen siendo del punto)
+  if (n != null) L.marker([r.lat, r.lng], { interactive: false, keyboard: false,
+    icon: L.divIcon({ className: 'pt-num', html: n, iconSize: [18, 18] }) }).addTo(v.capa);
+}
+
+// Filtros del panel izquierdo: arrancan todos prendidos. Con todos prendidos, tocar uno deja solo ese;
+// después cada toque suma o saca. Si se apagan todos, vuelven a prenderse todos.
+// esta(k): si k está prendido; poner(k, si): lo prende o apaga
+function elegirFiltro(claves, esta, poner, k) {
+  if (claves.every(esta)) claves.forEach(c => poner(c, c === k));
+  else {
+    poner(k, !esta(k));
+    if (!claves.some(esta)) claves.forEach(c => poner(c, true));
+  }
+}
+
+// conServicio: el día tiene municipios de servicio (si no, no hay pendientes y no va ese botón)
+function mapaEstado(v, todos, dia, conServicio) {
+  const p = v.p, grupoDe = v.grupo;
+  const n = { realizados: 0, asignados: 0, pendientes: 0 };
+  for (const r of todos) n[grupoDe(r, dia)]++;
+  const def = [['realizados', 'Realizados', COL.hecho], ['asignados', 'Asignados', COL.asig], ['pendientes', 'Pendientes', COL.pend]]
+    .filter(([k]) => !(k === 'asignados' && v.pasado) && !(k === 'pendientes' && !conServicio));
+  $(p + 'Toggles').innerHTML = def.map(([k, l, c]) => `<button class="tg ${v.ver[k] ? '' : 'off'}" data-k="${k}" style="--c:${c}"><i></i>${l}<b class="num">${n[k]}</b></button>`).join('');
+  $(p + 'Toggles').querySelectorAll('.tg').forEach(b => b.onclick = () => {
+    elegirFiltro(def.map(d => d[0]), k => v.ver[k], (k, si) => v.ver[k] = si, b.dataset.k);
+    renderVista(v);
+  });
+
+  const P = todos.filter(r => r.lat && r.lng && v.ver[grupoDe(r, dia)]);
+  const orden = { realizados: 1, asignados: 2, pendientes: 3 };
+  const color = { realizados: COL.hecho, asignados: COL.asig, pendientes: COL.pend };
+  for (const r of P.sort((a, b) => orden[grupoDe(a, dia)] - orden[grupoDe(b, dia)])) punto(v, r, color[grupoDe(r, dia)]);
+  return P;
+}
+
+// Colores de los transportistas: ninguno parecido al naranja de los pendientes
+const COLOR_TRANSP = ['#6250d6', '#0e7490', '#be185d', '#4d7c0f', '#a16207', '#1e293b', '#b91c1c', '#0284c7', '#a21caf', '#65a30d'];
+
+function mapaTransportistas(v, todos, dia, conServicio) {
+  const p = v.p, grupoDe = v.grupo;
+  const porT = transportistasDe(v, todos, dia);
+  const nombres = Object.keys(porT).sort();
+  const colorT = Object.fromEntries(nombres.map((t, i) => [t, COLOR_TRANSP[i % COLOR_TRANSP.length]]));
+  const pend = todos.filter(r => grupoDe(r, dia) === 'pendientes' && r.lat && r.lng);
+  v.porT = porT; // para que la referencia de círculos sepa quién tiene qué
+  // El número de cada transportista cuenta lo que deja ver la referencia de círculos
+  const cuenta = t => (v.verTipo.realizados ? porT[t].realizados.length : 0) + (v.verTipo.asignados ? porT[t].asignados.length : 0);
+  // En Informe realizados (día pasado) este modo muestra solo transportistas: los pendientes quedan en Estado
+  const conPend = conServicio && !v.pasado;
+
+  // Filtro (ver elegirFiltro): los transportistas y, si hay, los pendientes (sin transportista)
+  $(p + 'Toggles').innerHTML = nombres.map(t => `<button class="tg ${CON_LINEAS ? 'tg-t' : ''} ${v.ocultos.has(t) ? 'off' : ''}" data-t="${esc(t)}" style="--c:${colorT[t]}"><i></i>${esc(t)}<b class="num">${cuenta(t)}</b></button>`).join('')
+    + (conPend ? `<button class="tg ${v.verPend ? '' : 'off'}" data-pend="1" style="--c:${COL.pend}"><i></i>Pendientes<b class="num">${pend.length}</b></button>` : '');
+  $(p + 'Toggles').querySelectorAll('.tg').forEach(b => b.onclick = () => {
+    // '' = Pendientes (ningún transportista se llama así)
+    const claves = [...nombres, ...(conPend ? [''] : [])];
+    elegirFiltro(claves, k => k ? !v.ocultos.has(k) : v.verPend,
+      (k, si) => k ? (si ? v.ocultos.delete(k) : v.ocultos.add(k)) : v.verPend = si,
+      b.dataset.pend ? '' : b.dataset.t);
+    v.encuadrar = true;
+    renderVista(v);
+  });
+
+  const elegidos = nombres.filter(t => !v.ocultos.has(t));
+  if (CON_LINEAS) dibujarRecorridos(v, porT, elegidos, colorT);
+  const P = [];
+  if (conPend && v.verPend) for (const r of pend) { punto(v, r, COL.pend); P.push(r); }
+  // Realizados con relleno del color del transportista; asignados con relleno blanco y borde de su color.
+  // Cada realizado lleva el orden en que lo hizo ese transportista
+  // (la referencia de círculos puede dejar solo realizados o solo asignados)
+  const numerar = CON_NUMEROS;
+  for (const t of elegidos) {
+    if (v.verTipo.asignados) for (const r of porT[t].asignados) { punto(v, r, '#fff', colorT[t]); P.push(r); }
+    if (!v.verTipo.realizados) continue;
+    const hechos = numerar ? [...porT[t].realizados].sort((a, b) => a.fGesD - b.fGesD) : porT[t].realizados;
+    hechos.forEach((r, i) => { punto(v, r, colorT[t], '#fff', numerar ? i + 1 : null); P.push(r); });
+  }
+  return P;
+}
+
+// Realizados y asignados de cada transportista (los pendientes no tienen transportista)
+function transportistasDe(v, todos, dia) {
+  const porT = {};
+  for (const r of todos) {
+    const t = nomTransp(r.transp), g = v.grupo(r, dia);
+    if (!t || r.transp === '-' || !r.lat || !r.lng || g === 'pendientes') continue;
+    ((porT[t] ||= { realizados: [], asignados: [] })[g]).push(r);
+  }
+  return porT;
+}
+
+// Recorrido de cada transportista: línea llena uniendo sus realizados en el orden en que los hizo, y
+// desde el último, línea punteada por sus asignados (del más cercano al siguiente más cercano).
+// Primero se dibuja en línea recta y en cuanto llega el camino por las calles se reemplaza.
+function dibujarRecorridos(v, porT, nombres, colorT) {
+  const lejos = (a, b) => (a.lat - b.lat) ** 2 + (a.lng - b.lng) ** 2;
+  for (const t of nombres) {
+    const hechos = porT[t].realizados.sort((a, b) => a.fGesD - b.fGesD);
+    const linea = (pts, punteada) => {
+      const ll = pts.map(r => [r.lat, r.lng]);
+      const pl = L.polyline(ll, {
+        renderer: v.rend, color: colorT[t], weight: 3, opacity: .8, dashArray: punteada ? '6 7' : null,
+      }).bindTooltip(esc(t), { sticky: true }).addTo(v.capa);
+      porCalles(ll).then(camino => { if (camino && v.capa.hasLayer(pl)) pl.setLatLngs(camino); });
+    };
+    if (hechos.length > 1) linea(hechos, false);
+    if (!porT[t].asignados.length) continue;
+    // Orden de los asignados: siempre al más cercano, arrancando desde el último realizado
+    const falta = [...porT[t].asignados], ruta = [];
+    let actual = hechos.at(-1) || null;
+    if (actual) ruta.push(actual);
+    while (falta.length) {
+      const k = actual ? falta.reduce((m, r, j) => lejos(r, actual) < lejos(falta[m], actual) ? j : m, 0) : 0;
+      actual = falta.splice(k, 1)[0]; ruta.push(actual);
+    }
+    if (ruta.length > 1) linea(ruta, true);
+  }
+}
+
+// Camino por las calles entre los puntos, del servidor público de OSRM (gratis, pide no más de un
+// pedido por segundo). Va en tramos de hasta 25 puntos. Se guarda por sesión para no volver a pedirlo;
+// si falla, la línea queda recta.
+const OSRM = 'https://router.project-osrm.org/route/v1/driving/';
+const caminos = new Map();
+let proximoPedido = 0;
+function porCalles(ll) {
+  const k = ll.map(([a, b]) => `${b.toFixed(5)},${a.toFixed(5)}`).join(';');
+  if (!caminos.has(k)) {
+    let guardado = null;
+    try { guardado = JSON.parse(sessionStorage.getItem('camino:' + k)); } catch {}
+    caminos.set(k, guardado ? Promise.resolve(guardado) : pedirCamino(ll).then(c => {
+      try { sessionStorage.setItem('camino:' + k, JSON.stringify(c)); } catch {}
+      return c;
+    }).catch(() => { caminos.delete(k); return null; }));
+  }
+  return caminos.get(k);
+}
+async function pedirCamino(ll) {
+  const camino = [];
+  for (let i = 0; i < ll.length - 1; i += 24) {
+    const tramo = ll.slice(i, i + 25);
+    const espera = proximoPedido - Date.now();
+    proximoPedido = Math.max(Date.now(), proximoPedido) + 1100;
+    if (espera > 0) await new Promise(r => setTimeout(r, espera));
+    const res = await fetch(OSRM + tramo.map(([a, b]) => `${b.toFixed(5)},${a.toFixed(5)}`).join(';') + '?overview=full&geometries=geojson');
+    const j = await res.json();
+    if (j.code !== 'Ok') throw new Error(j.code);
+    camino.push(...j.routes[0].geometry.coordinates.map(([b, a]) => [a, b]));
+  }
+  return camino;
+}
+
+function seleccionar(v, r) {
+  v.sel = r;
+  v.marc.forEach((m, id) => m.setStyle(id === r.id ? { color: '#1A1714', weight: 3 } : m.borde));
+  v.marc.get(r.id)?.bringToFront();
+  const f = $(v.p + 'Ficha');
+  f.innerHTML = (v.ficha || fichaHTML)(r);
+  f.classList.add('on');
+  f.querySelector('.ficha-x').onclick = () => cerrarFicha(v);
+}
+function cerrarFicha(v) {
+  v.sel = null; $(v.p + 'Ficha').classList.remove('on');
+  v.marc.forEach(m => m.setStyle(m.borde));
+}
+
+// ── gráficas ────────────────────────────────────────────────────────────────
+Chart.defaults.font.family = "'DM Sans', system-ui, sans-serif";
+Chart.defaults.font.size = 12;
+Chart.defaults.color = '#5F5A54';
+Chart.defaults.plugins.tooltip.enabled = false; // sin etiquetas negras al pasar el mouse
+const graficas = {};
+const AZUL_BARRA = '#1b3f74'; // el azul de la barra del título
+
+function grafica(id, cfg, vacio) {
+  graficas[id]?.destroy();
+  const cont = $(id).parentElement;
+  cont.querySelector('.g-vacio')?.remove();
+  if (vacio) { cont.insertAdjacentHTML('beforeend', '<div class="g-vacio">Sin datos</div>'); graficas[id] = null; return; }
+  graficas[id] = new Chart($(id), cfg);
+}
+
+// Escribe el total al final de cada barra (suma de todas las series de esa fila)
+const totalAlFinal = {
+  id: 'totalAlFinal',
+  afterDatasetsDraw(chart) {
+    const { ctx } = chart, metas = chart.data.datasets.map((_, i) => chart.getDatasetMeta(i));
+    ctx.save();
+    ctx.font = `600 12px ${Chart.defaults.font.family}`;
+    ctx.fillStyle = '#1A1714';
+    ctx.textBaseline = 'middle';
+    chart.data.labels.forEach((_, i) => {
+      const total = chart.data.datasets.reduce((s, d) => s + (d.data[i] || 0), 0);
+      const fin = Math.max(...metas.map(m => m.data[i]?.x ?? 0));
+      ctx.fillText(fmt(total), fin + 6, metas[0].data[i].y);
+    });
+    ctx.restore();
+  },
+};
+
+// Si la gráfica tiene un total abajo (id + 'Tot'), lo alinea: "Total" termina donde terminan los nombres
+// y el número arranca donde arrancan las barras; se repite cada vez que la gráfica cambia de tamaño
+const alinearTotal = {
+  id: 'alinearTotal',
+  afterLayout(chart) {
+    const el = document.getElementById(chart.canvas.id + 'Tot');
+    if (el) el.style.gridTemplateColumns = `${chart.chartArea.left}px 1fr`;
+  },
+};
+
+// Barras horizontales sin líneas de fondo ni números abajo: el valor va escrito al final de cada barra
+// Nombres largos ("Gerardo Albano & Brian Albano") en dos renglones, cortando en el espacio más cercano a la mitad
+const partirNombre = s => {
+  if (s.length <= 16) return s;
+  const esp = [...s.matchAll(/ /g)].map(m => m.index);
+  if (!esp.length) return s;
+  const corte = esp.reduce((m, i) => Math.abs(i - s.length / 2) < Math.abs(m - s.length / 2) ? i : m);
+  return [s.slice(0, corte), s.slice(corte + 1)];
+};
+
+function barrasH(id, etiquetas, series) {
+  const dos = etiquetas.some(e => partirNombre(e) !== e);
+  // Alto justo para las barras (sin lugar vacío arriba); vacía, un renglón para el "Sin datos", así
+  // las tres tarjetas no quedan con blanco de más cuando hay pocos datos
+  $(id).parentElement.style.height = (etiquetas.length ? etiquetas.length * (dos ? 36 : 30) : 40) + 'px';
+  grafica(id, {
+    type: 'bar',
+    data: { labels: etiquetas.map(partirNombre), datasets: series.map(s => ({ borderRadius: 4, borderSkipped: false, maxBarThickness: 18, categoryPercentage: .8, barPercentage: .9, ...s })) },
+    options: {
+      indexAxis: 'y', maintainAspectRatio: false, animation: { duration: 250 },
+      layout: { padding: { right: 36 } }, // lugar para el total
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { display: false, stacked: true, beginAtZero: true },
+        // Sin el margen que Chart.js deja arriba y abajo para los nombres: cada nombre entra en su renglón
+        y: { stacked: true, grid: { display: false }, border: { display: false }, ticks: { padding: 6 },
+          afterFit: s => { s.paddingTop = 0; s.paddingBottom = 0; } },
+      },
+    },
+    plugins: [totalAlFinal, alinearTotal],
+  }, !etiquetas.length);
+}
+
+// ── seguimiento de gestiones: misma lógica que la hoja "Seguimiento gestiones" ──
+// Gestiones con fecha de gestión en el día de la vista, ordenadas por transportista y hora.
+// Arriba tres gráficas; abajo el detalle de cada gestión.
+
+function renderSeguimiento(v) {
+  const p = v.p;
+  const transp = r => r.transp === '-' ? '' : nomTransp(r.transp);
+  // Lo mismo que muestra el filtro del mapa: en Estado, nada si Realizados está apagado;
+  // en Transportistas, sin los transportistas apagados
+  // (y si la referencia de círculos deja solo asignados, la tabla queda vacía: son todas gestiones hechas)
+  const pasa = r => v.modo === 'transp' ? !v.ocultos.has(nomTransp(r.transp)) && v.verTipo.realizados : v.ver.realizados;
+  // Orden de la hoja: por transportista y después por fecha de gestión (los sin transportista al final)
+  const G = base().filter(r => r.gesK === v.dia() && pasa(r))
+    .sort((a, b) => (!transp(a) - !transp(b)) || transp(a).localeCompare(transp(b)) || a.fGesD - b.fGesD);
+
+  // Suma por categoría, de mayor a menor
+  const agrupar = (clave, valor) => {
+    const t = {};
+    for (const r of G) { const k = clave(r); if (k) t[k] = (t[k] || 0) + valor(r); }
+    return Object.entries(t).sort((a, b) => b[1] - a[1]);
+  };
+  // Abajo de cada gráfica, la suma de sus barras (nada si está vacía)
+  const barras = (id, filas, color) => {
+    barrasH(p + id, filas.map(x => x[0]), [{ data: filas.map(x => x[1]), backgroundColor: color }]);
+    const tot = filas.reduce((s, x) => s + x[1], 0);
+    $(p + id + 'Tot').innerHTML = filas.length ? `<span>Total</span><b class="num">${fmt(tot)}</b>` : '';
+  };
+
+  // Las gráficas solo están en Informe realizados
+  if ($(p + 'Transp')) {
+    // Cuántas solicitudes gestionó cada transportista (con o sin bolsones)
+    barras('Transp', agrupar(transp, () => 1), AZUL_BARRA);
+    // "Cantidad transportada" sumada por transportista y por planta
+    barras('BolT', agrupar(transp, r => r.cantT || 0).filter(x => x[1] > 0), AZUL_BARRA);
+    barras('Planta', agrupar(r => r.planta, r => r.cantT || 0).filter(x => x[1] > 0), AZUL_BARRA);
+  }
+
+  tablaGestiones(p + 'Tabla', G, 'No hay gestiones ese día');
+}
+
+// Detalle de gestiones: mismas columnas y en el mismo orden que la hoja "Seguimiento gestiones".
+// La usan Operación del día, Informe realizados y el Buscador de dirección.
+// conSolicitud: suma "Edificio" y "Fecha de solicitud" después de la dirección (solo el Buscador; la
+// fecha con el año porque ahí aparecen solicitudes de cualquier momento)
+function tablaGestiones(id, G, vacio, conSolicitud = false) {
+  const transp = r => r.transp === '-' ? '' : nomTransp(r.transp);
+  const cab = ['Municipio', 'Dirección completa', ...(conSolicitud ? ['Edificio', 'Fecha de solicitud'] : []), 'Datos de solicitud', 'Gestión', 'Cantidad bolsones', 'Tipo bolsón', 'Fecha de gestión', 'Observaciones', 'Transportista', 'Planta', 'Cantidad transportada', 'Hora'];
+  const fSol = d => d ? `${fCorta(d)}/${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}` : '';
+  $(id).innerHTML = `<thead><tr>${cab.map(c => `<th>${c}</th>`).join('')}</tr></thead><tbody>${G.length ? G.map(r => `<tr>
+      <td>${chipMuni(r.mun)}</td>
+      <td class="dir">${esc(r.dir)}</td>
+      ${conSolicitud ? `<td class="obs">${esc(r.edif)}</td><td class="hora">${fSol(r.fSolD)}</td>` : ''}
+      <td class="desc">${esc(r.nota)}</td>
+      <td>${esc(r.gestion)}</td>
+      <td class="num">${r.cantB != null ? fmt(r.cantB) : ''}</td>
+      <td>${esc(r.tipoB)}</td>
+      <td class="hora">${fHora(r.fGesD)}</td>
+      <td class="obs">${esc(r.obs)}</td>
+      <td class="obs">${esc(transp(r))}</td>
+      <td>${esc(r.planta)}</td>
+      <td class="num">${r.cantT ? fmt(r.cantT) : ''}</td>
+      <td class="hora">${esc(r.hora)}</td></tr>`).join('')
+    : `<tr><td colspan="${cab.length}" class="at-vacio">${vacio}</td></tr>`}</tbody>`;
+}
+
+// ── Buscador de dirección: todas las solicitudes de una dirección ──
+// Mientras se escribe, abajo del campo aparecen las direcciones que coinciden (por dirección o por
+// edificio; cada palabra tiene que aparecer, sin importar tildes ni mayúsculas). Al elegir una, la tabla
+// muestra todas las solicitudes de esa dirección, de la más vieja a la más nueva.
+const BUS_MAX = 12; // opciones en la lista
+let busOpc = [], busSel = -1;
+
+// En una misma dirección puede haber edificios distintos: cada uno va como opción aparte.
+// claveEdif junta las formas de escribir el mismo nombre ("Spazio IV" = "EDIFICIO SPAZIO IV").
+// Si el edificio está vacío, es solo "Edificio" o repite la dirección, queda sin nombre ('').
+const limpiarEdif = s => norm(s).replace(/[^a-z0-9ñ]+/g, ' ').replace(/\b(edificio|edficio|edif|ed)\b/g, ' ').replace(/\s+/g, ' ').trim();
+function claveEdif(r) {
+  const e = limpiarEdif(r.edif);
+  return !e || limpiarEdif(r.dir).includes(e) ? '' : e;
+}
+
+// Direcciones (y edificios) que coinciden con lo escrito, con cuántas solicitudes tiene cada una
+function opcionesBuscador(texto) {
+  const q = norm(texto).split(/[\s·]+/).filter(Boolean);
+  if (q.join('').length < 3) return [];
+  const porDir = new Map();
+  for (const r of base()) {
+    if (!r.dir || !q.every(w => norm(r.dir + ' ' + r.edif).includes(w))) continue;
+    const clave = r.dir + '|' + claveEdif(r);
+    const o = porDir.get(clave) || { dir: r.dir, clave: claveEdif(r), mun: r.mun, nombres: new Map(), n: 0 };
+    // Como nombre se muestra la forma más usada
+    if (o.clave) o.nombres.set(r.edif, (o.nombres.get(r.edif) || 0) + 1);
+    o.n++;
+    porDir.set(clave, o);
+  }
+  const ops = [...porDir.values()];
+  // Cuántos edificios distintos hay en cada dirección, para avisar en las que tienen más de uno
+  const edifPorDir = new Map();
+  for (const o of ops) {
+    o.edif = o.clave ? [...o.nombres].sort((a, b) => b[1] - a[1])[0][0] : '';
+    edifPorDir.set(o.dir, (edifPorDir.get(o.dir) || 0) + 1);
+  }
+  for (const o of ops) o.varios = edifPorDir.get(o.dir) > 1;
+  // Primero las que empiezan con lo escrito y después las de más solicitudes;
+  // los edificios de una misma dirección quedan juntos
+  const empieza = o => norm(o.dir).startsWith(q[0]) ? 0 : 1;
+  const totDir = new Map();
+  for (const o of ops) totDir.set(o.dir, (totDir.get(o.dir) || 0) + o.n);
+  return ops.sort((a, b) => empieza(a) - empieza(b) || totDir.get(b.dir) - totDir.get(a.dir) || a.dir.localeCompare(b.dir) || b.n - a.n);
+}
+
+function listaBuscador() {
+  busOpc = opcionesBuscador($('busQ').value);
+  busSel = -1;
+  const ver = busOpc.slice(0, BUS_MAX);
+  $('busLista').innerHTML = !busOpc.length ? (norm($('busQ').value).replace(/\s/g, '').length >= 3 ? '<div class="bus-nada">No se encontró esa dirección</div>' : '')
+    : ver.map((o, i) => {
+        const edif = o.edif || (o.varios ? 'Sin nombre de edificio' : '');
+        return `<button type="button" data-i="${i}">${chipMuni(o.mun)}<span class="bus-dir">${esc(o.dir)}${edif ? `<small>${esc(edif)}</small>` : ''}</span><b class="num">${o.n}</b></button>`;
+      }).join('')
+      + (busOpc.length > BUS_MAX ? `<div class="bus-nada">y ${busOpc.length - BUS_MAX} más: seguí escribiendo</div>` : '');
+  $('busLista').hidden = !$('busLista').innerHTML;
+  $('busLista').querySelectorAll('button').forEach(b => b.onmousedown = e => { e.preventDefault(); elegirDir(busOpc[+b.dataset.i]); });
+}
+
+function elegirDir(o) {
+  st.busDir = o.dir;
+  st.busEdif = o.clave;
+  $('busQ').value = o.dir + (o.edif ? ' · ' + o.edif : '');
+  $('busLista').hidden = true;
+  renderBuscador();
+}
+
+// Hasta que se elige una dirección no se muestra la tabla
+function renderBuscador() {
+  $('busTabla').parentElement.hidden = !st.busDir;
+  if (!st.busDir) { $('busTot').textContent = ''; return; }
+  // De la solicitud más vieja a la más nueva
+  const R = base().filter(r => r.dir === st.busDir && claveEdif(r) === st.busEdif).sort((a, b) => (a.fSolD || 0) - (b.fSolD || 0));
+  $('busTot').innerHTML = `<b class="num">${R.length}</b> ${R.length === 1 ? 'solicitud' : 'solicitudes'}`;
+  tablaGestiones('busTabla', R, 'No hay solicitudes en esa dirección', true);
+}
+
+let busEspera;
+$('busQ').oninput = () => {
+  // Al cambiar lo escrito se deja de mostrar la dirección elegida hasta elegir otra
+  if (st.busDir) { st.busDir = null; renderBuscador(); }
+  clearTimeout(busEspera); busEspera = setTimeout(listaBuscador, 150);
+};
+$('busQ').onfocus = () => { if (!st.busDir) listaBuscador(); };
+$('busQ').onblur = () => { $('busLista').hidden = true; };
+// Flechas para moverse en la lista, Enter para elegir, Escape para cerrarla
+$('busQ').onkeydown = e => {
+  const bots = [...$('busLista').querySelectorAll('button')];
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+    if (!bots.length) return;
+    e.preventDefault();
+    busSel = (busSel + (e.key === 'ArrowDown' ? 1 : -1) + bots.length) % bots.length;
+    bots.forEach((b, i) => b.classList.toggle('sel', i === busSel));
+    bots[busSel].scrollIntoView({ block: 'nearest' });
+  } else if (e.key === 'Enter') {
+    const o = busOpc[busSel >= 0 ? busSel : 0];
+    if (o && !$('busLista').hidden) { e.preventDefault(); elegirDir(o); }
+  } else if (e.key === 'Escape') $('busLista').hidden = true;
+};
+
+// Informe realizados: solo días anteriores a hoy (hoy está en Operación del día). Por defecto, ayer.
+function renderInfDia() {
+  const inp = $('infDia');
+  inp.min = D.filas.map(r => r.gesK).filter(Boolean).sort()[0];
+  inp.max = clave(sumarDias(HOY, -1));
+  if (!st.infDia) st.infDia = inp.max;
+  inp.value = st.infDia;
+}
+$('infDia').onchange = e => {
+  // Sin fecha o fuera de rango vuelve a ayer
+  const k = e.target.value;
+  st.infDia = k && k >= e.target.min && k <= e.target.max ? k : e.target.max;
+  e.target.value = st.infDia;
+  VInf.encuadrar = true;
+  VInf.ocultos.clear();
+  cerrarFicha(VInf);
+  renderVista(VInf);
+};
+
+// ── render general ──────────────────────────────────────────────────────────
+function render() {
+  const C = conjuntos();
+  renderSemana(C); renderPendientes(); renderInfDia(); renderVista(VOp); renderVista(VInf); renderAtrasados(C); renderBorrar(C); renderIngreso(); renderBuscador();
+}
+
+// ── pestaña Atrasados: misma tabla y detalle que la hoja "Atrasados" ────────
+function renderAtrasados(C) {
+  // Solicitudes en estado Nuevo con al menos una semana de atraso (r.semanas viene de preparar()).
+  // Las entregas y cambios se muestran igual que los vaciados, sin ninguna marca aparte.
+  const atr = C.B.filter(r => r.semanas >= 1);
+  // Municipios en el orden en que se atienden en la semana (según el calendario): B F A G E C D CH
+  const orden = [...new Set(D.calendario.flatMap(c => c.municipios.map(x => x.municipio)).filter(m => MUNIS.includes(m)))];
+  const det = C.atrasados.slice().sort((a, b) => orden.indexOf(a.mun) - orden.indexOf(b.mun) || a.fSolD - b.fSolD);
+
+  // Matriz semanas × municipio. Las casillas con atrasados van en el azul de la barra, más intenso cuantos más hay
+  const max = Math.max(1, ...orden.flatMap(m => [1, 2, 3, 4].map(i => atr.filter(r => r.mun === m && r.semanas === i).length)));
+  let html = `<div class="hm-h izq"></div>${orden.map(m => `<div class="hm-h">${chipMuni(m)}</div>`).join('')}`;
+  ATRASO.forEach((a, i) => {
+    if (!i) return; // "Sin atraso" no se muestra
+    html += `<div class="hm-l">${a.n}</div>`;
+    html += orden.map(m => {
+      const n = atr.filter(r => r.mun === m && r.semanas === i).length;
+      const fondo = n ? `background:color-mix(in srgb, #1b3f74 ${Math.round((.55 + .45 * n / max) * 100)}%, #FFFFFF);color:#fff` : '';
+      return `<div class="hc ${n ? '' : 'cero'}" style="${fondo}">${n}</div>`;
+    }).join('');
+  });
+  $('hmAtraso').innerHTML = html;
+
+  // Detalle: ordenado por municipio y fecha, como la hoja. El municipio se ve por el color de la izquierda.
+  const ICO_RELOJ = '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>';
+  // Sin atrasados: la tabla queda vacía y el recuadro del detalle lo avisa
+  $('atLista').innerHTML = det.length ? `<div class="at-lista">${det.map(r => `
+    <div class="at-it" style="--m:${COLOR_MUNI[r.mun] || COL.gris}">
+      <div class="at-dir">${esc(r.dir)}</div>
+      <div class="at-sub"><span>${ICO_CAL}Solicitada ${fHora(r.fSolD)}</span><span>${ICO_RELOJ}hace ${diasEntre(desdeClave(r.solK), HOY)} días</span></div>
+      ${r.nota ? `<div class="at-desc">${esc(r.nota)}</div>` : ''}
+    </div>`).join('')}</div>`
+    : '<div class="at-vacio">No hay solicitudes atrasadas</div>';
+  renderMapaAtrasados(det);
+}
+
+// Mapa de los atrasados abajo del detalle, con el color de cada municipio y la misma ficha que Pendientes
+const VAtr = { p: 'atr', mapa: null, capa: null, marc: new Map(), sel: null, encuadrar: false,
+  rend: L.canvas({ padding: .3 }), ficha: fichaPendiente, lista: [] };
+function renderMapaAtrasados(lista) {
+  const v = VAtr;
+  if (lista) v.lista = lista.filter(r => r.lat && r.lng);
+  $('atrMapaCard').hidden = !v.lista.length;
+  if (!v.lista.length || !$('atrMapa').offsetWidth) return;
+  const primera = prepararMapa(v);
+  v.capa.clearLayers(); v.marc.clear();
+  for (const r of v.lista) punto(v, r, COLOR_MUNI[r.mun] || COL.gris);
+  // Centrado para que entren todos (con uno solo, sin acercarse de más)
+  const encuadrar = () => v.mapa.fitBounds(L.latLngBounds(v.lista.map(r => [r.lat, r.lng])), { padding: [30, 30], maxZoom: 15 });
+  encuadrar();
+  if (primera) requestAnimationFrame(() => { v.mapa.invalidateSize(); encuadrar(); });
+  if (v.sel) { if (v.marc.has(v.sel.id)) seleccionar(v, v.sel); else cerrarFicha(v); }
+}
+
+// ── pestaña Para borrar: misma lógica que la hoja "Repetidos" ───────────────
+// Sobre las solicitudes abiertas (Nuevo o Asignado):
+//  - Direcciones repetidas: la misma dirección aparece más de una vez.
+//  - Descripción para borrar: el texto de la solicitud dice "borrar".
+const ICO_CAL = '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>';
+
+function renderBorrar(C) {
+  const grupos = {};
+  for (const r of C.pendientes) (grupos[r.dir.trim().toLowerCase()] ||= []).push(r);
+  const rep = Object.values(grupos).filter(g => g.length > 1)
+    .map(g => g.sort((a, b) => a.fSolD - b.fSolD))
+    .sort((a, b) => a[0].dir.localeCompare(b[0].dir));
+  $('repLista').innerHTML = rep.length ? `<div class="at-lista">${rep.map(g => `
+    <div class="at-it" style="--m:${COLOR_MUNI[g[0].mun] || COL.gris}">
+      <div class="at-dir">${esc(g[0].dir)}</div>
+      <div class="rep-sol">${g.map(r => `
+        <div class="rep-fila"><b>${esc(r.estado)}</b><span class="at-sub" style="display:inline-flex"><span>${ICO_CAL}Solicitada ${fHora(r.fSolD)}</span></span></div>
+        ${r.nota ? `<div class="at-desc">${esc(r.nota)}</div>` : ''}`).join('')}
+      </div>
+    </div>`).join('')}</div>`
+    : '<div class="at-vacio">No hay direcciones repetidas</div>';
+
+  const bor = C.pendientes.filter(r => /borrar/i.test(r.nota)).sort((a, b) => a.dir.localeCompare(b.dir));
+  $('borLista').innerHTML = bor.length ? `<div class="at-lista">${bor.map(r => `
+    <div class="at-it" style="--m:${COLOR_MUNI[r.mun] || COL.gris}">
+      <div class="at-dir">${esc(r.dir)}</div>
+      <div class="rep-fila"><b>${esc(r.estado)}</b><span class="at-sub" style="display:inline-flex"><span>${ICO_CAL}Solicitada ${fHora(r.fSolD)}</span></span></div>
+      <div class="at-desc">${esc(r.nota)}</div>
+    </div>`).join('')}</div>`
+    : '<div class="at-vacio">No hay solicitudes para borrar</div>';
+}
+
+// ── pestaña Ingreso: misma lógica que la hoja "Seguimiento ingreso" ─────────
+// Solicitudes cuya fecha de solicitud cae en el día elegido, ordenadas por hora.
+// Se separan en dos tablas: arriba las que les falta teléfono u horario en la descripción,
+// abajo las que tienen las dos cosas. El teléfono viene marcado en los datos (r.tel), porque
+// el número se borra antes de publicar; el horario se busca en el texto.
+const RE_HORARIO = new RegExp([
+  String.raw`\b\d{1,2}(:\d{2})?\s*(a|al|-|–)\s*\d{1,2}(:\d{2})?\b`,           // 8 a 12, 7:30 a 10:30
+  String.raw`\b\d{1,2}:\d{2}\b`,                                               // 13:30
+  String.raw`\b\d{1,2}\s*(hs?|hrs?|horas)\b`,                                  // 17 hs
+  String.raw`(desde|despu[eé]s de|a partir de|antes de|hasta|luego de)\s+(las?\s+)?\d`, // a partir de las 9
+  String.raw`\b(ma[ñn]ana|tarde|noche|mediod[ií]a|medio d[ií]a)\b`,            // en la mañana
+].join('|'), 'i');
+// Se busca en la nota sin teléfonos, para que los dígitos de un número no parezcan un horario
+const tieneHorario = r => RE_HORARIO.test(r.notaPub ?? r.nota ?? '');
+
+// "Datos de la solicitud" va última en las dos tablas: es la que se lleva el espacio sobrante
+function filasIngreso(L_, conFalta) {
+  if (!L_.length) return `<tr><td colspan="${conFalta ? 6 : 5}" class="at-vacio">No hay solicitudes</td></tr>`;
+  return L_.map(r => `<tr>
+      <td>${chipMuni(r.mun)}</td>
+      <td class="dir">${esc(r.dir)}</td>
+      <td class="hora">${pad(r.fSolD.getHours())}:${pad(r.fSolD.getMinutes())}</td>
+      <td class="num">${r.cantSol != null ? fmt(r.cantSol) : ''}</td>
+      ${conFalta ? `<td>${r.tel ? '' : '<span class="falta">Teléfono</span>'}${tieneHorario(r) ? '' : '<span class="falta">Horario</span>'}</td>` : ''}
+      <td class="desc">${esc(r.nota)}</td></tr>`).join('');
+}
+
+// Municipio, Dirección, Hora y Cantidad con el mismo ancho en las dos tablas, para que queden alineadas
+// (se mide cada tabla con su ancho justo y después se fija el mayor en todas las celdas de esa columna,
+// porque un ancho puesto solo en el encabezado pierde contra el width:1% de las celdas)
+function igualarColumnas() {
+  const tablas = [$('tIngFalta'), $('tIngOk')];
+  const celdas = (t, i) => [...t.querySelectorAll(`tr > :nth-child(${i + 1})`)].filter(c => !c.colSpan || c.colSpan === 1);
+  for (const t of tablas) for (let i = 0; i < 4; i++) celdas(t, i).forEach(c => c.style.width = '');
+  if (!$('tIngOk').offsetWidth) return; // pestaña oculta: se iguala al mostrarla
+  for (let i = 0; i < 4; i++) {
+    const ancho = Math.ceil(Math.max(...tablas.map(t => t.querySelector(`thead th:nth-child(${i + 1})`).getBoundingClientRect().width)));
+    for (const t of tablas) celdas(t, i).forEach(c => c.style.width = ancho + 'px');
+  }
+}
+
+function renderIngreso() {
+  const dias = D.filas.map(r => r.solK).filter(Boolean).sort();
+  const inp = $('ingDia');
+  inp.min = dias[0]; inp.max = HOYk;
+  if (!st.ingDia) st.ingDia = HOYk;
+  inp.value = st.ingDia;
+  const L_ = base().filter(r => r.solK === st.ingDia).sort((a, b) => a.fSolD - b.fSolD);
+  const ok = L_.filter(r => r.tel && tieneHorario(r)), falta = L_.filter(r => !(r.tel && tieneHorario(r)));
+  $('ingTot').innerHTML = `<b class="num">${L_.length}</b> ${L_.length === 1 ? 'solicitud' : 'solicitudes'}`;
+  const cab = extra => `<thead><tr><th>Municipio</th><th>Dirección</th><th>Hora</th><th>Cantidad</th>${extra ? '<th>Falta</th>' : ''}<th>Datos de la solicitud</th></tr></thead>`;
+  $('tIngFalta').innerHTML = cab(true) + `<tbody>${filasIngreso(falta, true)}</tbody>`;
+  $('tIngOk').innerHTML = cab(false) + `<tbody>${filasIngreso(ok, false)}</tbody>`;
+  igualarColumnas();
+}
+$('ingDia').onchange = e => { st.ingDia = e.target.value || HOYk; renderIngreso(); };
+
+// Categorías. La primera se abre por defecto; las demás quedan en la URL (#pendientes) para que al recargar siga ahí.
+const CATS = ['organizacion', 'pendientes', 'atrasados', 'borrar', 'ingreso', 'informe', 'operacion', 'buscador'];
+function mostrarCat(k) {
+  document.querySelectorAll('#cats button').forEach(b => b.classList.toggle('on', b.dataset.cat === k));
+  document.querySelectorAll('.cat').forEach(c => c.classList.toggle('on', c.dataset.cat === k));
+  history.replaceState(null, '', k === CATS[0] ? location.pathname + location.search : '#' + k);
+  // Lo que se dibujó con la pestaña oculta (tamaño 0) se rehace al mostrarla
+  if (!D) return;
+  if (k === 'ingreso') igualarColumnas();
+  if (k === 'operacion') renderVista(VOp);
+  if (k === 'informe') renderVista(VInf);
+  if (k === 'pendientes') renderPendientes();
+  if (k === 'atrasados') renderMapaAtrasados();
+  if (k === 'buscador') $('busQ').focus();
+}
+document.querySelectorAll('#cats button').forEach(b => b.onclick = () => mostrarCat(b.dataset.cat));
+// Alto del título fijo, para que la barra de pestañas quede pegada abajo (cambia con el ancho de pantalla)
+new ResizeObserver(([e]) => document.documentElement.style.setProperty('--alto-barra', e.target.offsetHeight + 'px'))
+  .observe(document.querySelector('.barra'));
+if (CATS.includes(location.hash.slice(1))) mostrarCat(location.hash.slice(1));
+
+// Datos privados: teléfono y descripciones completas de cada solicitud. Están en el bucket "privado" de
+// Supabase (bolsones.json.gz, lo sube n8n), que solo pueden leer supervisores y admin con sesión de COM 2.
+// Mismo formato que antes, cuando iban cifrados con la contraseña del sitio: { id: [nota, obs, edificio, tel] }.
+async function privados() {
+  try {
+    const { data, error } = await COM2.sb.storage.from('privado').download('bolsones.json.gz');
+    if (error) throw error;
+    const bytes = new Uint8Array(await data.arrayBuffer());
+    // gzip empieza con 1f 8b (por si el navegador ya lo descomprimió solo)
+    const texto = bytes[0] === 0x1f && bytes[1] === 0x8b
+      ? await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text()
+      : new TextDecoder().decode(bytes);
+    return JSON.parse(texto);
+  } catch (err) {
+    console.warn('Sin datos privados:', err.message);
+    return null;
+  }
+}
+
+// Reemplaza en cada solicitud los textos públicos (sin teléfonos) por los completos
+function sumarPrivados(priv) {
+  if (!priv) return;
+  for (const r of D.filas) {
+    const p = priv[r.id];
+    if (!p) continue;
+    r.notaPub = r.nota;
+    r.nota = p[0] || r.nota;
+    r.obs = p[1] || r.obs;
+    r.edif = p[2] || r.edif;
+    r.telefono = p[3];
+  }
+}
+
+// La base se actualiza desde el botón de Bolsones del menú principal; acá solo se lee al abrir
+async function cargar() {
+  try {
+    // Solo supervisores y admin con sesión de COM 2 (y con la contraseña inicial ya cambiada)
+    const yo = await COM2.perfil().catch(() => null);
+    if (!yo || yo.debe_cambiar_clave || !['admin', 'supervisor'].includes(yo.rol)) { location.replace('./'); return; }
+    const sep = CONFIG.fuente.includes('?') ? '&' : '?';
+    const [res, priv] = await Promise.all([
+      fetch(CONFIG.fuente + sep + 't=' + Date.now(), { cache: 'no-store' }),
+      privados(),
+    ]);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    D = preparar(await res.json());
+    D.calendario = CALENDARIO;
+    sumarPrivados(priv);
+    render();
+    $('cargador')?.remove();
+  } catch (err) {
+    $('cargador').textContent = 'No se pudieron cargar los datos (' + err.message + ').';
+  }
+}
+cargar();
+
+window.addEventListener('pageshow', e => { if (e.persisted) location.reload(); });
+</script>
+</body>
+</html>
