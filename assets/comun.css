@@ -17,17 +17,17 @@ button,input,select{font:inherit;color:inherit}
 /* ---- Barra superior ---- */
 .barra{position:sticky;top:0;z-index:20;background:linear-gradient(135deg,#0f172a 0%,#16213e 55%,#1b3f74 100%);color:#fff;box-shadow:0 4px 12px rgba(0,0,0,.3);padding-top:env(safe-area-inset-top)}
 .barra-in{padding:10px 24px;display:flex;align-items:center;gap:24px;min-height:62px}
-.marca{font-family:'Segoe UI',Arial,sans-serif;font-size:27px;font-weight:500;letter-spacing:-.01em;color:#fff;text-decoration:none;white-space:nowrap}
-.paneles{display:flex;align-items:center;gap:2px;padding:3px;height:34px;border-radius:9px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.08)}
-.panel-btn{border:0;background:transparent;color:#9aa8c2;font-size:12px;font-weight:600;height:26px;padding:0 11px;border-radius:6px;cursor:pointer;white-space:nowrap;transition:color .15s,background .15s}
+.marca{font-family:'Segoe UI',Arial,sans-serif;font-size:30px;font-weight:600;letter-spacing:-.01em;color:#fff;text-decoration:none;white-space:nowrap}
+.paneles{display:flex;align-items:center;gap:2px;padding:3px;height:30px;border-radius:8px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.08)}
+.panel-btn{border:0;background:transparent;color:#9aa8c2;font-size:11.5px;font-weight:600;height:22px;padding:0 10px;border-radius:5px;cursor:pointer;white-space:nowrap;transition:color .15s,background .15s}
 .panel-btn:hover{color:#fff}
 .panel-btn.on{background:#fff;color:var(--azul2);box-shadow:inset 0 -2px 0 var(--azul2)}
 .usuario{margin-left:auto;position:relative}
-.usuario-btn{display:flex;align-items:center;gap:8px;height:34px;border:0;background:transparent;color:#fff;cursor:pointer;padding:0 8px 0 4px;border-radius:9px;max-width:260px}
+.usuario-btn{display:flex;align-items:center;gap:7px;height:30px;border:0;background:transparent;color:#fff;cursor:pointer;padding:0 8px 0 3px;border-radius:8px;max-width:260px}
 .usuario-btn:hover{background:rgba(255,255,255,.08)}
-.usuario-btn .avatar{width:26px;height:26px;border-radius:50%;background:rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;flex:none}
-.usuario-btn .avatar svg{width:15px;height:15px}
-.usuario-btn .nombre{font-size:13.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.usuario-btn .avatar{width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;flex:none}
+.usuario-btn .avatar svg{width:14px;height:14px}
+.usuario-btn .nombre{font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .usuario-btn .flecha{opacity:.7;font-size:11px}
 .menu-usuario{position:absolute;right:0;top:calc(100% + 8px);min-width:200px;background:#fff;color:var(--text);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.25);padding:6px;border:1px solid var(--border)}
 .menu-usuario button{display:block;width:100%;text-align:left;border:0;background:transparent;padding:10px 12px;border-radius:8px;font-size:14.5px;font-weight:600;cursor:pointer}
@@ -35,9 +35,9 @@ button,input,select{font:inherit;color:inherit}
 .menu-usuario button.salir{color:var(--rojo)}
 @media (max-width:720px){
   .barra-in{flex-wrap:wrap;gap:8px 12px;padding:8px 12px}
-  .marca{font-size:22px}
+  .marca{font-size:24px}
   .paneles{order:3;width:100%;justify-content:stretch}
-  .panel-btn{flex:1;padding:0 8px;font-size:12.5px}
+  .panel-btn{flex:1;padding:0 8px;font-size:12px}
   .usuario-btn .nombre{max-width:140px}
 }
 
