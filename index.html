@@ -57,6 +57,38 @@ label.l:first-of-type{margin-top:0}
 .acc-violet .tile-icon{background:#E5DDF0}.acc-violet .tile-icon svg{stroke:#6C5790}
 .vacio{color:var(--text3);font-size:15px}
 .pantalla-cargando{min-height:100vh;display:flex;align-items:center;justify-content:center}
+
+/* Panel Supervisor: un recuadro por servicio con su Actualizar, la hora de la última subida y sus páginas
+   (antes, la portada del repo com). Arriba, Actualizar GPS. */
+.sup{max-width:1240px;width:100%;margin:0 auto;padding:26px 0 40px}
+.gps{display:flex;flex-direction:column;align-items:center;gap:6px;margin-bottom:26px}
+.servicios{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:18px;align-items:start}
+@media (max-width:1100px){.servicios{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:620px){.servicios{grid-template-columns:1fr}}
+.serv{background:#fff;border:1px solid var(--border);border-radius:18px;padding:18px 16px 16px;box-shadow:0 4px 20px rgba(26,23,20,.06),0 1px 3px rgba(26,23,20,.05);text-align:left}
+.serv-t{display:flex;align-items:center;gap:9px}
+.serv-t h2{font-size:19px;font-weight:700;letter-spacing:-.3px}
+.punto{width:11px;height:11px;border-radius:50%;flex:none}
+.serv-a{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:12px 0 14px;padding-bottom:14px;border-bottom:1px solid var(--border)}
+.btn-act{display:inline-flex;align-items:center;gap:6px;font:inherit;font-size:13px;font-weight:600;color:var(--text);background:#fff;border:1px solid var(--border);border-radius:9px;padding:6px 11px;cursor:pointer}
+.btn-act:hover{border-color:#C9C3B9}
+.btn-act:disabled{opacity:.6;cursor:default}
+.btn-act svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.btn-act.girando svg{animation:girar 1s linear infinite}
+@keyframes girar{to{transform:rotate(360deg)}}
+.estado{font-size:12.5px;color:var(--text3)}
+.estado.err{color:#B02020;font-weight:600}
+.pags{display:flex;flex-direction:column;gap:10px}
+.pag{display:flex;align-items:center;gap:12px;padding:12px;border:1px solid var(--border);border-radius:14px;text-decoration:none;color:inherit;transition:border-color .15s,box-shadow .15s}
+.pag:hover{border-color:#D0CBCB;box-shadow:0 4px 14px rgba(26,23,20,.07)}
+.pag .tile-icon{width:42px;height:42px;border-radius:12px;flex:none}
+.pag .tile-icon svg{width:21px;height:21px}
+.pag-n{flex:1;font-size:14.5px;font-weight:600;line-height:1.3}
+.pag-f{color:var(--text3);font-size:18px}
+.sin-pags{font-size:14px;color:var(--text3);padding:4px 2px}
+.sup .grupo{margin-top:2.4rem}
+.cover:has(.sup){max-width:1240px}
+.portada:has(.sup){align-items:flex-start;padding-bottom:0}
 </style>
 </head>
 <body>
@@ -215,9 +247,97 @@ async function mostrarMenu() {
   dibujarMenu();
   ver('vMenu');
 }
+// ---- Panel Supervisor: servicios con las bases del Grafana ----
+// Cada servicio tiene una base que regenera n8n (en la PC del COM, por ngrok) y sube a Supabase Storage.
+// Sus páginas son las filas de secciones con panel 'supervisor' y grupo = nombre del servicio.
+const BASES = COM2.URL + '/storage/v1/object/public/bases/';
+const N8N = 'https://blatancy-scouting-virtuous.ngrok-free.dev/webhook/';
+const SERVICIOS = [
+  { id: 'bolsones', nombre: 'Bolsones', color: '#C9631C', acc: 'amber' },
+  { id: 'agenda', nombre: 'Agenda', color: '#346A92', acc: 'blue' },
+  { id: 'zona-limpia', nombre: 'Zona Limpia', color: '#39745E', acc: 'teal' },
+  { id: 'reclamos', nombre: 'Reclamos', color: '#39745E', acc: 'teal' },
+];
+const GPS_WEBHOOK = null;   // "Actualizar GPS": todavía sin armar
+const ICONO_ACT = '<svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 4v5h-5"/></svg>';
+const ICONO_GPS = '<svg viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11z"/><circle cx="12" cy="10" r="2.5"/></svg>';
+
+// "10/11 12:33" en hora de Montevideo
+function horaLocal(iso) {
+  const p = Object.fromEntries(new Intl.DateTimeFormat('es-UY', { timeZone: 'America/Montevideo', day: '2-digit', month: '2-digit',
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23' }).formatToParts(new Date(iso)).map(x => [x.type, x.value]));
+  return `${p.day}/${p.month} ${p.hour}:${p.minute}`;
+}
+// Hora de la última subida de cada servicio, como la anota n8n en actualizado.json
+async function subidas() {
+  const r = await fetch(BASES + 'actualizado.json?t=' + Date.now(), { cache: 'no-store' });
+  return r.ok ? r.json() : {};
+}
+function estado(el, texto, err) { el.textContent = texto; el.classList.toggle('err', !!err); }
+
+function dibujarSupervisor(del) {
+  const paginas = nombre => del.filter(s => s.grupo === nombre);
+  const otros = del.filter(s => !SERVICIOS.some(x => x.nombre === s.grupo));
+  const otrosGrupos = {};
+  otros.forEach(s => (otrosGrupos[s.grupo] ||= []).push(s));
+  $('menu').innerHTML = `<div class="sup">
+    <div class="gps"><button type="button" class="btn-act" id="gps">${ICONO_GPS}Actualizar GPS</button><span class="estado" id="gpsEstado">Última actualización —</span></div>
+    <div class="servicios">${SERVICIOS.map(s => {
+      const ps = paginas(s.nombre);
+      return `<section class="serv" data-id="${s.id}">
+        <div class="serv-t"><span class="punto" style="background:${s.color}"></span><h2>${esc(s.nombre)}</h2></div>
+        <div class="serv-a"><button type="button" class="btn-act">${ICONO_ACT}Actualizar</button><span class="estado">…</span></div>
+        <div class="pags">${ps.length ? ps.map(p => `<a class="pag acc-${esc(p.color || s.acc)}" href="${esc(p.archivo)}">
+          <div class="tile-icon">${COM2.icono(p.icono)}</div><div class="pag-n">${esc(p.nombre)}</div><div class="pag-f">›</div></a>`).join('')
+          : '<div class="sin-pags">Todavía no hay páginas.</div>'}</div>
+      </section>`;
+    }).join('')}</div>
+    ${Object.entries(otrosGrupos).map(([g, ss]) => `<div class="grupo"><h3>${esc(g)}</h3><div class="grid">${ss.map(s =>
+      `<a class="tile acc-${esc(s.color)}" href="${esc(s.archivo)}"><div class="tile-icon">${COM2.icono(s.icono)}</div><div class="tile-name">${esc(s.nombre)}</div></a>`).join('')}</div></div>`).join('')}
+  </div>`;
+  $('menu').querySelectorAll('.serv').forEach(sec => {
+    const s = SERVICIOS.find(x => x.id === sec.dataset.id);
+    sec.querySelector('.btn-act').onclick = () => actualizar(s, sec);
+  });
+  $('gps').onclick = () => { if (GPS_WEBHOOK) { /* se arma más adelante */ } };
+  mostrarHoras();
+}
+async function mostrarHoras() {
+  const h = await subidas().catch(() => null);
+  $('menu').querySelectorAll('.serv').forEach(sec => {
+    const est = sec.querySelector('.estado');
+    if (!h) return estado(est, 'No se pudo leer la base', true);
+    estado(est, h[sec.dataset.id] ? 'Actualizado ' + horaLocal(h[sec.dataset.id]) : 'Sin datos');
+  });
+}
+
+// Pide a n8n que regenere la base y la suba. Queda publicada al instante; por las dudas se consulta
+// actualizado.json cada 3 s, hasta 30 s, hasta que tenga la hora de esta subida.
+async function actualizar(s, sec) {
+  const b = sec.querySelector('.btn-act'), est = sec.querySelector('.estado');
+  b.disabled = true; b.classList.add('girando');
+  estado(est, 'Actualizando...');
+  try {
+    let r;
+    try {
+      // ngrok gratis muestra una página de aviso a los navegadores; este encabezado la saltea
+      const res = await fetch(N8N + s.id + '-actualizar', { method: 'POST', headers: { 'ngrok-skip-browser-warning': '1' } });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      r = await res.json();
+    } catch (e) { return estado(est, 'No se pudo conectar con la PC del COM', true); }
+    if (!r.actualizado || !r.subida) return mostrarHoras();
+    for (let i = 0; i < 10; i++) {
+      if ((await subidas().catch(() => ({})))[s.id] === r.subida) return estado(est, 'Actualizado ' + horaLocal(r.subida));
+      await new Promise(ok => setTimeout(ok, 3000));
+    }
+    estado(est, 'Actualizado; se verá en unos minutos');
+  } finally { b.disabled = false; b.classList.remove('girando'); }
+}
+
 function dibujarMenu() {
   $('okClave').hidden = true;
   const del = secciones ? secciones.filter(s => s.panel === panel) : [];
+  if (panel === 'supervisor') return dibujarSupervisor(del);
   if (!del.length) { $('menu').innerHTML = '<p class="vacio">Todavía no hay nada en este panel.</p>'; return; }
   const grupos = {};
   del.forEach(s => (grupos[s.grupo] ||= []).push(s));
