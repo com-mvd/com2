@@ -163,15 +163,15 @@ const sinTildes = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').
 
 let yo = null, usuarios = [], actual = null;
 // Cuadros de resumen (solo datos), en tres grupos que suman siempre el total:
-//   Usuarios | Admin + Supervisores + Operadores | Activos + Con clave inicial + De baja
-// "Activos" = ya entraron y cambiaron la clave inicial; "Con clave inicial" = todavía no.
+//   Usuarios | Admin + Supervisores + Operadores | Activos + Clave inicial + De baja
+// "Activos" = ya entraron y cambiaron la clave inicial; "Clave inicial" = todavía no.
 const KPIS = [
   [{ t: 'Usuarios', f: () => true }],
   [{ t: 'Admin', f: u => u.rol === 'admin' },
    { t: 'Supervisores', f: u => u.rol === 'supervisor' },
    { t: 'Operadores', f: u => u.rol === 'operador' }],
   [{ t: 'Activos', f: u => u.activo && !u.debe_cambiar_clave },
-   { t: 'Con clave inicial', f: u => u.activo && u.debe_cambiar_clave },
+   { t: 'Clave inicial', f: u => u.activo && u.debe_cambiar_clave },
    { t: 'De baja', f: u => !u.activo }]
 ];
 
