@@ -47,6 +47,8 @@ sql/04-iconos.sql           Ícono y color de cada tarjeta del menú (ya corrido
 - **Alta y restablecer** devuelven una contraseña temporal de 10 caracteres, que se muestra **una sola vez**. Al entrar, obliga a cambiarla.
 - **Baja:** marca el perfil como inactivo y además bloquea el login (`banned_until`). No se borra nada; se puede reactivar.
 - La pantalla revisa el dígito verificador de la cédula y marca con "⚠ revisar" las cédulas cargadas que no lo cumplen.
+- Arriba hay cuadros con los totales (activos, por rol, con clave inicial y de baja). Tocar uno filtra la lista y tocarlo de nuevo saca el filtro. Las cédulas se muestran sin puntos ni guion, tal como se usan para entrar.
+- En la ficha, nombre, cédula y rol se guardan juntos con un solo botón.
 
 ## Reglas
 
