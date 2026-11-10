@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
-<title>COM</title>
+<title>COM 2</title>
 <link rel="icon" type="image/png" href="assets/logo-ciemsa.png">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
@@ -42,10 +42,6 @@ button{font:inherit;color:inherit;cursor:pointer}
 .barra{position:sticky;top:0;z-index:1200;background:linear-gradient(135deg,#0f172a 0%,#16213e 55%,#1b3f74 100%);color:#fff;box-shadow:0 4px 12px rgba(0,0,0,.3)}
 /* Mismo ancho y márgenes que .wrap; el título va centrado (se actualiza y se vuelve desde el menú principal) */
 .barra-in{max-width:1440px;margin:0 auto;min-height:84px;padding:12px clamp(16px,2.5vw,2rem);display:flex;justify-content:center;align-items:center;position:relative}
-/* Volver al menú de COM 2 (panel Supervisor) */
-.volver{position:absolute;left:clamp(16px,2.5vw,2rem);top:50%;transform:translateY(-50%);color:#fff;text-decoration:none;font-weight:700;font-size:15px;display:flex;align-items:center;gap:4px;padding:6px 10px;border-radius:9px;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.18)}
-.volver:hover{background:rgba(255,255,255,.18)}
-@media (max-width:760px){.volver{font-size:13px;padding:5px 8px}.volver span{display:none}}
 .titulo{display:flex;align-items:center;gap:10px;min-width:0}
 /* ♻ en versión emoji a color, igual que en com-mvd/dashboard/bolsones.html */
 .titulo .ico{display:flex;align-items:center;justify-content:center;flex-shrink:0;width:32px;height:32px;font-family:'Segoe UI Emoji','Apple Color Emoji','Noto Color Emoji',sans-serif;font-size:26px;font-weight:700;line-height:32px;color:#fff;filter:drop-shadow(0 1px 1px rgba(0,0,0,.18))}
@@ -283,7 +279,6 @@ button{font:inherit;color:inherit;cursor:pointer}
 <div class="cargador" id="cargador">Cargando datos…</div>
 <header class="barra">
   <div class="barra-in">
-    <a class="volver" href="./?panel=supervisor" title="Volver a COM 2">‹<span> COM 2</span></a>
     <div class="titulo">
       <span class="ico" aria-hidden="true">♻</span>
       <h1>Supervisión de Bolsones</h1>
