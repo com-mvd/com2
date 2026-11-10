@@ -9,9 +9,9 @@
 <link rel="icon" type="image/png" href="assets/logo-ciemsa.png">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
 <style>
-/* Página de carga de Barrios Sustentables: Cerro. No está en la portada: se entra por link.
-   Escribe en la planilla "Validación Barrios Sustentables" a través de su Apps Script, con la
-   clave de carga (se pide una vez y queda en este navegador).
+/* Página de carga de Barrios Sustentables: Cerro. En el panel Admin de COM 2 (solo admin).
+   Desde el 10/11/2026 guarda en la tabla vaciados de Supabase (tablero 'cerro', assets/vaciados.js), con el
+   login de COM 2. Antes escribía en la planilla "Validación Barrios Sustentables" por un Apps Script, con clave de carga.
    Mismo aspecto que barrios-sustentables-cerro.html (colores, fondo, barra, tarjetas, etiquetas, ruedita). */
 :root{
   --bg:#F7F6F3; --card:#FFFFFF; --border:#E6E2DA;
@@ -100,12 +100,8 @@ input[type=datetime-local].in::-webkit-date-and-time-value{text-align:left}
 .aviso{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translateX(-50%);max-width:calc(100% - 32px);background:#1A1714;color:#fff;border-radius:12px;padding:12px 16px;font-size:14px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:20}
 .aviso.error{background:var(--rojo)}
 
-/* Pantalla de la clave */
-.clave-caja{max-width:360px;margin:12vh auto 0;text-align:center}
-.clave-caja p{font-size:14px;color:var(--text2);margin:6px 0 16px}
-.clave-caja .err{color:var(--rojo);font-size:13px;font-weight:600;min-height:1.2em;margin-top:10px}
 .cargando{text-align:center;color:var(--text2);padding:30px 0;font-size:14px}
-/* Mientras se lee la planilla: solo la ruedita, igual que en com-mvd/dashboard y mb */
+/* Mientras se leen las cargas: solo la ruedita, igual que en com-mvd/dashboard y mb */
 .carga{min-height:max(260px,calc(100vh - 130px));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:0 16px;text-align:center}
 .ruedita{width:38px;height:38px;border:3px solid #dbe3ed;border-top-color:#2563eb;border-radius:50%;animation:girar .8s linear infinite}
 @keyframes girar{to{transform:rotate(360deg)}}
@@ -117,6 +113,7 @@ input[type=datetime-local].in::-webkit-date-and-time-value{text-align:left}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="assets/comun.js?v=202611100928"></script>
 <script src="assets/acceso.js?v=202611101800"></script>
+<script src="assets/vaciados.js?v=202611101900"></script>
 <script>COM2.acceso({ roles: ['admin'] });   // solo admin (panel Admin)</script>
 </head>
 <body>
@@ -131,23 +128,13 @@ input[type=datetime-local].in::-webkit-date-and-time-value{text-align:left}
   </div>
 </header>
 
-<!-- Mientras se lee la planilla -->
+<!-- Mientras se leen las cargas -->
 <div class="carga" id="pantallaCargando" role="status" aria-live="polite">
   <div class="ruedita" id="ruedita"></div>
   <div class="carga-t" id="cargaT">Cargando información</div>
   <button class="btn" type="button" id="reintentar" hidden>Reintentar</button>
 </div>
 
-<!-- Clave de carga: se pide una sola vez por navegador -->
-<div class="wrap" id="pantallaClave" hidden>
-  <form class="card clave-caja" id="formClave">
-    <h2 style="justify-content:center">Clave de carga</h2>
-    <p>Se pide una sola vez en este celular.</p>
-    <input class="in" id="inClave" type="password" autocomplete="current-password" placeholder="Clave" autocapitalize="off" spellcheck="false">
-    <div class="botones"><button class="btn" type="submit">Entrar</button></div>
-    <div class="err" id="errClave"></div>
-  </form>
-</div>
 
 <div class="wrap" id="pantallaCarga" hidden>
   <form class="card" id="form">
@@ -182,8 +169,6 @@ input[type=datetime-local].in::-webkit-date-and-time-value{text-align:left}
 <div class="aviso" id="aviso" hidden></div>
 
 <script>
-// Aplicación web del Apps Script "Barrios Sustentables - Validación" (Desktop/IA/barrios-sustentables)
-const API_URL = 'https://script.google.com/macros/s/AKfycbwgeDkIdZ6AUPGR_4dQS3Z24QTRThqk_9qDoi-1NTPiySEqbty06Bmo7E4U2b-KS9Em1g/exec';
 // Los mismos tres puntos que barrios-sustentables-cerro.html y el Apps Script
 const LUGARES = [
   { nombre: 'Plaza Débora Céspedes', dir: 'EGIPTO esq. SUECIA', color: '#1baf7a' },
@@ -196,7 +181,7 @@ const LUGARES = [
   { nombre: 'Escuela N29', dir: 'PORTUGAL 3325', color: '#a0663a' },
   { nombre: 'Club Verdirrojo', dir: 'PRUSIA 1621', color: '#5b6b82' },
 ];
-const GUARDADA = 'com.barrios.claveCarga';
+const TABLERO = 'cerro';   // tablero en la tabla vaciados
 const POR_PAGINA = 15;
 
 const $ = id => document.getElementById(id);
@@ -207,11 +192,9 @@ const fLinda = s => s ? `${s.slice(8, 10)}/${s.slice(5, 7)}/${s.slice(0, 4)} ${s
 // Ahora en Montevideo, en el formato del campo de fecha
 const ahora = () => new Date().toLocaleString('sv-SE', { timeZone: 'America/Montevideo' }).slice(0, 16).replace(' ', 'T');
 
-// leida: si ya llegó la lista de la planilla (antes de eso se muestra "Cargando…")
-let clave = null, filas = [], leida = false, editando = null, mostrar = POR_PAGINA, lugarElegido = null;
+// leida: si ya llegó la lista (antes de eso se muestra "Cargando…")
+let filas = [], leida = false, editando = null, mostrar = POR_PAGINA, lugarElegido = null;
 
-function leerClave() { try { return localStorage.getItem(GUARDADA); } catch { return null; } }
-function guardarClave(c) { try { c ? localStorage.setItem(GUARDADA, c) : localStorage.removeItem(GUARDADA); } catch { } }
 
 let avisoT;
 function aviso(texto, error = false) {
@@ -221,13 +204,9 @@ function aviso(texto, error = false) {
   clearTimeout(avisoT); avisoT = setTimeout(() => $('aviso').hidden = true, error ? 5000 : 2500);
 }
 
-// Todo va por POST con texto plano (sin consulta previa del navegador); la clave va en el cuerpo
+// Lee y escribe en Supabase (assets/vaciados.js); devuelve lo mismo que devolvía el Apps Script
 async function pedir(datos) {
-  const res = await fetch(API_URL, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ clave, ...datos }) });
-  if (!res.ok) throw new Error('HTTP ' + res.status);
-  const r = await res.json();
-  if (!r.ok && r.error === 'clave') { guardarClave(null); clave = null; pantalla('clave'); throw new Error('Clave de carga incorrecta'); }
-  if (!r.ok) throw new Error(r.error || 'Error');
+  const r = await Vaciados.pedir(TABLERO, datos);
   filas = r.filas;
   leida = true;
   // No se pisa la fecha mientras se la está cambiando
@@ -236,13 +215,11 @@ async function pedir(datos) {
   return r;
 }
 
-// cual: 'cargando' (ruedita), 'clave' o 'carga'
+// cual: 'cargando' (ruedita) o 'carga'
 function pantalla(cual) {
   $('pantallaCargando').hidden = cual !== 'cargando';
-  $('pantallaClave').hidden = cual !== 'clave';
   $('pantallaCarga').hidden = cual !== 'carga';
   $('pasado').hidden = cual !== 'carga';
-  if (cual === 'clave') setTimeout(() => $('inClave').focus(), 50);
 }
 
 // ── Formulario ──────────────────────────────────────────────────────────────
@@ -289,7 +266,7 @@ $('form').onsubmit = async e => {
   const cant = parseInt($('inCant').value, 10);
   if (!$('inFecha').value) return aviso('Falta la fecha y hora', true);
   if (!(cant >= 0)) return aviso('Falta la cantidad de bolsones', true);
-  // La dirección no se pide: va la del punto elegido (queda en la planilla)
+  // La dirección no se pide: va la del punto elegido
   const dir = (LUGARES.find(l => l.nombre === lugarElegido) || {}).dir || '';
   const fila = { edif: lugarElegido, dir, fGes: $('inFecha').value.slice(0, 16), cant };
   $('guardar').disabled = true;
@@ -356,23 +333,6 @@ $('inPasado').onchange = async () => {
 };
 
 // ── Inicio ──────────────────────────────────────────────────────────────────
-$('formClave').onsubmit = async e => {
-  e.preventDefault();
-  const c = $('inClave').value.trim();
-  if (!c) return;
-  $('errClave').textContent = '';
-  clave = c;
-  try {
-    cargando();
-    await pedir({ accion: 'listar' });
-    guardarClave(c);
-    pantalla('carga');
-  } catch (err) {
-    clave = null;
-    pantalla('clave');
-    $('errClave').textContent = err.message;
-  }
-};
 
 function cargando() {
   $('ruedita').hidden = false;
@@ -382,19 +342,16 @@ function cargando() {
   pantalla('cargando');
 }
 
-// La página se muestra recién cuando llegó todo de la planilla (lista y "Pasado hasta")
+// La página se muestra recién cuando llegó todo (lista y "Pasado hasta")
 async function iniciar() {
   limpiarForm();
-  clave = leerClave();
-  if (!clave) return pantalla('clave');
   cargando();
   try {
     await pedir({ accion: 'listar' });
     pantalla('carga');
   } catch (err) {
-    if (!clave) return; // clave incorrecta: pedir() ya mostró la pantalla de la clave
     $('ruedita').hidden = true;
-    $('cargaT').textContent = 'No se pudo leer la planilla (' + err.message + ')';
+    $('cargaT').textContent = 'No se pudieron leer las cargas (' + err.message + ')';
     $('cargaT').className = 'carga-t error';
     $('reintentar').hidden = false;
   }
