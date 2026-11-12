@@ -8,7 +8,7 @@
 <title>COM 2</title>
 <link rel="icon" type="image/png" href="assets/logo-ciemsa.png">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/comun.css?v=202611100928">
+<link rel="stylesheet" href="assets/comun.css?v=202611130130">
 <style>
 /* COM 2 · Usuarios: solo para el admin. Alta, edición de nombre y rol, corrección de cédula,
    restablecer contraseña y baja. Lo que toca el login (auth.users) lo hacen funciones de Supabase
@@ -20,7 +20,7 @@
    el total | por rol | por estado. Cada grupo suma siempre el total. */
 .kpis{display:flex;gap:14px;align-items:stretch}
 .kgrupo{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;gap:10px}
-.kgrupo.k1{flex:1}.kgrupo.k3{flex:3}
+.kgrupo.k1{flex:1}.kgrupo.k3{flex:3}.kgrupo.k5{flex:5}
 .ksep{width:1px;background:#D6D1C8;flex:none;margin:4px 0}
 @media (max-width:700px){
   .kpis{flex-direction:column;gap:10px}
@@ -53,7 +53,7 @@
   .fila .est{grid-column:1/-1}
 }
 .tag{display:inline-block;font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;white-space:nowrap}
-.r-admin{background:#EDE7F8;color:#5b3a9a}.r-supervisor{background:#EEF1F8;color:var(--azul)}.r-operador{background:#F1F0EC;color:var(--text2)}
+.r-admin{background:#EDE7F8;color:#5b3a9a}.r-sup_gral{background:#E3EEF7;color:#1d5f8f}.r-auxiliar{background:#E6F2EC;color:#2f6e55}.r-supervisor{background:#EEF1F8;color:var(--azul)}.r-operador{background:#F1F0EC;color:var(--text2)}
 .e-ok{background:#E3F5EE;color:#137a55}.e-baja{background:#F1F0EC;color:var(--text3)}.e-clave{background:#FDF3E1;color:var(--ambar)}
 .aviso-ced{color:var(--rojo);font-size:12px;font-weight:700;margin-left:4px}
 .vacio{text-align:center;color:var(--text2);padding:26px 10px}
@@ -113,7 +113,7 @@ label.l:first-of-type{margin-top:0}
     <label class="l" for="eCedula">Cédula</label>
     <input class="in num" id="eCedula" inputmode="numeric" required>
     <label class="l" for="eRol">Rol</label>
-    <select class="sel" id="eRol"><option value="operador">Operador</option><option value="supervisor">Supervisor</option><option value="admin">Admin</option></select>
+    <select class="sel" id="eRol"><option value="operador">Operador</option><option value="supervisor">Supervisor</option><option value="auxiliar">Auxiliar</option><option value="sup_gral">Sup Gral</option><option value="admin">Admin</option></select>
     <p class="ayuda" id="eRolAyuda" hidden>No podés cambiar tu propio rol.</p>
     <div class="botones"><button class="btn" id="eGuardar">Guardar cambios</button></div>
   </form>
@@ -142,7 +142,7 @@ label.l:first-of-type{margin-top:0}
     <label class="l" for="nCedula">Cédula</label>
     <input class="in num" id="nCedula" inputmode="numeric" placeholder="Con o sin puntos y guion" required>
     <label class="l" for="nRol">Rol</label>
-    <select class="sel" id="nRol"><option value="operador">Operador</option><option value="supervisor">Supervisor</option><option value="admin">Admin</option></select>
+    <select class="sel" id="nRol"><option value="operador">Operador</option><option value="supervisor">Supervisor</option><option value="auxiliar">Auxiliar</option><option value="sup_gral">Sup Gral</option><option value="admin">Admin</option></select>
     <div class="error" id="nError" hidden></div>
     <div class="botones"><button class="btn sec" type="button" id="nCancelar">Cancelar</button><button class="btn" id="nCrear">Crear usuario</button></div>
   </form>
@@ -153,9 +153,9 @@ label.l:first-of-type{margin-top:0}
 </div></dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="assets/comun.js?v=202611100928"></script>
+<script src="assets/comun.js?v=202611130130"></script>
 <script>
-const ROL = { admin: 'Admin', supervisor: 'Supervisor', operador: 'Operador' };
+const ROL = { admin: 'Admin', sup_gral: 'Sup Gral', auxiliar: 'Auxiliar', supervisor: 'Supervisor', operador: 'Operador' };
 const { sb, esc } = COM2;
 const $ = id => document.getElementById(id);
 const soloNum = s => String(s || '').replace(/\D/g, '');
@@ -163,11 +163,13 @@ const sinTildes = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').
 
 let yo = null, usuarios = [], actual = null;
 // Cuadros de resumen (solo datos), en tres grupos que suman siempre el total:
-//   Usuarios | Admin + Supervisores + Operadores | Activos + Clave inicial + De baja
+//   Usuarios | Admin + Sup Gral + Auxiliares + Supervisores + Operadores | Activos + Clave inicial + De baja
 // "Activos" = ya entraron y cambiaron la clave inicial; "Clave inicial" = todavía no.
 const KPIS = [
   [{ t: 'Usuarios', f: () => true }],
   [{ t: 'Admin', f: u => u.rol === 'admin' },
+   { t: 'Sup Gral', f: u => u.rol === 'sup_gral' },
+   { t: 'Auxiliares', f: u => u.rol === 'auxiliar' },
    { t: 'Supervisores', f: u => u.rol === 'supervisor' },
    { t: 'Operadores', f: u => u.rol === 'operador' }],
   [{ t: 'Activos', f: u => u.activo && !u.debe_cambiar_clave },

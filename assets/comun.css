@@ -9,13 +9,13 @@
 *{box-sizing:border-box;margin:0;padding:0}
 [hidden]{display:none!important}
 body{font-family:'DM Sans',system-ui,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased;
-  background:radial-gradient(circle at 12% 0%,#EDEEF9 0%,transparent 40%),radial-gradient(circle at 95% 100%,#E7F3EE 0%,transparent 40%),var(--bg);
+  background:var(--bg);
   background-attachment:fixed;min-height:100vh}
 button,input,select{font:inherit;color:inherit}
 .num{font-variant-numeric:tabular-nums}
 
 /* ---- Barra superior ---- */
-.barra{position:sticky;top:0;z-index:20;background:linear-gradient(135deg,#0f172a 0%,#16213e 55%,#1b3f74 100%);color:#fff;box-shadow:0 4px 12px rgba(0,0,0,.3);padding-top:env(safe-area-inset-top)}
+.barra{position:sticky;top:0;z-index:20;background:linear-gradient(135deg,#162a4d 0%,#193563 55%,#1b3f74 100%);color:#fff;box-shadow:0 4px 12px rgba(0,0,0,.3);padding-top:env(safe-area-inset-top)}
 .barra-in{padding:10px 24px;display:flex;align-items:center;gap:24px;min-height:62px}
 .marca{font-family:'Segoe UI',Arial,sans-serif;font-size:30px;font-weight:600;letter-spacing:-.01em;color:#fff;text-decoration:none;white-space:nowrap}
 .paneles{display:flex;align-items:center;gap:2px;padding:3px;height:30px;border-radius:8px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.08)}
@@ -55,3 +55,38 @@ button,input,select{font:inherit;color:inherit}
 .cargando{display:flex;flex-direction:column;align-items:center;gap:12px;padding:70px 0;color:var(--text2);font-weight:600}
 .rueda{width:34px;height:34px;border:3px solid #D9DEEA;border-top-color:var(--azul);border-radius:50%;animation:girar .8s linear infinite}
 @keyframes girar{to{transform:rotate(360deg)}}
+/* ── Modo oscuro (12/11): botón de la luna a la derecha del usuario (comun.js). Vale para el menú (index) y Usuarios ── */
+:root[data-theme="dark"]{
+  --bg:#1e2126; --card:#272b31; --border:#3b4048;
+  --text:#ECEAE6; --text2:#B3ADA5; --text3:#857F77;
+  --azul:#7fa2dc; --azul2:#7fa2dc; --rojo:#ff8b7e; --verde:#4fd1a0; --ambar:#e3b25a;
+  --shadow:0 4px 20px rgba(0,0,0,.35),0 1px 3px rgba(0,0,0,.3);
+  color-scheme:dark;
+}
+[data-theme="dark"] body{background:var(--bg);background-attachment:fixed}
+[data-theme="dark"] .in,[data-theme="dark"] .sel{background:#2e3238;border-color:var(--border)}
+[data-theme="dark"] .rueda{border-color:#3b4048;border-top-color:#7fa2dc}
+[data-theme="dark"] .panel-btn.on{background:#ECEAE6;color:#1b3f74;box-shadow:inset 0 -2px 0 #1b3f74}
+/* menú (index) */
+[data-theme="dark"] .login,[data-theme="dark"] .tile,[data-theme="dark"] .item,[data-theme="dark"] .btn-act{background:var(--card);border-color:var(--border)}
+[data-theme="dark"] .serv{background:rgba(26,29,33,.7)}
+[data-theme="dark"] .tile:hover,[data-theme="dark"] .item:hover,[data-theme="dark"] .btn-act:hover{border-color:#545a63;box-shadow:0 12px 32px rgba(0,0,0,.4)}
+[data-theme="dark"] .btn-act:hover{background:#31353c}
+[data-theme="dark"] .aviso-ok{background:#173a2d;border-color:#24533f;color:#7fd8b2}
+[data-theme="dark"] .acc-teal .tile-icon{background:#1d3a2f}[data-theme="dark"] .acc-teal .tile-icon svg{stroke:#6cc39f}
+[data-theme="dark"] .acc-blue .tile-icon{background:#1a2d3d}[data-theme="dark"] .acc-blue .tile-icon svg{stroke:#7fb2d9}
+[data-theme="dark"] .acc-amber .tile-icon{background:#3a2c1a}[data-theme="dark"] .acc-amber .tile-icon svg{stroke:#e0a867}
+[data-theme="dark"] .acc-violet .tile-icon{background:#2c2440}[data-theme="dark"] .acc-violet .tile-icon svg{stroke:#b29ee0}
+[data-theme="dark"] .sup .estado.err{color:#ff8b7e}
+/* Usuarios */
+[data-theme="dark"] .ksep{background:var(--border)}
+[data-theme="dark"] .kpi,[data-theme="dark"] .fila{background:var(--card)}
+[data-theme="dark"] .fila:hover{background:#31353c}
+[data-theme="dark"] .fila.cab{background:#2e3238}
+[data-theme="dark"] .btn.sec,[data-theme="dark"] .btn.peligro,[data-theme="dark"] .btn.verde{background:var(--card)}
+[data-theme="dark"] .btn.peligro{border-color:#5a2722}[data-theme="dark"] .btn.verde{color:#7fd8b2;border-color:#24533f}
+[data-theme="dark"] .r-sup_gral{background:#1d3142;color:#8fc0e6}[data-theme="dark"] .r-auxiliar{background:#1d3a2f;color:#86cdb0}[data-theme="dark"] .r-admin{background:#2c2440;color:#c4b2ef}[data-theme="dark"] .r-supervisor{background:#1f2a3d}[data-theme="dark"] .r-operador,[data-theme="dark"] .e-baja{background:#33373e}
+[data-theme="dark"] .e-ok{background:#173a2d;color:#7fd8b2}[data-theme="dark"] .e-clave{background:#3a2c1a}
+[data-theme="dark"] dialog{background:var(--card);color:var(--text)}
+[data-theme="dark"] .cerrar-x:hover{background:#383d45}
+[data-theme="dark"] .clave{background:#2b3242;border-color:#3d4b66}

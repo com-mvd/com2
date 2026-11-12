@@ -23,12 +23,12 @@
 *{box-sizing:border-box;margin:0;padding:0}
 [hidden]{display:none!important}
 body{font-family:'DM Sans',system-ui,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased;
-  background:radial-gradient(circle at 12% 0%,#EDEEF9 0%,transparent 40%),radial-gradient(circle at 95% 100%,#E7F3EE 0%,transparent 40%),var(--bg);
+  background:var(--bg);
   background-attachment:fixed;min-height:100vh}
 button,input,select{font:inherit;color:inherit}
 .num{font-variant-numeric:tabular-nums}
 
-.barra{position:sticky;top:0;z-index:10;background:linear-gradient(135deg,#0f172a 0%,#16213e 55%,#1b3f74 100%);color:#fff;box-shadow:0 4px 12px rgba(0,0,0,.3);padding-top:env(safe-area-inset-top)}
+.barra{position:sticky;top:0;z-index:10;background:linear-gradient(135deg,#162a4d 0%,#193563 55%,#1b3f74 100%);color:#fff;box-shadow:0 4px 12px rgba(0,0,0,.3);padding-top:env(safe-area-inset-top)}
 .barra-in{max-width:560px;margin:0 auto;padding:14px 16px;display:flex;justify-content:center}
 /* Título y "Pasado hasta" del mismo ancho (el del título), centrados */
 .cabeza{position:relative;display:grid;gap:9px;width:max-content;max-width:100%}
@@ -103,10 +103,27 @@ input[type=datetime-local].in::-webkit-date-and-time-value{text-align:left}
 .carga-t{color:#64748b;font-size:14px;font-weight:600}
 .carga-t.error{color:var(--rojo)}
 .carga .btn{flex:none;padding:11px 22px;font-size:15px}
+/* ── Modo oscuro (12/11): botón de la luna a la derecha del usuario (assets/comun.js) ── */
+:root[data-theme="dark"]{
+  --bg:#1e2126; --card:#272b31; --border:#3b4048;
+  --text:#ECEAE6; --text2:#B3ADA5; --text3:#857F77;
+  --azul:#7fa2dc; --rojo:#ff8b7e; --verde:#4fd1a0;
+  --shadow:0 4px 20px rgba(0,0,0,.35),0 1px 3px rgba(0,0,0,.3);
+  color-scheme:dark;
+}
+[data-theme="dark"] body{background:var(--bg);background-attachment:fixed}
+[data-theme="dark"] .in,[data-theme="dark"] .lugar,[data-theme="dark"] .contador button,[data-theme="dark"] .btn.sec,[data-theme="dark"] .fila .acc button,[data-theme="dark"] .mas{background:#2e3238;color:var(--text)}
+[data-theme="dark"] .btn.sec,[data-theme="dark"] .fila .acc button,[data-theme="dark"] .mas{color:var(--text2)}
+[data-theme="dark"] .lugar.on{background:color-mix(in srgb,var(--c) 22%,#272b31)}
+[data-theme="dark"] .fila{border-top-color:#363a41}
+[data-theme="dark"] .fila.editando{background:#2b3242}
+[data-theme="dark"] .aviso{background:#ECEAE6;color:#1A1714}
+[data-theme="dark"] .ruedita{border-color:#3b4048;border-top-color:#7fa2dc}
+[data-theme="dark"] .carga-t{color:var(--text2)}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="assets/comun.js?v=202611100928"></script>
-<script src="assets/acceso.js?v=202611101800"></script>
+<script src="assets/comun.js?v=202611130130"></script>
+<script src="assets/acceso.js?v=202611130130"></script>
 <script src="assets/vaciados.js?v=202611101900"></script>
 <script>COM2.acceso({ roles: ['admin'] });   // solo admin (panel Admin)</script>
 </head>

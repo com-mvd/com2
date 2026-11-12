@@ -1,0 +1,104 @@
+.agenda-carga{flex-direction:column;gap:12px;font-weight:600}
+.agenda-rueda{width:34px;height:34px;border:3px solid #d9deea;border-top-color:#1b3f74;border-radius:50%;animation:agenda-girar .8s linear infinite}
+@keyframes agenda-girar{to{transform:rotate(360deg)}}
+.agenda-filtros{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.agenda-filtros select{font:inherit;color:var(--text);border:1px solid var(--border);border-radius:9px;padding:6px 10px;background:var(--card);min-width:0}
+.agenda-filtros .bus-f input{width:100%}
+#filtros-tabla:empty{display:none}
+#filtros-tabla:has(.bus-f:not([hidden])){flex:1 1 320px;max-width:650px}
+#filtros-mapa .agenda-filtros{display:grid;gap:8px}
+#filtros-mapa .ing-f{justify-content:space-between}
+#filtros-mapa input,#filtros-mapa select{flex:0 1 auto;width:112px}
+#filtros-mapa .ing-f span{min-width:0}
+.agenda-totales-mapa{margin-top:8px;padding-top:10px;border-top:1px solid var(--border);font-size:12px;color:var(--text2)}
+.agenda-totales-mapa:empty{display:none}
+.agenda-titulo-tabla{margin:0}
+.agenda-graficas{margin-bottom:14px}
+#situacion{margin-bottom:14px}
+.situacion-card{border-color:#dce3ed}
+.situacion-scroll{overflow-x:auto;border-radius:var(--r)}
+.situacion-grid{border-collapse:separate;border-spacing:0;width:100%;min-width:720px}
+.situacion-grid thead th{background:#f0f4f8;color:#384a60;text-align:center;text-transform:uppercase;font-size:11.5px;letter-spacing:.03em;padding:10px 8px;border-bottom:1px solid #dce3ed}
+.situacion-grid tbody :is(th,td){padding:5px;border-bottom:1px solid #edf0f3;vertical-align:middle}
+.situacion-grid tbody tr:last-child :is(th,td){border-bottom:0}
+.situacion-grid tbody tr:hover{background:#fbfcfe}
+.situacion-grid tbody th{text-align:center;white-space:nowrap;padding:5px 10px}
+.situacion-grid tbody th b{display:block;font-size:17px;color:#0f172a;line-height:1.1}
+.situacion-grid tbody th span{display:block;font-size:12px;font-weight:500;color:#5e6b7b}
+.situacion-celda{border:1px solid var(--borde);border-radius:8px;min-width:104px;padding:6px 9px 7px;background:var(--fondo);color:var(--tinta)}
+.situacion-fecha{display:block;font-size:11.5px;font-weight:600;opacity:.8}
+.situacion-datos{display:flex;align-items:baseline;gap:5px;font-size:12px;white-space:nowrap}
+.situacion-datos b{font-size:17px;font-weight:800;line-height:1.2}
+.situacion-barra{height:3px;display:block;overflow:hidden;background:#1118271a;border-radius:2px;margin-top:4px}
+.situacion-barra i{display:block;height:100%;border-radius:2px;background:currentColor;opacity:.65}
+.situacion-celda.lv0{--fondo:#eef7f0;--borde:#d3e9d9;--tinta:#14703c}
+.situacion-celda.lv1{--fondo:#fdf6e3;--borde:#f2e4bd;--tinta:#8a6100}
+.situacion-celda.lv2{--fondo:#fdeede;--borde:#f6dcc0;--tinta:#9a4b13}
+.situacion-celda.lv3{--fondo:#fde9e7;--borde:#f7d4d0;--tinta:#9b241c}
+.situacion-celda.vacia{--fondo:#f4f5f7;--borde:#edeef1;--tinta:#a5adb8;text-align:center;padding:16px 9px}
+.agenda-aviso{margin-bottom:14px;padding:8px 10px;border-radius:9px;background:var(--pend-bg);color:#954316;font-size:13px}
+/* Un municipio por renglón y todos del mismo ancho, como en Bolsones */
+.agenda-municipios{display:flex;flex-direction:column;align-items:flex-start;gap:7px}
+.agenda-municipios .mb{font-size:11.5px;padding:0 12px 0 8px;min-width:100px}
+.tabla .agenda-direccion{border:0;background:none;font-weight:700;color:var(--text);text-align:center}
+.tabla .agenda-direccion:hover{text-decoration:underline}
+.agenda-paginacion{display:flex;align-items:center;justify-content:flex-end;gap:10px;margin-top:12px;font-size:13px;color:var(--text2)}
+.agenda-paginacion button:disabled{opacity:.42;cursor:default}
+.agenda-ficha-mapa{max-height:calc(100% - 24px);overflow:auto}
+.agenda-ficha-estado{margin-bottom:.5rem}
+.agenda-ficha-mapa dd,.agenda-dialogo dd{white-space:pre-wrap}
+.agenda-dialogo{margin:auto;width:min(440px,calc(100% - 24px));max-height:85vh;padding:.9rem 1rem;border:1px solid var(--border);border-radius:14px;color:var(--text);box-shadow:var(--shadow)}
+.agenda-dialogo::backdrop{background:#17233b66}
+.agenda-dialogo .ficha{position:static;display:block;width:auto;padding:0;border:0;box-shadow:none}
+@media(max-width:760px){
+  #filtros-mapa .agenda-filtros{display:flex}
+  #filtros-mapa .ing-f{justify-content:flex-start}
+  .agenda-totales-mapa{margin-top:4px}
+}
+/* Pestañas centradas (Agenda tiene menos que Bolsones). Con márgenes automáticos y no justify-content:center,
+   para que en el celular, si no entran, se pueda desplazar sin que se corte la primera */
+.cats button:first-child{margin-left:auto}
+.cats button:last-child{margin-right:auto}
+/* Tabla de cupos: cada recuadro y cada municipio es un botón que filtra el mapa de Pendientes */
+button.situacion-celda{display:block;width:100%;font:inherit;text-align:left;cursor:pointer;transition:box-shadow .15s,border-color .15s}
+button.situacion-celda:hover{border-color:currentColor}
+button.situacion-celda.sel{border-color:#1b3f74;box-shadow:0 0 0 2px #1b3f74}
+.situacion-muni{display:block;width:100%;border:1px solid transparent;border-left:4px solid var(--c);background:none;border-radius:8px;padding:4px 8px;font:inherit;text-align:center;cursor:pointer}
+.situacion-muni:hover{background:#f0f4f8}
+.situacion-muni.sel{border-color:#1b3f74;border-left-color:var(--c);box-shadow:0 0 0 1px #1b3f74;background:#f0f4f8}
+.situacion-muni b{display:block;font-size:17px;color:#0f172a;line-height:1.1}
+.situacion-muni span{display:block;font-size:12px;font-weight:500;color:#5e6b7b}
+.situacion-grid tbody th{padding:5px}
+/* Mapa de Pendientes sin el panel de la izquierda */
+.pen-card.sin-lado{grid-template-columns:minmax(0,1fr);grid-template-rows:none}
+.pen-card.sin-lado .pen-lado{display:none}
+/* Informe realizados: la tabla como la de Bolsones, sin título, cantidad ni páginas */
+#listado-solicitudes.informe .ing-bar{display:none}
+.agenda-graficas h2.g-t{margin:0}
+
+/* Operación del día: franjas horarias agendadas (2:30 h, encimadas media hora), en dos columnas (una si el panel es angosto) */
+.agenda-franjas{padding-bottom:10px;margin-bottom:6px;border-bottom:1px solid var(--border)}
+.agenda-franjas:empty{display:none}
+.agenda-franjas .ft{margin:0 0 6px;font-size:12px;font-weight:600;color:var(--text2)}
+.agenda-franjas .fr{display:grid;grid-template-columns:repeat(auto-fit,minmax(112px,1fr));gap:6px}
+.vista-lado .agenda-franjas .tg{gap:4px;padding:.45rem .5rem;font-size:12px;white-space:nowrap}
+.vista-lado .agenda-franjas .tg b{font-size:13px}
+/* ── Modo oscuro (12/11) ── */
+[data-theme="dark"] .agenda-rueda{border-color:#3b4048;border-top-color:#5b84c4}
+[data-theme="dark"] .situacion-card{border-color:var(--border)}
+[data-theme="dark"] .situacion-grid thead th{background:#2e3238;color:var(--text2);border-bottom-color:var(--border)}
+[data-theme="dark"] .situacion-grid tbody :is(th,td){border-bottom-color:#363a41}
+[data-theme="dark"] .situacion-grid tbody tr:hover{background:#2d3137}
+[data-theme="dark"] .situacion-grid tbody th b,[data-theme="dark"] .situacion-muni b{color:var(--text)}
+[data-theme="dark"] .situacion-grid tbody th span,[data-theme="dark"] .situacion-muni span{color:var(--text2)}
+[data-theme="dark"] .situacion-barra{background:#ffffff1a}
+[data-theme="dark"] .situacion-celda.lv0{--fondo:#16301f;--borde:#24462f;--tinta:#7fd19c}
+[data-theme="dark"] .situacion-celda.lv1{--fondo:#33290f;--borde:#4a3c16;--tinta:#e3c165}
+[data-theme="dark"] .situacion-celda.lv2{--fondo:#3a2414;--borde:#55351d;--tinta:#f0a467}
+[data-theme="dark"] .situacion-celda.lv3{--fondo:#3b1a17;--borde:#5a2722;--tinta:#f28b80}
+[data-theme="dark"] .situacion-celda.vacia{--fondo:#2d3137;--borde:#363a41;--tinta:#6f6a63}
+[data-theme="dark"] .agenda-aviso{color:#f3a37c}
+[data-theme="dark"] .agenda-dialogo::backdrop{background:#000a}
+[data-theme="dark"] button.situacion-celda.sel{border-color:#5b84c4;box-shadow:0 0 0 2px #5b84c4}
+[data-theme="dark"] .situacion-muni:hover{background:#31353c}
+[data-theme="dark"] .situacion-muni.sel{border-color:#5b84c4;box-shadow:0 0 0 1px #5b84c4;background:#31353c}

@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>COM 2</title>
+  <link rel="icon" type="image/png" href="assets/logo-ciemsa.png">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+  <link rel="stylesheet" href="assets/supervision.css?v=202611130130">
+  <link rel="stylesheet" href="assets/supervision-agenda.css?v=202611130130">
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+  <script defer src="assets/comun.js?v=202611130130"></script>
+  <script defer src="assets/acceso.js?v=202611130130"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+  <script defer src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+  <script defer src="assets/supervision-mapa.js?v=202611121000"></script>
+  <script defer src="assets/supervision-agenda.js?v=202611130130"></script>
+</head>
+<body>
+  <header class="barra">
+    <div class="barra-in">
+      <div class="titulo">
+        <span class="ico" aria-hidden="true">📅</span>
+        <h1>Supervisión de Agenda</h1>
+      </div>
+    </div>
+  </header>
+  <main class="wrap">
+    <section id="carga" class="cargador agenda-carga" role="status">
+      <span id="rueda" class="agenda-rueda" aria-hidden="true"></span>
+      <p id="mensaje">Cargando información…</p>
+      <button id="reintentar" class="tg" type="button" hidden>Reintentar</button>
+    </section>
+    <div id="supervision" inert hidden>
+      <nav class="cats" aria-label="Vistas de supervisión">
+        <button type="button" data-vista="organizacion" aria-pressed="false"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Organización del servicio</button>
+        <button type="button" data-vista="pendientes" aria-pressed="false"><svg viewBox="0 0 24 24"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>Pendientes</button>
+        <button type="button" data-vista="realizados" aria-pressed="false"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="m9 13 2 2 4-4"/></svg>Informe realizados</button>
+        <button type="button" data-vista="operacion" class="on" aria-pressed="true"><svg viewBox="0 0 24 24"><path d="M3 7h11v9H3z"/><path d="M14 10h4l3 3v3h-7"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg>Operación del día</button>
+        <button type="button" data-vista="buscador" aria-pressed="false"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4.5 4.5"/></svg>Buscador dirección</button>
+      </nav>
+      <p id="aviso-privados" class="agenda-aviso" role="status" hidden>Los datos de contacto y las notas no están disponibles.</p>
+      <section id="organizacion" class="semana" aria-label="Calendario semanal" hidden></section>
+      <div id="resultados">
+        <section id="situacion" aria-label="Cupos por municipio" hidden>
+          <div class="card situacion-card">
+            <p class="at-vacio" id="situacion-estado" role="status"></p>
+            <div class="situacion-scroll" id="situacion-scroll" tabindex="0" aria-label="Cupos por municipio" hidden>
+              <table class="situacion-grid">
+                <thead>
+                  <tr>
+                    <th scope="col">Municipio</th>
+                    <th scope="col">Próxima<br>intervención</th>
+                    <th scope="col">Segunda<br>intervención</th>
+                    <th scope="col">Tercera<br>intervención</th>
+                    <th scope="col">Cuarta<br>intervención</th>
+                    <th scope="col">Quinta<br>intervención</th>
+                  </tr>
+                </thead>
+                <tbody id="situacion-filas"></tbody>
+              </table>
+            </div>
+          </div>
+        </section>
+        <section id="mapa-card" class="card mapa-card mapa-op pen-card" aria-label="Mapa de solicitudes" hidden>
+          <aside class="pen-lado vista-lado">
+            <div id="filtros-mapa" class="lado-fecha"></div>
+            <div id="franjas" class="agenda-franjas" role="group" aria-label="Franja horaria agendada"></div>
+            <div id="modo" class="seg seg-modo" aria-label="Colores del mapa">
+              <button type="button" class="on" data-modo="estado" aria-pressed="true">Estado</button>
+              <button type="button" data-modo="transportista" aria-pressed="false">Transportistas</button>
+            </div>
+            <div id="leyenda" class="toggles" aria-label="Filtros del mapa"></div>
+            <div id="ley-tipo" class="ley" aria-label="Realizadas y asignadas"></div>
+            <div id="totales-mapa" class="agenda-totales-mapa"></div>
+            <p id="sin-coordenadas" class="dia-vacio"></p>
+          </aside>
+          <div class="pen-mapa">
+            <div id="mapa" class="mapa"></div>
+            <div id="ficha-mapa" class="ficha agenda-ficha-mapa"></div>
+          </div>
+        </section>
+        <section id="graficas" class="graficas agenda-graficas" aria-label="Resumen de realizados" hidden>
+          <!-- Igual que las gráficas del Informe realizados de Bolsones: barras con el número al final y el total abajo -->
+          <div class="card g g-col">
+            <div class="g-h"><h2 class="g-t">Agendas por transportista</h2></div>
+            <div class="g-c"><canvas id="grafica-transportista" aria-label="Agendas por transportista" role="img"></canvas></div>
+            <div class="g-tot" id="grafica-transportistaTot"></div>
+          </div>
+          <div class="card g g-col">
+            <div class="g-h"><h2 class="g-t">Descargas de agenda</h2></div>
+            <div class="g-c"><canvas id="grafica-descargas" aria-label="Descargas de agenda" role="img"></canvas></div>
+            <div class="g-tot" id="grafica-descargasTot"></div>
+          </div>
+        </section>
+        <section id="listado-solicitudes" class="card atr-card" aria-labelledby="titulo-tabla">
+          <div class="ing-bar">
+            <div id="filtros-tabla">
+              <div id="filtros" class="agenda-filtros">
+                <label class="ing-f" id="filtro-fecha"><span id="etiqueta-fecha">Fecha</span><input type="date" id="fecha"></label>
+                <label class="ing-f" id="filtro-municipio">Municipio<select id="municipio"><option value="">Todos</option></select></label>
+                <label class="ing-f bus-f" id="filtro-busqueda" hidden>Dirección <span class="bus-caja"><input type="search" id="busqueda" placeholder="Ej: Isla de Gaspar 2174" autocomplete="off"><div class="bus-lista" id="bus-lista" hidden></div></span></label>
+              </div>
+            </div>
+            <h2 id="titulo-tabla" class="sec-t agenda-titulo-tabla">Solicitudes</h2>
+            <p id="cantidad" class="ing-tot" role="status"></p>
+          </div>
+          <p id="sin-resultados" class="at-vacio" hidden></p>
+          <div id="tabla-wrap" class="tabla-wrap">
+            <table class="tabla tabla-ges">
+              <thead id="cabecera"></thead>
+              <tbody id="filas"></tbody>
+            </table>
+          </div>
+          <div id="paginacion" class="agenda-paginacion" hidden>
+            <button id="anterior" class="tg" type="button">Anterior</button>
+            <span id="pagina"></span>
+            <button id="siguiente" class="tg" type="button">Siguiente</button>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+  <dialog id="ficha" class="agenda-dialogo" aria-labelledby="ficha-titulo">
+    <form method="dialog"><button class="ficha-x" type="submit" aria-label="Cerrar ficha">×</button></form>
+    <div id="detalle" class="ficha"></div>
+  </dialog>
+</body>
+</html>

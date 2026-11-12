@@ -12,268 +12,9 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="assets/comun.js?v=202611100928"></script>
-<style>
-:root{
-  --bg:#F7F6F3; --card:#FFFFFF; --border:#E6E2DA; --border2:#D6D1C8;
-  --text:#1A1714; --text2:#5F5A54; --text3:#9A948C; --grid:#EEEBE5;
-  --teal:#39745E; --teal-bg:#DCEDE4;
-  --pend:#eb6834; --pend-bg:#FCE9DF;
-  --atr:#d03b3b;  --atr-bg:#F9E1E0;
-  --asig:#2a78d6; --asig-bg:#E1ECFA;
-  --hecho:#1baf7a;--hecho-bg:#DDF3EA;
-  --gris:#B5AFA6;
-  --shadow:0 4px 20px rgba(26,23,20,.05),0 1px 3px rgba(26,23,20,.05);
-  --r:16px;
-}
-*{box-sizing:border-box;margin:0;padding:0}
-[hidden]{display:none!important}
-/* Lugar de la barra de desplazamiento siempre reservado: el ancho de la página no cambia entre pestañas cortas y largas */
-html{scroll-behavior:smooth;overflow-y:scroll;scrollbar-gutter:stable}
-body{font-family:'DM Sans',system-ui,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased;
-  background:radial-gradient(circle at 12% 0%,#EDEEF9 0%,transparent 40%),radial-gradient(circle at 95% 100%,#E7F3EE 0%,transparent 40%),var(--bg);
-  background-attachment:fixed;min-height:100vh}
-.wrap{max-width:1440px;margin:0 auto;padding:1.5rem clamp(16px,2.5vw,2rem) 3rem}
-button{font:inherit;color:inherit;cursor:pointer}
-.num{font-variant-numeric:tabular-nums}
-
-/* Barra del título: igual a la de los dashboards de com-mvd/dashboard */
-/* El título queda fijo arriba al bajar, y la barra de pestañas fija justo abajo (--alto-barra lo pone el script) */
-.barra{position:sticky;top:0;z-index:1200;background:linear-gradient(135deg,#0f172a 0%,#16213e 55%,#1b3f74 100%);color:#fff;box-shadow:0 4px 12px rgba(0,0,0,.3)}
-/* Mismo ancho y márgenes que .wrap; el título va centrado (se actualiza y se vuelve desde el menú principal) */
-.barra-in{max-width:1440px;margin:0 auto;min-height:84px;padding:12px clamp(16px,2.5vw,2rem);display:flex;justify-content:center;align-items:center;position:relative}
-.titulo{display:flex;align-items:center;gap:10px;min-width:0}
-/* ♻ en versión emoji a color, igual que en com-mvd/dashboard/bolsones.html */
-.titulo .ico{display:flex;align-items:center;justify-content:center;flex-shrink:0;width:32px;height:32px;font-family:'Segoe UI Emoji','Apple Color Emoji','Noto Color Emoji',sans-serif;font-size:26px;font-weight:700;line-height:32px;color:#fff;filter:drop-shadow(0 1px 1px rgba(0,0,0,.18))}
-.titulo h1{font-family:'Segoe UI',Arial,sans-serif;font-size:27px;font-weight:700;letter-spacing:-.01em;line-height:1.15}
-
-/* Botoneras segmentadas (capas del mapa) */
-.seg{display:inline-flex;background:var(--card);border:1px solid var(--border);border-radius:11px;padding:3px;box-shadow:var(--shadow)}
-.seg button{border:0;background:transparent;border-radius:8px;padding:6px 12px;font-size:13px;font-weight:600;color:var(--text2);white-space:nowrap}
-.seg button.on{background:var(--text);color:#fff}
-.seg input[type=date]{border:0;background:transparent;font:inherit;font-size:13px;color:var(--text2);padding:0 8px;outline:none}
-.seg input.on{color:var(--text);font-weight:600}
-
-/* Semana */
-.semana{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-bottom:14px}
-/* Tarjetas de la semana (solo informativas): municipios con su planta y vaciados fijos del día */
-.dia{display:flex;flex-direction:column;min-width:0;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:.75rem .75rem .8rem;box-shadow:var(--shadow)}
-.dia.hoy{border-color:var(--teal);background:linear-gradient(180deg,#F1F8F4 0%,var(--card) 70%);box-shadow:0 0 0 3px var(--teal-bg),var(--shadow)}
-.dia-n{display:flex;align-items:center;justify-content:space-between;gap:6px;font-size:14px;font-weight:700;color:var(--text);letter-spacing:-.1px;padding-bottom:.55rem;margin-bottom:.6rem;border-bottom:1px solid #F0EDE7}
-.dia.hoy .dia-n{color:var(--teal);border-bottom-color:#D5E8DD}
-.dia-sec{font-size:10.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.45rem}
-.dia-sec.sig{margin-top:.8rem;padding-top:.7rem;border-top:1px solid #F0EDE7}
-.dia.hoy .dia-sec.sig{border-top-color:#D5E8DD}
-.dia-fijos{display:flex;flex-direction:column;gap:6px}
-.dia-hoy{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:#fff;background:var(--teal);border-radius:99px;padding:1px 8px 3px}
-/* Un renglón por municipio: etiqueta "Municipio X" → planta donde descarga */
-.dia-rows{display:grid;grid-template-columns:auto auto minmax(0,1fr);grid-auto-rows:22px;align-items:center;gap:7px 6px}
-.dia-rows .mb{font-size:11.5px;padding:0 12px 0 8px;min-width:100px} /* mismo ancho en todas: las plantas arrancan en la misma vertical */
-/* Subtítulo "Municipios → Descarga" en una línea, con la misma flecha que los renglones */
-.dia-sec-cols{display:flex;align-items:center;gap:6px}
-.dia-fl{width:13px;height:13px;stroke:var(--text3);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.dia-p{font-size:12.5px;font-weight:600;color:var(--text2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.fv{display:flex;align-items:center;justify-content:space-between;gap:6px;background:#FAF9F6;border:1px solid #EFECE6;border-left:4px solid var(--c,var(--gris));border-radius:9px;padding:.4rem .45rem .4rem .55rem}
-.fv-n{font-size:12px;font-weight:700;line-height:1.3;color:var(--text2);min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.fv .mb{flex:none;order:2;height:20px;min-width:22px;padding:0 8px 0 4px;font-size:11px}
-.dia-vacio{font-size:12px;color:var(--text3);padding:.2rem .15rem}
-.mb{display:inline-flex;align-items:center;justify-content:center;min-width:26px;height:22px;padding:0 10px 0 6px;border-radius:7px;border-left:4px solid transparent;background:#F0EDE7;color:var(--text);font-size:12px;font-weight:700}
-
-/* Tarjetas y mapa */
-.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow)}
-.mapa-card{position:relative;overflow:hidden;isolation:isolate;height:640px;display:flex;flex-direction:column}
-.mapa-bar{display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;padding:.7rem .8rem;border-bottom:1px solid var(--border)}
-.toggles{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
-.tg{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);background:var(--card);border-radius:99px;padding:4px 10px;font-size:12px;font-weight:600;color:var(--text2)}
-.tg i{width:9px;height:9px;border-radius:50%;background:var(--c)}
-.tg.off{opacity:.42}
-.tg.off i{background:transparent;box-shadow:inset 0 0 0 1.5px var(--c)}
-/* Filtro por transportista: la marca es una rayita del color de su línea */
-.tg-t i{width:14px;height:3px;border-radius:2px}
-.tg-t.off i{box-shadow:none;background:var(--c);opacity:.5}
-.seg-modo{margin-left:auto;box-shadow:none}
-.mapa-op .mapa{flex:1;background:#EFEDE8}
-.mapa-op{height:600px;margin-bottom:14px}
-.mapa-op .toggles{margin-left:0}
-/* Pestaña Pendientes: panel con los municipios a la izquierda del mapa */
-.pen-card{display:grid;grid-template-columns:220px minmax(0,1fr)}
-.pen-lado{border-right:1px solid var(--border);padding:1rem .9rem;overflow-y:auto;display:flex;flex-direction:column;gap:6px}
-/* El total, con la misma forma que las filas de municipio pero con la marca en el azul de la barra */
-.pen-tot{display:flex;align-items:baseline;gap:6px;border:1px solid #E6E2DA;border-left:4px solid #1b3f74;background:#F3F4F8;border-radius:9px;padding:.55rem .7rem;margin-bottom:6px;font-size:13px;font-weight:700;color:var(--text)}
-.pen-tot b{margin-left:auto;font-size:15px;color:var(--text)}
-.pen-tot small{font-size:12px;font-weight:600;color:var(--text3)}
-.pen-fila{display:flex;align-items:center;gap:8px;width:100%;border:1px solid #EFECE6;border-left:4px solid var(--c);background:#FAF9F6;border-radius:9px;padding:.5rem .7rem;font-size:13px;font-weight:600;color:var(--text2);text-align:left}
-.pen-fila b{margin-left:auto;font-size:14px;color:var(--text)}
-.pen-mapa{position:relative;min-width:0;display:flex}
-.pen-mapa .mapa{flex:1}
-/* Operación del día e Informe: el selector Estado / Transportistas y los filtros van en un panel a la
-   izquierda del mapa (como en Pendientes), uno abajo del otro */
-/* Sin barra para desplazar: si los botones no entran, la tarjeta crece y el mapa se estira con ella */
-.mapa-op.pen-card{height:auto;min-height:600px}
-.vista-lado{overflow:visible}
-.vista-lado .op-munis:empty{display:none}
-/* Referencia de los círculos en el modo Transportistas: lleno = realizado, con borde = asignado */
-/* Son botones de filtro como los de arriba, uno al lado del otro */
-.ley{display:flex;gap:6px;margin-top:8px;padding-top:10px;border-top:1px solid var(--border)}
-.ley:empty{display:none}
-/* entran los dos en el ancho del panel: se reparten el lugar y llevan menos relleno a los costados */
-.vista-lado .ley .tg{flex:1 1 0;min-width:0;width:auto;justify-content:center;gap:6px;padding:.5rem .35rem;font-size:12.5px;white-space:nowrap}
-.ley .tg i,.ley .tg.off i{width:11px;height:11px;border-radius:50%;background:var(--text2);box-shadow:none}
-.ley .tg i.asig,.ley .tg.off i.asig{background:#fff;box-shadow:inset 0 0 0 2.5px var(--text2)}
-.lado-fecha{padding-bottom:10px;margin-bottom:6px;border-bottom:1px solid var(--border)}
-.lado-fecha .ing-f{display:flex}
-.lado-fecha input{flex:1;min-width:0}
-.vista-lado .seg-modo{margin:0 0 6px;display:flex}
-.vista-lado .seg-modo button{flex:1}
-.vista-lado .toggles{flex-direction:column;flex-wrap:nowrap;gap:6px;margin:0}
-.vista-lado .tg{width:100%;border-radius:9px;padding:.5rem .7rem;font-size:13px;text-align:left}
-.vista-lado .tg i{flex:none}
-.vista-lado .tg b{margin-left:auto;font-size:14px;color:var(--text)}
-.leaflet-container{font:inherit}
-.pt-num{pointer-events:none!important;display:flex;align-items:center;justify-content:center;color:#fff;font-size:10px;font-weight:700;line-height:1}
-.leaflet-tooltip{border-radius:8px;border:1px solid var(--border);box-shadow:var(--shadow);font-size:12px;color:var(--text);padding:4px 8px}
-.ficha{position:absolute;left:12px;bottom:12px;z-index:900;width:min(340px,calc(100% - 24px));background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:0 12px 32px rgba(26,23,20,.16);padding:.9rem 1rem;display:none}
-.ficha.on{display:block}
-.ficha-x{position:absolute;top:8px;right:10px;border:0;background:none;font-size:18px;color:var(--text3);line-height:1}
-.ficha h3{font-size:15px;font-weight:700;padding-right:18px;line-height:1.25}
-.ficha .sub{font-size:12px;color:var(--text2);margin-top:2px}
-.ficha .sub .mb{height:19px;min-width:22px;font-size:11px;vertical-align:1px;margin-left:2px}
-.ficha hr{border:0;border-top:1px solid var(--border);margin:.6rem 0}
-.ficha dl{display:grid;grid-template-columns:auto 1fr;gap:3px 12px;font-size:12.5px}
-.ficha dt{color:var(--text3)}
-.ficha dd{color:var(--text);min-width:0;overflow-wrap:anywhere}
-.est{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;border-radius:99px;padding:2px 9px;background:var(--bg-c);color:var(--c)}
-.est::before{content:"";width:7px;height:7px;border-radius:50%;background:var(--c)}
-/* Pestañas Para borrar e Ingreso */
-.sec-t{font-size:15px;font-weight:700;letter-spacing:-.2px;margin-bottom:.8rem}
-.rep-sol{display:flex;flex-direction:column;gap:6px}
-.rep-fila{display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;font-size:12px;color:var(--text2)}
-.rep-fila b{font-weight:700;color:var(--text)}
-.ing-bar{display:flex;align-items:center;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:.9rem}
-.ing-f{display:inline-flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--text2)}
-.ing-f input{font:inherit;font-size:13px;font-weight:600;color:var(--text);border:1px solid var(--border);border-radius:9px;padding:6px 10px;background:var(--card)}
-/* El texto arriba y el campo abajo a lo ancho, así la lista tiene lugar también en el celular */
-.bus-f{flex:1 1 260px;min-width:0;max-width:560px;flex-direction:column;align-items:stretch;gap:6px}
-.bus-caja{position:relative;display:flex}
-.bus-caja input{flex:1;width:0}
-/* Lista de direcciones que coinciden, abajo del campo */
-.bus-lista{position:absolute;top:calc(100% + 4px);left:0;right:0;z-index:1000;max-height:360px;overflow-y:auto;background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:0 12px 28px rgba(26,23,20,.14);padding:4px}
-.bus-lista button{display:flex;align-items:center;gap:8px;width:100%;border:0;background:none;border-radius:7px;padding:7px 8px;text-align:left;font:inherit;font-size:13px;color:var(--text);cursor:pointer}
-.bus-lista button:hover,.bus-lista button.sel{background:#F3F4F8}
-.bus-dir{flex:1;min-width:0;display:flex;flex-direction:column;font-weight:600}
-.bus-dir small{font-size:11.5px;font-weight:500;color:var(--text3);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.bus-lista b{font-size:12px;color:var(--text2)}
-.bus-nada{padding:7px 8px;font-size:12.5px;font-weight:500;color:var(--text3)}
-.ing-tot{font-size:13px;color:var(--text2)}
-.ing-tot b{font-size:15px;color:var(--text)}
-.tabla-wrap+.tabla-wrap{margin-top:1.4rem} /* separa la tabla de "falta algo" de la de completas */
-/* Cada columna mide lo justo (width:1% + sin cortes de línea) y la última se queda con el espacio que sobra.
-   Todo centrado menos la última. El ancho común entre las dos tablas lo pone igualarColumnas(). */
-/* (.tabla.tabla-ing para ganarle al text-align:left de .tabla th, que está más abajo) */
-.tabla.tabla-ing th,.tabla.tabla-ing td{text-align:center}
-.tabla.tabla-ing th:not(:last-child),.tabla.tabla-ing td:not(:last-child){width:1%;white-space:nowrap}
-.tabla.tabla-ing th:last-child,.tabla.tabla-ing td:last-child{text-align:left}
-.tabla.tabla-ing td.at-vacio{text-align:center}
-.falta{display:inline-block;font-size:11px;font-weight:700;color:#B4521E;background:#FCE9DF;border-radius:99px;padding:2px 9px 3px;margin:2px 2px;white-space:nowrap}
-/* Tabla cerrada tipo planilla: todas las celdas con línea gris clara, borde exterior redondeado */
-.tabla-wrap{overflow-x:auto;overflow-y:hidden;border:1px solid #E6E2DA;border-radius:10px}
-.tabla{width:100%;border-collapse:collapse;font-size:13px}
-/* Como en las gráficas: títulos en negro y el contenido en gris (en todas las tablas y recuadros de la página) */
-.tabla th{font-size:10.5px;font-weight:700;color:var(--text);text-transform:uppercase;letter-spacing:.06em;text-align:left;padding:.55rem .7rem;background:#F7F6F3;border:1px solid #E6E2DA;white-space:nowrap}
-.tabla td{padding:.5rem .7rem;border:1px solid #ECE9E3;vertical-align:middle;color:var(--text2)}
-/* El borde exterior lo pone .tabla-wrap: se sacan los de las celdas de los costados para que no quede doble */
-.tabla tr>:first-child{border-left:0}
-.tabla tr>:last-child{border-right:0}
-.tabla thead th{border-top:0}
-.tabla tbody tr:last-child td{border-bottom:0}
-.tabla .c{text-align:center}
-.tabla .dir{font-weight:700;white-space:nowrap}
-.tabla .hora{font-variant-numeric:tabular-nums;white-space:nowrap;color:var(--text2)}
-.tabla .desc{color:var(--text2);min-width:240px}
-/* Tabla de gestiones (columnas de la hoja "Seguimiento gestiones"): todo centrado y en una línea,
-   menos "Dirección", "Datos de solicitud" y "Observaciones", que bajan de renglón (también centrados) */
-.tabla.tabla-ges th,.tabla.tabla-ges td{text-align:center;white-space:nowrap}
-.tabla.tabla-ges th{white-space:normal;padding:.55rem .5rem}
-.tabla.tabla-ges td{padding:.5rem .5rem}
-.tabla.tabla-ges td.desc{white-space:normal;min-width:170px}
-.tabla.tabla-ges td.obs{white-space:normal;min-width:100px}
-.tabla.tabla-ges td.dir{white-space:normal;min-width:170px}
-.tabla.tabla-ges td.at-vacio{white-space:normal}
-
-/* Pestaña Atrasados */
-.atr-card{padding:1.1rem 1.2rem 1.2rem;margin-bottom:14px}
-/* Matriz municipio × antigüedad como mapa de calor */
-.hm-wrap{overflow-x:auto;overflow-y:hidden} /* barra solo si de verdad no entra (celular) */
-.hm{display:grid;grid-template-columns:max-content repeat(8,minmax(46px,1fr));gap:6px;align-items:center;min-width:520px}
-.hm-h{font-size:10.5px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.07em;text-align:center}
-.hm-h.izq{text-align:left}
-.hm-l{display:flex;align-items:center;padding-right:8px;font-size:13px;font-weight:600;white-space:nowrap;min-width:0;overflow:hidden;text-overflow:ellipsis}
-.hc{height:40px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;background:#F5F3EF;color:var(--text)}
-.hc.cero{color:transparent}
-/* Detalle: una tarjeta por dirección atrasada */
-.at-lista{display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:10px}
-.at-it{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;background:#FAF9F6;border:1px solid #EFECE6;border-left:5px solid var(--m);border-radius:12px;padding:.85rem 1rem}
-.at-dir{font-size:15px;font-weight:700;letter-spacing:-.2px;line-height:1.25}
-.at-sub{grid-column:1/-1;display:flex;flex-wrap:wrap;align-items:center;gap:6px 14px;font-size:12px;color:var(--text2)}
-.at-sub span{display:inline-flex;align-items:center;gap:4px}
-.at-sub svg{width:13px;height:13px;stroke:var(--text3);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.at-vacio{text-align:center;color:var(--text2);font-size:14px;font-weight:600;padding:1.4rem 1rem}
-.at-desc{grid-column:1/-1;font-size:12.5px;color:var(--text2);background:var(--card);border:1px solid #EFECE6;border-radius:9px;padding:.5rem .65rem;line-height:1.4}
-@media (max-width:760px){.at-lista{grid-template-columns:1fr}}
-
-/* Gráficas */
-/* Barra de categorías (mismo azul que la barra del título) */
-.cats{position:sticky;top:calc(var(--alto-barra,84px) + 10px);z-index:1100;display:flex;gap:6px;padding:6px;margin-bottom:14px;border-radius:14px;background:linear-gradient(135deg,#0f172a 0%,#16213e 55%,#1b3f74 100%);box-shadow:0 4px 12px rgba(15,23,42,.25);overflow-x:auto;scrollbar-width:none}
-.cats button{display:inline-flex;align-items:center;gap:8px;border:0;background:transparent;color:#c7d5ea;font-size:13.5px;font-weight:600;padding:9px 16px;border-radius:10px;white-space:nowrap;transition:background-color .15s,color .15s}
-.cats button:hover{background:rgba(255,255,255,.08);color:#fff}
-.cats button.on{background:#fff;color:#0f172a;box-shadow:0 2px 6px rgba(0,0,0,.18)}
-.cats svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.cat{display:none}
-.cat.on{display:block}
-.graficas{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
-.g{padding:1rem 1.1rem 1.1rem;min-width:0}
-.g.ancha{grid-column:1/-1}
-.g-h{display:flex;align-items:baseline;justify-content:space-between;gap:1rem;margin-bottom:.7rem;flex-wrap:wrap}
-.g-t{font-size:15px;font-weight:700;letter-spacing:-.2px}
-.g-k{display:flex;gap:12px;font-size:12px;color:var(--text2);flex-wrap:wrap}
-.g-k span{display:inline-flex;align-items:center;gap:5px}
-.g-k i{width:10px;height:10px;border-radius:3px;background:var(--c)}
-.g-c{position:relative;height:280px}
-.g-vacio{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:13px}
-
-.graficas.tres{grid-template-columns:repeat(3,minmax(0,1fr))}
-/* Total justo abajo de las barras, con la letra del título (un poco más chica): el número arranca en la
-   misma vertical que las barras y "Total" va a su izquierda (el ancho de los nombres lo pone alinearTotal) */
-.g-col{display:flex;flex-direction:column}
-.g-col .g-h{margin-bottom:.5rem}
-.g-tot{margin-top:.6rem;display:grid;grid-template-columns:auto 1fr;align-items:baseline;font-size:13px;font-weight:700;letter-spacing:-.2px;color:var(--text)}
-.g-tot span{text-align:right;padding-right:8px}
-.g-tot b{font-weight:700}
-.g-tot:empty{display:none}
-/* Municipios del día arriba del mapa */
-.op-munis{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--text2)}
-
-.cargador{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg);z-index:5000;font-size:14px;color:var(--text2)}
-
-/* 6 días por fila solo cuando entran los nombres de las plantas en un renglón */
-@media (max-width:1439px){
-  .semana{grid-template-columns:repeat(3,minmax(0,1fr))}
-}
-@media (max-width:760px){
-  .seg{max-width:100%;overflow-x:auto;scrollbar-width:none}
-  .semana{grid-template-columns:repeat(2,minmax(0,1fr))}
-  .dia{min-width:0}
-  .graficas,.graficas.tres{grid-template-columns:1fr}
-  .mapa-card{height:540px}
-  .pen-card{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr);height:auto}
-  .pen-lado{border-right:0;border-bottom:1px solid var(--border)}
-  .pen-mapa{height:460px}
-  .barra-in{padding:10px 16px;min-height:64px}
-  .titulo h1{font-size:21px}
-  .titulo .ico{width:26px;height:26px;font-size:21px;line-height:26px}
-  .toggles{margin-left:0}
-}
-</style>
+<script src="assets/comun.js?v=202611130130"></script>
+<script src="assets/supervision-mapa.js?v=202611121000"></script>
+<link rel="stylesheet" href="assets/supervision.css?v=202611130130">
 </head>
 <body>
 <div class="cargador" id="cargador">Cargando datos…</div>
@@ -428,7 +169,6 @@ const CALENDARIO = [
     municipios: [],
     vaciadosFijos: [] },
 ];
-const CARTO_KEY = 'cb1_4dpf_1_b2ca9299be611862d5d23c88';
 // ─────────────────────────────────────────────────────────────────────────────
 
 const MUNIS = ['A', 'B', 'C', 'CH', 'D', 'E', 'F', 'G'];
@@ -656,7 +396,7 @@ function prepararMapa(v) {
   // Sin botones de zoom (se hace con la rueda) ni el texto de créditos de abajo a la derecha.
   // zoomSnap en cuartos: al encuadrar los puntos el mapa se acerca lo justo, sin dejar tanto borde vacío
   v.mapa = L.map(v.p + 'Mapa', { zoomControl: false, attributionControl: false, preferCanvas: true, zoomSnap: .25 }).setView([-34.86, -56.16], 12);
-  L.tileLayer(`https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png?key=${CARTO_KEY}`, {
+  L.tileLayer(SupervisionMapa.teselas, {
     maxNativeZoom: 18, maxZoom: 20, subdomains: 'abcd',
   }).addTo(v.mapa);
   v.capa = L.layerGroup().addTo(v.mapa);
@@ -912,7 +652,7 @@ async function pedirCamino(ll) {
 
 function seleccionar(v, r) {
   v.sel = r;
-  v.marc.forEach((m, id) => m.setStyle(id === r.id ? { color: '#1A1714', weight: 3 } : m.borde));
+  v.marc.forEach((m, id) => m.setStyle(id === r.id ? { color: tinta(), weight: 3 } : m.borde));
   v.marc.get(r.id)?.bringToFront();
   const f = $(v.p + 'Ficha');
   f.innerHTML = (v.ficha || fichaHTML)(r);
@@ -927,10 +667,14 @@ function cerrarFicha(v) {
 // ── gráficas ────────────────────────────────────────────────────────────────
 Chart.defaults.font.family = "'DM Sans', system-ui, sans-serif";
 Chart.defaults.font.size = 12;
-Chart.defaults.color = '#5F5A54';
+// Modo oscuro (12/11): textos y barras azules toman los colores del tema al dibujarse
+const oscuro = () => document.documentElement.dataset.theme === 'dark';
+const tinta = () => oscuro() ? '#ECEAE6' : '#1A1714';
+Chart.defaults.color = () => oscuro() ? '#B3ADA5' : '#5F5A54';
 Chart.defaults.plugins.tooltip.enabled = false; // sin etiquetas negras al pasar el mouse
 const graficas = {};
-const AZUL_BARRA = '#1b3f74'; // el azul de la barra del título
+const AZUL_BARRA = () => oscuro() ? '#5b84c4' : '#1b3f74'; // el azul de la barra del título (más claro en oscuro)
+window.addEventListener('com2:tema', () => Object.values(graficas).forEach(g => g?.update('none')));
 
 function grafica(id, cfg, vacio) {
   graficas[id]?.destroy();
@@ -947,7 +691,7 @@ const totalAlFinal = {
     const { ctx } = chart, metas = chart.data.datasets.map((_, i) => chart.getDatasetMeta(i));
     ctx.save();
     ctx.font = `600 12px ${Chart.defaults.font.family}`;
-    ctx.fillStyle = '#1A1714';
+    ctx.fillStyle = tinta();
     ctx.textBaseline = 'middle';
     chart.data.labels.forEach((_, i) => {
       const total = chart.data.datasets.reduce((s, d) => s + (d.data[i] || 0), 0);
@@ -1394,7 +1138,7 @@ async function cargar() {
   try {
     // Solo supervisores y admin con sesión de COM 2 (y con la contraseña inicial ya cambiada)
     const yo = await COM2.perfil().catch(() => null);
-    if (!yo || yo.debe_cambiar_clave || !['admin', 'supervisor'].includes(yo.rol)) { location.replace('./'); return; }
+    if (!yo || yo.debe_cambiar_clave || !COM2.ROLES_SUPERVISION.includes(yo.rol)) { location.replace('./'); return; } COM2.usuarioEnBarra(yo);
     const sep = CONFIG.fuente.includes('?') ? '&' : '?';
     const [res, priv] = await Promise.all([
       fetch(CONFIG.fuente + sep + 't=' + Date.now(), { cache: 'no-store' }),
