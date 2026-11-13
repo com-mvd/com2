@@ -5,12 +5,17 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>COM 2</title>
 <link rel="icon" type="image/png" href="assets/logo-ciemsa.png">
+<!-- DM Sans: la letra del nombre del usuario en la barra, igual que en las demás páginas -->
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/barra.css?v=202611132330">
+<link rel="stylesheet" href="assets/carga.css?v=202611131600">
 <style>
-:root{--ink:#1d2733;--muted:#5d6b7a;--line:#dfe5ec;--bg:#f4f6f9;--card:#fff;--azul:#1f6feb;--field:#fff;--fline:#c9d2dc;--sec:#e6ebf0;--err:#b3261e}
-:root[data-theme="dark"]{--ink:#e6edf3;--muted:#9aa7b5;--line:#2c3744;--bg:#0f141a;--card:#18202a;--azul:#3b82f6;--field:#0f141a;--fline:#3a4756;--sec:#273241;--err:#ff8b82;color-scheme:dark}
+/* Fondo, recuadros y bordes como en las demás páginas de COM 2 (13/11; antes azulados) */
+:root{--ink:#1d2733;--muted:#5d6b7a;--line:#E6E2DA;--bg:#F7F6F3;--card:#fff;--azul:#1f6feb;--field:#fff;--fline:#c9d2dc;--sec:#e6ebf0;--err:#b3261e}
+:root[data-theme="dark"]{--ink:#e6edf3;--muted:#9aa7b5;--line:#3b4048;--bg:#1e2126;--card:#272b31;--azul:#3b82f6;--field:#1e2126;--fline:#484d55;--sec:#33373e;--err:#ff8b82;color-scheme:dark}
 *{box-sizing:border-box}
 body{margin:0;font-family:Segoe UI,Roboto,Arial,sans-serif;color:var(--ink);background:var(--bg)}
-.wrap{max-width:1150px;margin:0 auto;padding:16px}
+.wrap{max-width:var(--com2-ancho);margin:0 auto;padding:14px var(--com2-margen) 16px}   /* ancho común de COM 2 y 14 px de la barra */
 h1{font-size:21px;margin:4px 0 2px}.sub{color:var(--muted);font-size:13.5px;margin-bottom:14px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
 label{display:block;font-size:13px;color:var(--muted);margin:10px 0 4px}
@@ -28,15 +33,21 @@ iframe{width:100%;height:88vh;border:1px solid var(--line);border-radius:12px;ba
 .tema input{width:auto;max-width:none;margin:0;accent-color:var(--azul)}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="assets/comun.js?v=202611130130"></script>
+<script src="assets/comun.js?v=202611132310"></script>
 <script src="assets/acceso.js?v=202611130130"></script>
-<script>COM2.acceso();   // solo supervisores y admin con sesión de COM 2</script>
+<script>COM2.acceso().then(p => p && COM2.carga.listo());   // solo supervisores y admin con sesión de COM 2</script>
 </head>
 <body>
+<header class="barra">
+  <a class="com2-marca" href="./">COM 2</a>
+  <div class="barra-in">
+    <div class="titulo"><span class="ico" aria-hidden="true">📊</span><h1>Generador de informes de avance</h1></div>
+  </div>
+</header>
+<div class="com2-carga" id="com2-carga" role="status" aria-live="polite"><div class="com2-rueda"></div><div class="com2-carga-t">Cargando información</div></div>
 <div class="wrap">
-<div class="top"><div><h1>Generador de informes de avance</h1>
-<div class="sub">Ejecución de recorridos: % de avance (en proceso) o % completado (terminado). Solo lectura del back office.</div></div>
-<label class="tema" title="Tildado: fondo oscuro. Destildado: fondo blanco normal. Se recuerda para la próxima vez."><input type="checkbox" id="chkNoche">Modo nocturno</label></div>
+<div class="top"><div>
+<div class="sub">Ejecución de recorridos: % de avance (en proceso) o % completado (terminado). Solo lectura del back office.</div></div></div>
 
 <div class="card" id="loginCard">
   <b>Ingresá con tu usuario de Garbollect</b>
@@ -369,21 +380,14 @@ async function imprimir(){
 }
 function salir(){ TOKEN=null; ULTIMO=null; $("vista").srcdoc=""; $("vista").classList.add("hide"); $("mainCard").classList.add("hide"); $("loginCard").classList.remove("hide"); $("log").textContent=""; }
 const conTema = h => h.replace('<html lang="es">', '<html lang="es" data-theme="' + (document.documentElement.dataset.theme || "light") + '">');   // la vista previa nace con el tema actual; el archivo descargado queda en claro
-/* ---------------- modo nocturno (casilla; se recuerda; sin elegir, sigue al sistema) ---------------- */
-const KEYTEMA = "generador-informes-tema";
-function nocheInicial(){
-  let g = null; try { g = localStorage.getItem(KEYTEMA); } catch(e) {}
-  if (g === "dark") return true; if (g === "light") return false;
-  return !!(window.matchMedia && matchMedia("(prefers-color-scheme: dark)").matches);
-}
-function aplicarTema(noche){
-  const t = noche ? "dark" : "light";
-  document.documentElement.dataset.theme = t; $("chkNoche").checked = noche;
+/* ---------------- tema: el del botón de la barra de COM 2 (13/11; se sacó la casilla "Modo nocturno") ----------------
+   La vista previa del informe copia el tema de la página */
+function aplicarTema(){
+  const t = document.documentElement.dataset.theme === "dark" ? "dark" : "light";
   try { const d = $("vista").contentDocument; if (d && d.documentElement) d.documentElement.dataset.theme = t; } catch(e) {}
 }
-$("chkNoche").onchange = () => { const n = $("chkNoche").checked; try { localStorage.setItem(KEYTEMA, n ? "dark" : "light"); } catch(e) {} aplicarTema(n); };
-$("vista").addEventListener("load", () => aplicarTema($("chkNoche").checked));
-aplicarTema(nocheInicial());
+window.addEventListener("com2:tema", aplicarTema);
+$("vista").addEventListener("load", aplicarTema);
 
 $("btnLogin").onclick=entrar; $("p").addEventListener("keydown",e=>{if(e.key==="Enter")entrar();});
 $("btnGen").onclick=generar; $("btnDown").onclick=descargar; $("btnPrint").onclick=imprimir; $("btnOut").onclick=salir; $("sel").onchange=actualizarFecha;

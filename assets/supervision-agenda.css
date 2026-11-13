@@ -1,6 +1,4 @@
-.agenda-carga{flex-direction:column;gap:12px;font-weight:600}
-.agenda-rueda{width:34px;height:34px;border:3px solid #d9deea;border-top-color:#1b3f74;border-radius:50%;animation:agenda-girar .8s linear infinite}
-@keyframes agenda-girar{to{transform:rotate(360deg)}}
+/* La pantalla de carga es la de assets/carga.css (igual en todas las páginas) */
 .agenda-filtros{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
 .agenda-filtros select{font:inherit;color:var(--text);border:1px solid var(--border);border-radius:9px;padding:6px 10px;background:var(--card);min-width:0}
 .agenda-filtros .bus-f input{width:100%}
@@ -84,7 +82,6 @@ button.situacion-celda.sel{border-color:#1b3f74;box-shadow:0 0 0 2px #1b3f74}
 .vista-lado .agenda-franjas .tg{gap:4px;padding:.45rem .5rem;font-size:12px;white-space:nowrap}
 .vista-lado .agenda-franjas .tg b{font-size:13px}
 /* ── Modo oscuro (12/11) ── */
-[data-theme="dark"] .agenda-rueda{border-color:#3b4048;border-top-color:#5b84c4}
 [data-theme="dark"] .situacion-card{border-color:var(--border)}
 [data-theme="dark"] .situacion-grid thead th{background:#2e3238;color:var(--text2);border-bottom-color:var(--border)}
 [data-theme="dark"] .situacion-grid tbody :is(th,td){border-bottom-color:#363a41}

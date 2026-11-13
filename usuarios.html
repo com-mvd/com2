@@ -8,13 +8,14 @@
 <title>COM 2</title>
 <link rel="icon" type="image/png" href="assets/logo-ciemsa.png">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/comun.css?v=202611130130">
+<link rel="stylesheet" href="assets/comun.css?v=202611132330">
+<link rel="stylesheet" href="assets/carga.css?v=202611131600">
 <style>
 /* COM 2 · Usuarios: solo para el admin. Alta, edición de nombre y rol, corrección de cédula,
    restablecer contraseña y baja. Lo que toca el login (auth.users) lo hacen funciones de Supabase
    (sql/02-usuarios-admin.sql) que verifican que quien llama es admin. */
 /* Todo el contenido en una columna angosta y centrada */
-#vLista{max-width:820px;width:100%;margin:0 auto}
+#vLista{width:100%;margin:0 auto}   /* el ancho común de COM 2 (antes 820 px) */
 
 /* Cuadros de resumen: solo datos. Tres grupos separados por una línea gris:
    el total | por rol | por estado. Cada grupo suma siempre el total. */
@@ -87,7 +88,7 @@ label.l:first-of-type{margin-top:0}
 <header id="barra" hidden></header>
 
 <main class="wrap">
-  <div class="cargando" id="vCargando"><div class="rueda"></div>Cargando información</div>
+  <div class="com2-carga" id="vCargando" role="status" aria-live="polite"><div class="com2-rueda"></div><div class="com2-carga-t">Cargando información</div></div>
 
   <div class="card" id="vError" hidden><p class="error" id="errGeneral" style="margin:0"></p></div>
 
@@ -153,7 +154,7 @@ label.l:first-of-type{margin-top:0}
 </div></dialog>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="assets/comun.js?v=202611130130"></script>
+<script src="assets/comun.js?v=202611132310"></script>
 <script>
 const ROL = { admin: 'Admin', sup_gral: 'Sup Gral', auxiliar: 'Auxiliar', supervisor: 'Supervisor', operador: 'Operador' };
 const { sb, esc } = COM2;
@@ -194,6 +195,8 @@ function mensajeError(e) {
 function mostrar(el, msg) { $(el).textContent = msg || ''; $(el).hidden = !msg; }
 
 async function arrancar() {
+  const guardado = COM2.perfilGuardado();   // la barra sale enseguida; después se confirma
+  if (guardado && !guardado.debe_cambiar_clave) COM2.barra({ perfil: guardado, panel: 'admin' });
   try {
     const data = await COM2.perfil().catch(() => null);
     if (!data || data.debe_cambiar_clave) { location.replace('./'); return; }

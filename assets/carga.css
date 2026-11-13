@@ -1,0 +1,21 @@
+/* COM 2 — pantalla de carga, igual en todas las páginas (13/11/2026, pedido del usuario):
+   la ruedita azul y "Cargando información", centradas, DEBAJO de la barra azul (la barra se ve siempre).
+   En el HTML, justo después de la barra:
+     <div class="com2-carga" id="com2-carga" role="status" aria-live="polite">
+       <div class="com2-rueda"></div><div class="com2-carga-t">Cargando información</div>
+     </div>
+   Se oculta con COM2.carga.listo() y muestra un error con COM2.carga.error(mensaje, reintentar) (assets/comun.js).
+   La barra va por encima (z-index 1200); esto, por encima de todo lo demás de la página (mapas, pestañas fijas). */
+.com2-carga{position:fixed;left:0;right:0;bottom:0;top:calc(62px + env(safe-area-inset-top));z-index:1150;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:0 16px 62px;text-align:center;background:var(--bg,#F7F6F3);font-family:'DM Sans',system-ui,-apple-system,'Segoe UI',sans-serif}
+.com2-carga[hidden]{display:none!important}
+.com2-rueda{width:38px;height:38px;border:3px solid #dbe3ed;border-top-color:#2563eb;border-radius:50%;animation:com2-girar .8s linear infinite;flex:none}
+.com2-rueda[hidden]{display:none!important}
+@keyframes com2-girar{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion:reduce){.com2-rueda{animation-duration:2.4s}}
+.com2-carga-t{margin:0;color:#64748b;font-size:14px;font-weight:600;line-height:1.4;max-width:460px}
+.com2-carga-t.error{color:#c0392b}
+.com2-carga button{flex:none;border:0;border-radius:11px;padding:11px 22px;font:inherit;font-size:15px;font-weight:700;cursor:pointer;color:#fff;background:linear-gradient(135deg,#0f172a 0%,#16213e 55%,#1b3f74 100%)}
+.com2-carga button[hidden]{display:none!important}
+[data-theme="dark"] .com2-rueda{border-color:#3b4048;border-top-color:#7fa2dc}
+[data-theme="dark"] .com2-carga-t{color:#B3ADA5}
+[data-theme="dark"] .com2-carga-t.error{color:#ff8b7e}

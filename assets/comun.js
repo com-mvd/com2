@@ -7,9 +7,9 @@
   const sb = window.supabase.createClient(URL, KEY);
 
   const ROL_NOMBRE = { admin: 'Administrador', sup_gral: 'Sup Gral', auxiliar: 'Auxiliar', supervisor: 'Supervisor', operador: 'Operador' };
-  const PANEL_NOMBRE = { operador: 'Operador', supervisor: 'Supervisor', auxiliar: 'Auxiliares', sup_gral: 'Sup Gral', admin: 'Admin' };
+  const PANEL_NOMBRE = { operador: 'Operador', supervisor: 'Supervisor', auxiliar: 'Auxiliar', sup_gral: 'Sup Gral', admin: 'Admin' };
   // Paneles que ve cada rol (su panel y los de abajo, en escalera). El operador tiene uno solo: no se muestran.
-  // Auxiliares y Sup Gral (13/11) van entre Supervisor y Admin (sql/13-auxiliares-sup-gral.sql).
+  // Auxiliar y Sup Gral (13/11; el panel se llamaba "Auxiliares" hasta el 13/11) van entre Supervisor y Admin (sql/13-auxiliares-sup-gral.sql).
   const ORDEN_PANELES = ['operador', 'supervisor', 'auxiliar', 'sup_gral', 'admin'];
   const PANELES = Object.fromEntries(ORDEN_PANELES.map((r, i) => [r, ORDEN_PANELES.slice(0, i + 1)]));
   // Roles que entran a las páginas de supervisores (supervisor o más arriba)
@@ -19,13 +19,28 @@
   const guardar = (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} };
   const leer = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
 
+  // Último perfil leído (nombre y rol), guardado en este navegador para dibujar la barra con el usuario al instante,
+  // sin esperar a Supabase (13/11). Solo vale si sigue la sesión guardada de supabase-js; lo confirma perfil().
+  const CLAVE_PERFIL = 'com2.perfil';
+  const CLAVE_SESION = 'sb-' + URL.split('//')[1].split('.')[0] + '-auth-token';
+  function perfilGuardado() {
+    try {
+      if (!localStorage.getItem(CLAVE_SESION)) return null;
+      const p = JSON.parse(localStorage.getItem(CLAVE_PERFIL) || 'null');
+      return p && p.nombre && p.rol ? p : null;
+    } catch (e) { return null; }
+  }
+  const olvidarPerfil = () => { try { localStorage.removeItem(CLAVE_PERFIL); } catch (e) {} };
+
   // Perfil del usuario con sesión, o null si no hay sesión. Si está de baja, cierra la sesión y avisa.
   async function perfil() {
     const { data: { session } } = await sb.auth.getSession();
-    if (!session) return null;
+    if (!session) { olvidarPerfil(); return null; }
     const { data, error } = await sb.from('perfiles').select('id,usuario,nombre,rol,activo,debe_cambiar_clave').eq('id', session.user.id).maybeSingle();
     if (error) throw error;
+    if (data && data.activo) guardar(CLAVE_PERFIL, JSON.stringify({ id: data.id, nombre: data.nombre, rol: data.rol, debe_cambiar_clave: data.debe_cambiar_clave }));
     if (!data || !data.activo) {
+      olvidarPerfil();
       await sb.auth.signOut();
       const e = new Error(!data ? 'Tu usuario no tiene perfil. Avisale al administrador.' : 'Tu usuario está dado de baja.');
       e.sinAcceso = true;
@@ -87,16 +102,15 @@
     const s = document.createElement('style');
     s.id = 'com2-barra-estilos';
     s.textContent = `
+/* A la derecha de la barra: el nombre (abre Cambiar contraseña / Cerrar sesión) y, a su derecha, el botón de tema.
+   Sin ícono de persona ni flechita (pedido del usuario, 13/11). En el celular va solo el primer nombre. */
 .com2-der{display:flex;align-items:center;gap:6px;flex:none}
-.barra .com2-der.fija{position:absolute;right:clamp(12px,2vw,24px);top:50%;transform:translateY(-50%);z-index:2}
-.barra .tema-btn.fija{position:absolute;left:clamp(12px,2vw,24px);top:50%;transform:translateY(-50%);z-index:2}
-.com2-der .usuario{position:relative;margin:0}
-.com2-der .usuario-btn{display:flex;align-items:center;gap:7px;height:30px;border:0;background:transparent;color:#fff;cursor:pointer;padding:0 8px 0 3px;border-radius:8px;max-width:240px;font:inherit}
+.barra .com2-der.fija{position:absolute;right:var(--com2-borde,24px);top:env(safe-area-inset-top);height:62px;z-index:2}
+.com2-der .usuario{position:relative;margin:0;min-width:0}
+.com2-der .usuario-btn{display:flex;align-items:center;height:30px;border:0;background:transparent;color:#fff;cursor:pointer;padding:0 8px;border-radius:8px;max-width:240px;font:inherit}
 .com2-der .usuario-btn:hover{background:rgba(255,255,255,.08)}
-.com2-der .avatar{width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;flex:none}
-.com2-der .avatar svg{width:14px;height:14px}
-.com2-der .nombre{font-family:'DM Sans',system-ui,sans-serif;font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.com2-der .flecha{opacity:.7;font-size:11px}
+.com2-der .nombre{font-family:'DM Sans',system-ui,sans-serif;font-size:12.5px;font-weight:600;line-height:normal;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.com2-der .n-corto{display:none}
 .com2-der .menu-usuario{position:absolute;right:0;top:calc(100% + 8px);min-width:200px;background:#fff;color:#1A1714;border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.25);padding:6px;border:1px solid #E6E2DA;z-index:5000;text-align:left}
 .com2-der .menu-usuario button{display:block;width:100%;text-align:left;border:0;background:transparent;padding:10px 12px;border-radius:8px;font-family:'DM Sans',system-ui,sans-serif;font-size:14.5px;font-weight:600;color:inherit;cursor:pointer}
 .com2-der .menu-usuario button:hover{background:#F2F4F9}
@@ -107,25 +121,24 @@
 [data-theme="dark"] .com2-der .menu-usuario{background:#2b2f36;color:#ECEAE6;border-color:#3e434b}
 [data-theme="dark"] .com2-der .menu-usuario button:hover{background:#383d45}
 [data-theme="dark"] .com2-der .menu-usuario button.salir{color:#ff8b7e}
-@media (max-width:720px){.com2-der .nombre,.com2-der .flecha{display:none}.com2-der .usuario-btn{padding:0 3px}}
-/* En pantallas angostas el título deja lugar a los dos lados, así sigue centrado y no se pisa con el usuario */
-@media (max-width:720px){.barra:has(> .com2-der.fija) > .barra-in{padding-left:84px;padding-right:84px}}`;
+@media (max-width:720px){.com2-der .n-largo{display:none}.com2-der .n-corto{display:inline}.com2-der .usuario-btn{max-width:96px;padding:0 6px}.com2-der{gap:4px}}`;
     document.head.appendChild(s);
   }
 
   const htmlDerecha = p => `<div class="com2-der">
       <div class="usuario">
         <button type="button" class="usuario-btn" aria-haspopup="menu" aria-expanded="false">
-          <span class="avatar">${ICONO_PERSONA}</span><span class="nombre">${esc(p.nombre)}</span><span class="flecha">▾</span>
+          <span class="nombre">${htmlNombre(p.nombre)}</span>
         </button>
         <div class="menu-usuario" role="menu" hidden>
           <button type="button" role="menuitem" class="m-clave">Cambiar contraseña</button>
           <button type="button" role="menuitem" class="salir">Cerrar sesión</button>
         </div>
       </div>
+      <button type="button" class="tema-btn"></button>
     </div>`;
-  // El botón de tema va a la izquierda de la barra (pedido del usuario, 13/11)
-  const HTML_TEMA = '<button type="button" class="tema-btn"></button>';
+  // Nombre entero en PC y solo el primero en el celular
+  const htmlNombre = n => `<span class="n-largo">${esc(n)}</span><span class="n-corto">${esc(String(n || '').trim().split(/\s+/)[0])}</span>`;
   function conectarTema(tb) {
     pintarBotonTema(tb);
     tb.onclick = () => ponerTema(tema() === 'dark' ? 'light' : 'dark');
@@ -138,31 +151,33 @@
     document.addEventListener('click', ev => { if (!menu.hidden && !menu.contains(ev.target)) abrir(false); });
     document.addEventListener('keydown', ev => { if (ev.key === 'Escape') abrir(false); });
     caja.querySelector('.m-clave').onclick = () => { abrir(false); o.alCambiarClave ? o.alCambiarClave() : (location.href = './?clave=1'); };
-    caja.querySelector('.salir').onclick = async () => { await sb.auth.signOut(); location.href = './'; };
+    caja.querySelector('.salir').onclick = async () => { olvidarPerfil(); await sb.auth.signOut(); location.href = './'; };
   }
 
-  // Usuario arriba a la derecha y botón de tema a la izquierda de la barra azul de cualquier página de COM 2
+  // Usuario y, a su derecha, el botón de tema, arriba a la derecha de la barra azul de cualquier página de COM 2
   // (la llama COM2.acceso; las páginas que no la usan la llaman con su perfil)
   function usuarioEnBarra(p) {
     if (!p) return;
     const poner = () => {
       const barraAzul = document.querySelector('header.barra, #barra');
-      if (!barraAzul || barraAzul.querySelector('.com2-der')) return;
+      if (!barraAzul) return;
+      const ya = barraAzul.querySelector('.com2-der .nombre');
+      if (ya) { ya.innerHTML = htmlNombre(p.nombre); return; }   // ya estaba (del perfil guardado): solo se actualiza el nombre
       estilosBarra();
       barraAzul.insertAdjacentHTML('beforeend', htmlDerecha(p));
       const caja = barraAzul.lastElementChild;
       caja.classList.add('fija');
       conectarDerecha(caja);
-      barraAzul.insertAdjacentHTML('beforeend', HTML_TEMA);
-      const tb = barraAzul.lastElementChild;
-      tb.classList.add('fija');
-      conectarTema(tb);
+      conectarTema(caja.querySelector('.tema-btn'));
+      // El título deja a los dos lados el ancho del usuario, así sigue centrado y no se pisa (barra.css: --com2-lado)
+      const medir = () => barraAzul.style.setProperty('--com2-lado', (caja.offsetWidth + (parseFloat(getComputedStyle(caja).right) || 12) + 16) + 'px');
+      medir();
+      if (window.ResizeObserver) new ResizeObserver(medir).observe(caja);
     };
-    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', poner, { once: true });
+    // Si la barra ya está (aunque la página siga cargando) se pone enseguida; si no, al terminar de leer el HTML
+    if (document.readyState === 'loading' && !document.querySelector('header.barra, #barra')) document.addEventListener('DOMContentLoaded', poner, { once: true });
     else poner();
   }
-
-  const ICONO_PERSONA ='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-7 8-7s8 3 8 7"/></svg>';
 
   // Dibuja la barra en <header id="barra">.
   // opciones: perfil, panel (el activo), paneles (false para ocultarlos), alCambiarPanel(p), alCambiarClave()
@@ -171,7 +186,6 @@
     const lista = o.paneles === false ? [] : PANELES[o.perfil.rol];
     el.className = 'barra';
     el.innerHTML = `<div class="barra-in">
-      ${HTML_TEMA}
       <a class="marca" href="./">COM 2</a>
       ${lista.length > 1 ? `<nav class="paneles" aria-label="Paneles">${lista.map(p =>
         `<button type="button" class="panel-btn${p === o.panel ? ' on' : ''}" data-panel="${p}">${PANEL_NOMBRE[p]}</button>`).join('')}</nav>` : ''}
@@ -196,6 +210,53 @@
     conectarTema(el.querySelector('.tema-btn'));
   }
 
-  window.COM2 = { URL, KEY, sb, ROL_NOMBRE, PANEL_NOMBRE, PANELES, ROLES_SUPERVISION, esc, perfil, panelInicial, barra, guardar, leer, icono,
-    usuarioEnBarra, tema, ponerTema };
+  // ── Pantalla de carga (13/11): la misma en todas las páginas, debajo de la barra azul (assets/carga.css) ──
+  // Usa <div class="com2-carga" id="com2-carga"> del HTML (o el elemento o id que se le pase).
+  const domListo = f => document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', f, { once: true }) : f();
+  const cajaCarga = c => typeof c === 'string' || !c ? document.getElementById(c || 'com2-carga') : c;
+  const carga = {
+    mostrar(texto = 'Cargando información', c) {
+      domListo(() => {
+        const el = cajaCarga(c); if (!el) return;
+        const r = el.querySelector('.com2-rueda'), tx = el.querySelector('.com2-carga-t'), b = el.querySelector('button');
+        if (r) r.hidden = false;
+        if (tx) { tx.textContent = texto; tx.classList.remove('error'); }
+        if (b) b.hidden = true;
+        el.hidden = false;
+      });
+    },
+    listo(c) { domListo(() => { const el = cajaCarga(c); if (el) el.hidden = true; }); },
+    // Error: sin ruedita, el mensaje en rojo y, si se pasa reintentar, el botón Reintentar
+    error(msg, reintentar, c) {
+      domListo(() => {
+        const el = cajaCarga(c); if (!el) return;
+        const r = el.querySelector('.com2-rueda'), tx = el.querySelector('.com2-carga-t');
+        if (r) r.hidden = true;
+        if (tx) { tx.textContent = msg; tx.classList.add('error'); }
+        let b = el.querySelector('button');
+        if (reintentar) {
+          if (!b) { b = document.createElement('button'); b.type = 'button'; b.textContent = 'Reintentar'; el.appendChild(b); }
+          b.hidden = false; b.onclick = reintentar;
+        } else if (b) b.hidden = true;
+        el.hidden = false;
+      });
+    }
+  };
+
+  // Barra con el usuario desde el primer momento (13/11): con el perfil guardado, en cuanto aparece la barra azul
+  // de la página (header.barra) se le ponen el usuario y el botón de tema. Después COM2.acceso() lo confirma.
+  // El menú (index) y Usuarios dibujan su barra (#barra) con COM2.barra() y lo hacen por su cuenta.
+  const pg = perfilGuardado();
+  if (pg && !pg.debe_cambiar_clave) {
+    const hay = () => document.querySelector('header.barra');
+    if (hay()) usuarioEnBarra(pg);
+    else {
+      const ob = new MutationObserver(() => { if (hay()) { ob.disconnect(); usuarioEnBarra(pg); } });
+      ob.observe(document.documentElement, { childList: true, subtree: true });
+      domListo(() => ob.disconnect());
+    }
+  }
+
+  window.COM2 = { URL, KEY, sb, ROL_NOMBRE, PANEL_NOMBRE, PANELES, ROLES_SUPERVISION, esc, perfil, perfilGuardado, panelInicial, barra, guardar, leer, icono,
+    usuarioEnBarra, tema, ponerTema, carga };
 })();

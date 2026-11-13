@@ -8,6 +8,8 @@
 <title>COM 2</title>
 <link rel="icon" type="image/png" href="assets/logo-ciemsa.png">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/barra.css?v=202611132330">
+<link rel="stylesheet" href="assets/carga.css?v=202611131600">
 <style>
 /* Página de carga de Vaciados de bolsones edificio IM. En el panel Admin de COM 2 (solo admin).
    Desde el 10/11/2026 guarda en la tabla vaciados de Supabase (tablero 'im', assets/vaciados.js), con el
@@ -28,30 +30,22 @@ body{font-family:'DM Sans',system-ui,sans-serif;color:var(--text);-webkit-font-s
 button,input,select{font:inherit;color:inherit}
 .num{font-variant-numeric:tabular-nums}
 
-.barra{position:sticky;top:0;z-index:10;background:linear-gradient(135deg,#162a4d 0%,#193563 55%,#1b3f74 100%);color:#fff;box-shadow:0 4px 12px rgba(0,0,0,.3);padding-top:env(safe-area-inset-top)}
-.barra-in{max-width:560px;margin:0 auto;padding:14px 16px;display:flex;justify-content:center}
-/* Título y "Pasado hasta" del mismo ancho (el del título), centrados */
-.cabeza{position:relative;display:grid;gap:9px;width:max-content;max-width:100%}
-.titulo{display:flex;align-items:center;justify-content:center;gap:10px;min-width:0}
-.titulo .ico{display:flex;align-items:center;justify-content:center;flex-shrink:0;width:28px;height:28px;font-family:'Segoe UI Emoji','Apple Color Emoji','Noto Color Emoji',sans-serif;font-size:23px;line-height:28px}
-.titulo h1{font-family:'Segoe UI',Arial,sans-serif;font-size:24px;font-weight:700;letter-spacing:-.01em;line-height:1.15;text-align:center}
-@media (max-width:760px){
-  .titulo h1{font-size:19px}
-  .titulo .ico{width:24px;height:24px;font-size:19px;line-height:24px}
-}
-/* "Pasado hasta": hasta qué fecha ya se cargó lo del grupo (se guarda en el Apps Script) */
-.pasado{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:rgba(255,255,255,.85);white-space:nowrap}
-.pasado input{flex:1;min-width:0;width:100%;font:inherit;font-size:14px;font-weight:700;text-align:center;color:#fff;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.35);border-radius:9px;padding:5px 9px;color-scheme:dark;outline:none}
-.pasado input:focus{border-color:#fff}
+/* La barra azul (62 px, igual en todas las páginas) está en assets/barra.css */
+/* "Pasado hasta": hasta qué fecha ya se cargó lo del grupo. Desde el 13/11 va abajo de la barra, centrado
+   (en la barra de 62 px no entra junto al título) */
+.cabeza{position:relative;align-self:center;width:max-content;max-width:100%}
+.pasado{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:600;color:var(--text2);white-space:nowrap}
+.pasado input{min-width:0;width:160px;font:inherit;font-size:14px;font-weight:700;text-align:center;color:var(--text);background:var(--card);border:1px solid var(--border);border-radius:9px;padding:5px 9px;outline:none;box-shadow:var(--shadow)}
+.pasado input:focus{border-color:var(--azul)}
 .pasado input::-webkit-date-and-time-value{text-align:center}
 /* Estado al guardar la fecha: a la derecha, sin correr nada (ruedita + "Cargando…", después tilde verde) */
-.estado{position:absolute;left:calc(100% + 10px);bottom:0;height:30px;display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:rgba(255,255,255,.85);white-space:nowrap}
-.estado .rd{width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:girar .8s linear infinite}
-.estado .ok{color:#3ddc97;font-size:20px;font-weight:700;line-height:1}
+.estado{position:absolute;left:calc(100% + 10px);bottom:0;height:30px;display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--text2);white-space:nowrap}
+.estado .rd{width:14px;height:14px;border:2px solid var(--border);border-top-color:var(--azul);border-radius:50%;animation:girar .8s linear infinite}
+.estado .ok{color:var(--verde);font-size:20px;font-weight:700;line-height:1}
 /* En el celular no entra el texto al costado: queda solo la ruedita y el tilde */
 @media (max-width:600px){.estado .tx{display:none}.estado{left:calc(100% + 6px)}}
 
-.wrap{max-width:560px;margin:0 auto;padding:16px 16px 40px;display:flex;flex-direction:column;gap:14px}
+.wrap{max-width:560px;margin:0 auto;padding:14px 16px 40px;display:flex;flex-direction:column;gap:14px}
 .card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);padding:16px}
 .card h2{font-size:15px;font-weight:700;margin-bottom:12px;display:flex;align-items:center;gap:8px}
 
@@ -95,14 +89,8 @@ input[type=datetime-local].in::-webkit-date-and-time-value{text-align:left}
 .aviso.error{background:var(--rojo)}
 
 .cargando{text-align:center;color:var(--text2);padding:30px 0;font-size:14px}
-/* Mientras se leen las cargas: solo la ruedita, igual que en com-mvd/dashboard y mb */
-.carga{min-height:max(260px,calc(100vh - 130px));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:0 16px;text-align:center}
-.ruedita{width:38px;height:38px;border:3px solid #dbe3ed;border-top-color:#2563eb;border-radius:50%;animation:girar .8s linear infinite}
+/* Mientras se leen las cargas: la pantalla de carga de assets/carga.css (igual en todas las páginas) */
 @keyframes girar{to{transform:rotate(360deg)}}
-@media (prefers-reduced-motion:reduce){.ruedita{animation-duration:2.4s}}
-.carga-t{color:#64748b;font-size:14px;font-weight:600}
-.carga-t.error{color:var(--rojo)}
-.carga .btn{flex:none;padding:11px 22px;font-size:15px}
 /* ── Modo oscuro (12/11): botón de la luna a la derecha del usuario (assets/comun.js) ── */
 :root[data-theme="dark"]{
   --bg:#1e2126; --card:#272b31; --border:#3b4048;
@@ -118,11 +106,9 @@ input[type=datetime-local].in::-webkit-date-and-time-value{text-align:left}
 [data-theme="dark"] .fila{border-top-color:#363a41}
 [data-theme="dark"] .fila.editando{background:#2b3242}
 [data-theme="dark"] .aviso{background:#ECEAE6;color:#1A1714}
-[data-theme="dark"] .ruedita{border-color:#3b4048;border-top-color:#7fa2dc}
-[data-theme="dark"] .carga-t{color:var(--text2)}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="assets/comun.js?v=202611130130"></script>
+<script src="assets/comun.js?v=202611132310"></script>
 <script src="assets/acceso.js?v=202611130130"></script>
 <script src="assets/vaciados.js?v=202611101900"></script>
 <script>COM2.acceso({ roles: ['admin'] });   // solo admin (panel Admin)</script>
@@ -130,24 +116,25 @@ input[type=datetime-local].in::-webkit-date-and-time-value{text-align:left}
 <body>
 
 <header class="barra">
+  <a class="com2-marca" href="./">COM 2</a>
   <div class="barra-in">
-    <div class="cabeza">
-      <div class="titulo"><span class="ico" aria-hidden="true">♻</span><h1>Carga bolsones edificio IM</h1></div>
-      <div class="pasado" id="pasado" hidden><label for="inPasado">Pasado hasta</label><input type="date" id="inPasado"></div>
-      <span class="estado" id="estadoPasado" aria-live="polite"></span>
-    </div>
+    <div class="titulo"><span class="ico" aria-hidden="true">♻</span><h1>Carga bolsones edificio IM</h1></div>
   </div>
 </header>
 
 <!-- Mientras se leen las cargas -->
-<div class="carga" id="pantallaCargando" role="status" aria-live="polite">
-  <div class="ruedita" id="ruedita"></div>
-  <div class="carga-t" id="cargaT">Cargando información</div>
-  <button class="btn" type="button" id="reintentar" hidden>Reintentar</button>
+<div class="com2-carga" id="pantallaCargando" role="status" aria-live="polite">
+  <div class="com2-rueda" id="ruedita"></div>
+  <div class="com2-carga-t" id="cargaT">Cargando información</div>
+  <button type="button" id="reintentar" hidden>Reintentar</button>
 </div>
 
 
 <div class="wrap" id="pantallaCarga" hidden>
+  <div class="cabeza">
+    <div class="pasado" id="pasado" hidden><label for="inPasado">Pasado hasta</label><input type="date" id="inPasado"></div>
+    <span class="estado" id="estadoPasado" aria-live="polite"></span>
+  </div>
   <form class="card" id="form">
     <h2 id="tituloForm">Nueva carga</h2>
 
@@ -321,7 +308,7 @@ $('inPasado').onchange = async () => {
 function cargando() {
   $('ruedita').hidden = false;
   $('cargaT').textContent = 'Cargando información';
-  $('cargaT').className = 'carga-t';
+  $('cargaT').className = 'com2-carga-t';
   $('reintentar').hidden = true;
   pantalla('cargando');
 }
@@ -336,7 +323,7 @@ async function iniciar() {
   } catch (err) {
     $('ruedita').hidden = true;
     $('cargaT').textContent = 'No se pudieron leer las cargas (' + err.message + ')';
-    $('cargaT').className = 'carga-t error';
+    $('cargaT').className = 'com2-carga-t error';
     $('reintentar').hidden = false;
   }
 }

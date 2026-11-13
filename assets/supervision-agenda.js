@@ -16,16 +16,18 @@
     ['Lunes', ['CH']], ['Martes', ['A', 'D']], ['Miércoles', ['E']], ['Jueves', ['G', 'F']],
     ['Viernes', ['B']], ['Sábado', ['C']]
   ];
-  const coloresMuni = { A: '#C2A289', B: '#FFE599', C: '#B6D7A8', CH: '#6D9EEB', D: '#F9CB9C', E: '#93C47D', F: '#B4A7D6', G: '#A64D79' };
+  // En modo oscuro estos colores salen más fuertes (SupervisionMapa.tema, assets/supervision-mapa.js)
+  const T = window.SupervisionMapa ? SupervisionMapa.tema : x => x;
+  const coloresMuni = T({ A: '#C2A289', B: '#FFE599', C: '#B6D7A8', CH: '#6D9EEB', D: '#F9CB9C', E: '#93C47D', F: '#B4A7D6', G: '#A64D79' });
   const estados = {
-    pendiente: ['Pendiente', '#eb6834', '#FCE9DF', '#9e3d16'],
-    asignado: ['Asignada', '#2a78d6', '#E1ECFA', '#215ba0'],
-    realizado: ['Realizada', '#1baf7a', '#DDF3EA', '#0f7a55'],
-    cancelado: ['Cancelada', '#d03b3b', '#F9E1E0', '#a22828'],
-    cerrado: ['Cerrada sin realizar', '#827b71', '#F0EDE7', '#5F5A54']
+    pendiente: T(['Pendiente', '#eb6834', '#FCE9DF', '#9e3d16']),
+    asignado: T(['Asignada', '#2a78d6', '#E1ECFA', '#215ba0']),
+    realizado: T(['Realizada', '#1baf7a', '#DDF3EA', '#0f7a55']),
+    cancelado: T(['Cancelada', '#d03b3b', '#F9E1E0', '#a22828']),
+    cerrado: T(['Cerrada sin realizar', '#827b71', '#F0EDE7', '#5F5A54'])
   };
   // Mismos colores de transportista que Supervisión de Bolsones (ninguno parecido al naranja de los pendientes)
-  const coloresTransp = ['#6250d6', '#0e7490', '#be185d', '#4d7c0f', '#a16207', '#1e293b', '#b91c1c', '#0284c7', '#a21caf', '#65a30d'];
+  const coloresTransp = T(['#6250d6', '#0e7490', '#be185d', '#4d7c0f', '#a16207', '#1e293b', '#b91c1c', '#0284c7', '#a21caf', '#65a30d']);
   const plurales = { pendiente: 'Pendientes', asignado: 'Asignadas', realizado: 'Realizadas', cancelado: 'Canceladas', cerrado: 'Cerradas sin realizar' };
   // El transportista sin el número del final, como en Bolsones ("Zulma Soca-22" → "Zulma Soca")
   const nomTransp = t => String(t || '').replace(/-\d+$/, '').trim();
@@ -62,7 +64,7 @@
   };
   let registros = [];
   let resultados = [];
-  let vista = 'operacion';
+  let vista = 'organizacion';   // siempre abre en Organización del servicio (pedido del usuario, 13/11)
   let modo = 'estado';
   let grupoMapa = '';
   // Pendientes: recuadro elegido en la tabla de cupos ({ municipio, fecha }) o solo el municipio ({ municipio }).
@@ -501,9 +503,10 @@
     const todosT = new Map();
     if (porTransportista) for (const fila of resultados) todosT.set(clave(fila), (todosT.get(clave(fila)) || 0) + 1);
     const ordenColor = [...todosT.keys()].filter(k => k !== SIN_T).sort((a, b) => todosT.get(b) - todosT.get(a) || a.localeCompare(b));
-    const colores = new Map(orden.map(grupo => [grupo,
+    // En modo oscuro, la versión clara de cada color (assets/supervision-mapa.js), en el mapa y en la referencia
+    const colores = new Map(orden.map(grupo => [grupo, (window.SupervisionMapa ? SupervisionMapa.color : c => c)(
       porMuni ? coloresMuni[grupo] || '#B5AFA6' : porTransportista ? grupo === SIN_T ? estados.pendiente[1] : coloresTransp[ordenColor.indexOf(grupo) % coloresTransp.length] : estados[grupo][1]
-    ]));
+    )]));
     const nombre = grupo => porMuni ? coloresMuni[grupo] ? 'Municipio ' + grupo : grupo
       : porTransportista ? grupo : plurales[grupo];
     if (!cuentas.has(grupoMapa)) grupoMapa = '';
@@ -545,7 +548,8 @@
       const color = colores.get(clave(fila));
       const contorno = porTransportista && fila.situacion === 'asignado';
       const n = numeros.get(fila);
-      const borde = { color: contorno ? color : '#fff', weight: contorno ? 2.5 : 1.5 };
+      // En modo oscuro el contorno blanco pasa a oscuro, así el color del punto se ve entero
+      const borde = { color: contorno ? color : (window.SupervisionMapa ? SupervisionMapa.borde('#fff') : '#fff'), weight: contorno ? 2.5 : 1.5 };
       const marcador = L.circleMarker(fila.coordenadas, {
         radius: n ? 9 : 6, ...borde, fillColor: contorno ? '#fff' : color, fillOpacity: .95
       }).bindTooltip(COM2.esc(fila.direccion || 'Sin dirección'), { direction: 'top', offset: [0, -6] })
@@ -754,7 +758,8 @@
   async function cargar() {
     $('reintentar').hidden = true;
     $('rueda').hidden = false;
-    $('mensaje').textContent = 'Cargando información…';
+    $('mensaje').textContent = 'Cargando información';
+    $('mensaje').classList.remove('error');
     try {
       if (!window.COM2?.acceso) throw new Error('No se pudo cargar la conexión de COM 2.');
       if (!await COM2.acceso()) return;
@@ -775,6 +780,7 @@
       $('supervision').hidden = true;
       $('rueda').hidden = true;
       $('mensaje').textContent = error.message || 'No se pudo cargar Agenda.';
+      $('mensaje').classList.add('error');
       $('reintentar').hidden = false;
     }
   }
@@ -793,6 +799,8 @@
   }
 
   botones.forEach(boton => boton.addEventListener('click', () => elegirVista(boton.dataset.vista)));
+  // Al volver con atrás / adelante (página guardada por el navegador) también vuelve a Organización del servicio
+  window.addEventListener('pageshow', evento => { if (evento.persisted && registros.length) { elegirVista('organizacion'); scrollTo(0, 0); } });
   new ResizeObserver(([entrada]) => document.documentElement.style.setProperty('--alto-barra', entrada.target.offsetHeight + 'px'))
     .observe(document.querySelector('.barra'));
   $('modo').addEventListener('click', evento => {
@@ -826,7 +834,8 @@
     $('franjas').querySelector(`[data-franja="${k}"]`)?.focus();
   });
   // Al cambiar el tema se vuelven a pintar las gráficas con los colores nuevos
-  window.addEventListener('com2:tema', () => graficas.forEach(g => g.update('none')));
+  // y el mapa, porque en oscuro los puntos usan colores más claros
+  window.addEventListener('com2:tema', () => { graficas.forEach(g => g.update('none')); if (registros.length) { mostrarOrganizacion(); actualizar(); } });
   $('ley-tipo').addEventListener('click', evento => {
     const boton = evento.target.closest('[data-tipo]');
     if (!boton) return;

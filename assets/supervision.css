@@ -13,7 +13,7 @@
 *{box-sizing:border-box;margin:0;padding:0}
 [hidden]{display:none!important}
 /* Lugar de la barra de desplazamiento siempre reservado: el ancho de la página no cambia entre pestañas cortas y largas */
-html{scroll-behavior:smooth;overflow-y:scroll;scrollbar-gutter:stable}
+html{scroll-behavior:smooth}   /* sin barra de desplazamiento: ver barra.css (13/11) */
 body{font-family:'DM Sans',system-ui,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased;
   background:var(--bg);
   background-attachment:fixed;min-height:100vh}
@@ -22,15 +22,9 @@ body{font-family:'DM Sans',system-ui,sans-serif;color:var(--text);-webkit-font-s
 button{font:inherit;color:inherit;cursor:pointer}
 .num{font-variant-numeric:tabular-nums}
 
-/* Barra del título: igual a la de los dashboards de com-mvd/dashboard */
 /* El título queda fijo arriba al bajar, y la barra de pestañas fija justo abajo (--alto-barra lo pone el script) */
-.barra{position:sticky;top:0;z-index:1200;background:linear-gradient(135deg,#162a4d 0%,#193563 55%,#1b3f74 100%);color:#fff;box-shadow:0 4px 12px rgba(0,0,0,.3)}
-/* Mismo ancho y márgenes que .wrap; el título va centrado (se actualiza y se vuelve desde el menú principal) */
-.barra-in{max-width:1440px;margin:0 auto;min-height:84px;padding:12px clamp(16px,2.5vw,2rem);display:flex;justify-content:center;align-items:center;position:relative}
-.titulo{display:flex;align-items:center;gap:10px;min-width:0}
-/* ♻ en versión emoji a color, igual que en com-mvd/dashboard/bolsones.html */
-.titulo .ico{display:flex;align-items:center;justify-content:center;flex-shrink:0;width:32px;height:32px;font-family:'Segoe UI Emoji','Apple Color Emoji','Noto Color Emoji',sans-serif;font-size:26px;font-weight:700;line-height:32px;color:#fff;filter:drop-shadow(0 1px 1px rgba(0,0,0,.18))}
-.titulo h1{font-family:'Segoe UI',Arial,sans-serif;font-size:27px;font-weight:700;letter-spacing:-.01em;line-height:1.15}
+/* Alto, color y título: assets/barra.css (igual en todas las páginas, 62 px). Acá solo va por encima del mapa */
+.barra{z-index:1200}
 
 /* Botoneras segmentadas (capas del mapa) */
 .seg{display:inline-flex;background:var(--card);border:1px solid var(--border);border-radius:11px;padding:3px;box-shadow:var(--shadow)}
@@ -209,7 +203,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 /* Gráficas */
 /* Barra de categorías (mismo azul que la barra del título) */
 /* Fija al bajar, a 14px de la barra: el mismo espacio que tiene arriba y abajo cuando no se bajó */
-.cats{position:sticky;top:calc(var(--alto-barra,84px) + 14px);z-index:1100;display:flex;gap:6px;padding:6px;margin-bottom:14px;border-radius:14px;background:linear-gradient(135deg,#162a4d 0%,#193563 55%,#1b3f74 100%);box-shadow:0 4px 12px rgba(15,23,42,.25);overflow-x:auto;scrollbar-width:none}
+.cats{position:sticky;top:calc(var(--alto-barra,62px) + 14px);z-index:1100;display:flex;gap:6px;padding:6px;margin-bottom:14px;border-radius:14px;background:linear-gradient(135deg,#162a4d 0%,#193563 55%,#1b3f74 100%);box-shadow:0 4px 12px rgba(15,23,42,.25);overflow-x:auto;scrollbar-width:none}
 .cats button{display:inline-flex;align-items:center;gap:8px;border:0;background:transparent;color:#c7d5ea;font-size:13.5px;font-weight:600;padding:9px 16px;border-radius:10px;white-space:nowrap;transition:background-color .15s,color .15s}
 .cats button:hover{background:rgba(255,255,255,.08);color:#fff}
 .cats button.on{background:#fff;color:#0f172a;box-shadow:0 2px 6px rgba(0,0,0,.18)}
@@ -239,7 +233,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 /* Municipios del día arriba del mapa */
 .op-munis{display:flex;align-items:center;gap:6px;font-size:13px;font-weight:600;color:var(--text2)}
 
-.cargador{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg);z-index:5000;font-size:14px;color:var(--text2)}
+/* La pantalla de carga es la de assets/carga.css (igual en todas las páginas, debajo de la barra) */
 
 /* 6 días por fila solo cuando entran los nombres de las plantas en un renglón */
 @media (max-width:1439px){
@@ -254,9 +248,6 @@ button{font:inherit;color:inherit;cursor:pointer}
   .pen-card{grid-template-columns:1fr;grid-template-rows:auto minmax(0,1fr);height:auto}
   .pen-lado{border-right:0;border-bottom:1px solid var(--border)}
   .pen-mapa{height:460px}
-  .barra-in{padding:10px 16px;min-height:64px}
-  .titulo h1{font-size:21px}
-  .titulo .ico{width:26px;height:26px;font-size:21px;line-height:26px}
   .toggles{margin-left:0}
 }
 /* ── Modo oscuro (12/11): el botón de la luna, a la derecha del usuario (comun.js). Las barras azules quedan igual ── */
@@ -288,6 +279,8 @@ button{font:inherit;color:inherit;cursor:pointer}
 [data-theme="dark"] .at-desc{border-color:var(--border)}
 [data-theme="dark"] .ficha{box-shadow:0 12px 32px rgba(0,0,0,.5)}
 /* Mapa: las mismas teselas claras, invertidas para que queden oscuras */
+/* Los números de los puntos van oscuros: en modo oscuro los puntos son de colores claros */
+[data-theme="dark"] .pt-num{color:#1A1714}
 [data-theme="dark"] .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(1.08) contrast(.82)}
 [data-theme="dark"] .leaflet-tooltip{background:#33373e;color:var(--text);border-color:#484d55}
 [data-theme="dark"] .leaflet-tooltip-top:before{border-top-color:#33373e}

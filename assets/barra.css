@@ -1,0 +1,39 @@
+/* COM 2 — barra azul de arriba, igual en todas las páginas (13/11/2026, pedido del usuario).
+   Mide siempre 62 px de alto, como la del menú (index.html, en comun.css), en PC y en el celular.
+   El título va centrado; si es largo, se achica en el celular y puede ir en dos renglones.
+   El usuario y, a su derecha, el botón de tema los pone COM2.usuarioEnBarra() de comun.js, que también
+   pone en --com2-lado el ancho que ocupan: el título deja ese lugar a los dos lados y sigue centrado.
+   A la izquierda va siempre "COM 2" (<a class="com2-marca"> en el HTML de cada barra, 13/11), como en el menú:
+   lleva al menú. Mide lo mismo que en index.html (30 px en PC, 24 px en el celular).
+   Cargar esta hoja ANTES del estilo propio de la página (así la página puede cambiar, por ejemplo, el z-index). */
+/* Ancho común de COM 2 (13/11, pedido del usuario): el de las Supervisiones, hasta 1440 px con 16–32 px de margen.
+   --com2-borde es la distancia del borde de la pantalla al borde de ese ancho: ahí van "COM 2" y el usuario de la barra,
+   y ahí empieza y termina el contenido de todas las páginas. Se usa en elementos que ocupan todo el ancho (100%). */
+/* Sin barra de desplazamiento a la derecha (13/11, pedido del usuario): se baja con la ruedita del mouse, el teclado
+   o el dedo. Así tampoco cambia el ancho cuando una página pasa a ser larga, y "COM 2" y el usuario no se corren.
+   Solo la de la página: las tablas y listas con desplazamiento propio conservan la suya. */
+html{scrollbar-width:none;background:var(--bg,#F7F6F3)}
+html::-webkit-scrollbar{display:none}
+:root{--com2-ancho:1440px;--com2-margen:clamp(16px,2.5vw,32px);--com2-borde:calc(max(0px,(100% - var(--com2-ancho)) / 2) + var(--com2-margen))}
+.barra{position:sticky;top:0;z-index:1000;background:linear-gradient(135deg,#162a4d 0%,#193563 55%,#1b3f74 100%);color:#fff;box-shadow:0 4px 12px rgba(0,0,0,.3);padding-top:env(safe-area-inset-top)}
+/* Centrado con flex en los 62 px de la barra, igual que en el menú (sin translateY: con medio píxel, Windows
+   a veces dibuja la letra 1 px más abajo y "COM 2" parecía bajar al entrar a una página) */
+.barra > .com2-marca{position:absolute;left:var(--com2-borde);top:env(safe-area-inset-top);height:62px;display:flex;align-items:center;z-index:2;font-family:'Segoe UI',Arial,sans-serif;font-size:30px;font-weight:600;letter-spacing:-.01em;line-height:normal;color:#fff;text-decoration:none;white-space:nowrap}
+.barra > .com2-marca:hover{color:#fff;text-decoration:none;opacity:.9}
+/* El título deja a los dos lados el lugar de lo más ancho ("COM 2" o el usuario), así sigue centrado */
+.barra > .barra-in{box-sizing:border-box;height:62px;min-height:0;max-width:none;margin:0;padding:0 max(calc(var(--com2-borde) + 108px),var(--com2-lado,64px));display:flex;align-items:center;justify-content:center;position:relative}
+.barra .titulo{display:flex;align-items:center;justify-content:center;gap:10px;min-width:0;margin:0}
+.barra .titulo .ico{display:flex;align-items:center;justify-content:center;flex-shrink:0;width:28px;height:28px;font-family:'Segoe UI Emoji','Apple Color Emoji','Noto Color Emoji',sans-serif;font-size:23px;font-weight:700;line-height:28px;color:#fff;filter:drop-shadow(0 1px 1px rgba(0,0,0,.18))}
+.barra .titulo h1{margin:0;padding:0;font-family:'Segoe UI',Arial,sans-serif;font-size:clamp(18px,2.4vw,24px);font-weight:700;letter-spacing:-.01em;line-height:1.3;padding-bottom:1px;color:#fff;text-align:center;text-transform:none;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+/* En PC el título se achica en pantallas angostas (24 px desde 1000 px de ancho) y, si igual no entra, va en dos renglones */
+@media (max-width:720px){
+  /* En el celular el título queda entre "COM 2" y el usuario (no centrado en la pantalla: no entraría) */
+  .barra > .com2-marca{font-size:22px}
+  .barra > .barra-in{padding:0 var(--com2-lado,84px) 0 calc(var(--com2-borde) + 74px)}
+  /* Sin el ícono del título: así entran los títulos largos ("Carga Barrios Sustentables Cerro") */
+  .barra .titulo .ico{display:none}
+  .barra .titulo{gap:7px}
+  .barra .titulo .ico{width:22px;height:22px;font-size:18px;line-height:22px}
+  /* line-height de 1.3: con menos, el recorte de los dos renglones corta la parte de abajo de la g, la p, etc. */
+  .barra .titulo h1{font-size:16px}
+}

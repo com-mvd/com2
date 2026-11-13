@@ -5,9 +5,13 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>COM 2</title>
 <link rel="icon" type="image/png" href="assets/logo-ciemsa.png">
+<!-- DM Sans: la letra del nombre del usuario en la barra, igual que en las demás páginas -->
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/barra.css?v=202611132330">
+<link rel="stylesheet" href="assets/carga.css?v=202611131600">
 <style>
 :root{
-  --bg:#F0F4FA;
+  --bg:#F7F6F3;   /* fondo como en las demás páginas de COM 2 (13/11; antes #F0F4FA, azulado) */
   --bg2:#E8EEF7;
   --bg3:#DAE3F0;
   --card:#FFFFFF;
@@ -29,14 +33,34 @@
   --shadow-md:0 4px 20px rgba(40,60,120,.10),0 1px 4px rgba(40,60,120,.06);
   --font:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
 }
+/* Modo oscuro (13/11): con el botón de la barra de COM 2. Mismos fondos que las demás páginas de COM 2 */
+:root[data-theme="dark"]{
+  --bg:#1e2126; --bg2:#2b2f36; --bg3:#3b4048; --card:#272b31;
+  --text:#ECEAE6; --text2:#B3ADA5; --text3:#857F77;
+  --border:#3b4048; --border2:#4a5059;
+  --blue:#4f7fe0; --blue-bg:#25324a; --blue-dark:#a9c3f5; --blue-mid:#7BA3E8; --blue-light:#2a3140;
+  --green-bg:#173a2d;--green-text:#6fd3a5;--green-border:#2c6a50;
+  --amber-bg:#3d3018;--amber-text:#f0c46a;--amber-border:#8a6a20;
+  --slate-bg:#2e333c;--slate-text:#c3cbe0;--slate-border:#4a5262;
+  --red-bg:#3d1f1f;--red-text:#ff9a9a;--red-border:#7a3434;
+  --shadow:0 2px 8px rgba(0,0,0,.3),0 1px 2px rgba(0,0,0,.25);
+  --shadow-md:0 4px 20px rgba(0,0,0,.4),0 1px 4px rgba(0,0,0,.3);
+  color-scheme:dark;
+}
+[data-theme="dark"] thead th{border-bottom-color:#3a4a66}
+[data-theme="dark"] .sh-warn td,[data-theme="dark"] .b2,[data-theme="dark"] .cd-btn.b2{border-color:#8a6a20}
+[data-theme="dark"] .tr-warn td{background:rgba(61,48,24,.45)}
+[data-theme="dark"] .err{color:#ff9a9a}
 *{box-sizing:border-box;margin:0;padding:0}
 html{background:var(--bg);min-height:100vh}
-body{font-family:var(--font);-webkit-font-smoothing:antialiased;background:var(--bg);color:var(--text);padding:2rem}
+body{font-family:var(--font);-webkit-font-smoothing:antialiased;background:var(--bg);color:var(--text);padding:0}
 
-.app{max-width:1120px;margin:0 auto}
+/* Ancho común de COM 2 (el de las Supervisiones) y 14 px de la barra a lo de abajo */
+.app{max-width:var(--com2-ancho);margin:0 auto;padding:14px var(--com2-margen) 2rem}
 
 /* HEADER */
-.header{display:flex;align-items:center;gap:16px;margin-bottom:2rem}
+.header{margin-bottom:14px}
+.header:has(.hsub:empty){display:none}   /* sin aviso, no ocupa lugar */
 .hicon{width:48px;height:48px;border-radius:14px;background:var(--blue);display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 4px 12px rgba(59,111,212,.35)}
 .hicon svg{width:24px;height:24px;stroke:white;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
 .htitle{font-size:22px;font-weight:700;color:var(--text);letter-spacing:-.02em}
@@ -46,27 +70,33 @@ body{font-family:var(--font);-webkit-font-smoothing:antialiased;background:var(-
 /* UPLOAD */
 
 /* PROGRESS */
-.prog-wrap{margin-top:1.25rem}
-.prog-bar{height:3px;background:var(--bg3);border-radius:99px;overflow:hidden}
-.prog-fill{height:100%;background:var(--blue);border-radius:99px;transition:width .25s ease}
-.prog-label{font-size:12px;color:var(--text3);margin-top:7px}
 .err{font-size:13px;color:#B02020;margin-top:.75rem;padding:.65rem 1rem;background:var(--red-bg);border-radius:8px;border:1px solid var(--red-border)}
 
 /* TOOLBAR */
-.toolbar{display:flex;align-items:center;gap:8px;margin-bottom:1.5rem;flex-wrap:wrap;margin-top:2rem}
+/* Barra de la fecha y los botones de copiar: igual a la barra de pestañas de las Supervisiones (.cats de
+   supervision.css, 13/11): azul de la barra, fija debajo del título al bajar. La fecha va como la pestaña elegida */
+.toolbar{position:sticky;top:76px;z-index:1100;display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:6px;padding:6px;margin:0 0 14px;border-radius:14px;background:linear-gradient(135deg,#162a4d 0%,#193563 55%,#1b3f74 100%);box-shadow:0 4px 12px rgba(15,23,42,.25)}
 .sel-wrap{position:relative;display:flex;align-items:center}
-.sel-wrap svg{position:absolute;left:11px;width:15px;height:15px;stroke:var(--blue);fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+.sel-wrap svg{position:absolute;left:14px;width:16px;height:16px;stroke:#0f172a;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;pointer-events:none}
+.toolbar select{font-size:13.5px;font-weight:600;padding:9px 34px 9px 38px;border:0;border-radius:10px;background:#fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230f172a' stroke-width='2.2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 12px center/14px;color:#0f172a;box-shadow:0 2px 6px rgba(0,0,0,.18);min-width:250px;color-scheme:light}
+.toolbar select:focus{outline:2px solid rgba(255,255,255,.6);outline-offset:1px;box-shadow:0 2px 6px rgba(0,0,0,.18)}
+.tb-btn{display:inline-flex;align-items:center;gap:8px;border:0;background:transparent;color:#c7d5ea;font-family:var(--font);font-size:13.5px;font-weight:600;padding:9px 16px;border-radius:10px;white-space:nowrap;cursor:pointer;transition:background-color .15s,color .15s}
+.tb-btn:hover{background:rgba(255,255,255,.08);color:#fff}
+.tb-btn:active{transform:scale(.97)}
+.tb-btn svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+@media (max-width:720px){.sel-wrap{flex:1 1 100%}.toolbar select{width:100%;min-width:0}}
 select{appearance:none;-webkit-appearance:none;font-size:13px;font-weight:500;padding:9px 16px 9px 34px;border-radius:10px;border:1.5px solid var(--border2);background:var(--card);color:var(--text);cursor:pointer;font-family:var(--font);box-shadow:var(--shadow);min-width:250px;transition:border-color .12s}
 select:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(59,111,212,.12)}
 .btn{display:inline-flex;align-items:center;gap:7px;padding:9px 18px;border-radius:10px;border:1.5px solid var(--border2);background:var(--card);font-size:13px;font-weight:600;cursor:pointer;color:var(--text);transition:all .12s;font-family:var(--font);box-shadow:var(--shadow);white-space:nowrap}
 .btn:hover{background:var(--bg2);border-color:var(--border2)}
 .btn:active{transform:scale(.97)}
 .btn svg{width:15px;height:15px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-.btn-primary{background:var(--blue);border-color:var(--blue);color:white;box-shadow:0 4px 12px rgba(59,111,212,.3)}
-.btn-primary:hover{background:#2D5DC0;border-color:#2D5DC0}
+/* Botones y recuadro del día con el azul de la barra de COM 2 (13/11, pedido del usuario) */
+.btn-primary{background:linear-gradient(135deg,#162a4d 0%,#193563 55%,#1b3f74 100%);border-color:#193563;color:white;box-shadow:0 4px 12px rgba(22,42,77,.3)}
+.btn-primary:hover{background:linear-gradient(135deg,#1d355f 0%,#214177 55%,#244c88 100%);border-color:#214177}
 
 /* DAY HERO */
-.day-hero{background:linear-gradient(135deg,#3B6FD4 0%,#5A8FE8 100%);border-radius:16px;padding:1.5rem 1.75rem;margin-bottom:1.25rem;box-shadow:0 6px 24px rgba(59,111,212,.25);color:white}
+.day-hero{background:linear-gradient(135deg,#162a4d 0%,#193563 55%,#1b3f74 100%);border-radius:16px;padding:1.5rem 1.75rem;margin-bottom:1.25rem;box-shadow:0 6px 24px rgba(22,42,77,.25);color:white}
 .day-date{font-size:20px;font-weight:700;letter-spacing:-.01em;margin-bottom:.3rem;text-transform:capitalize}
 .day-meta{font-size:13px;opacity:.85}
 .day-meta strong{opacity:1;font-weight:700;background:rgba(255,255,255,.2);border-radius:99px;padding:1px 8px}
@@ -139,22 +169,18 @@ tbody td{padding:10px 13px;word-break:break-word;vertical-align:middle}
 </style>
 </head>
 <body>
+<header class="barra">
+  <a class="com2-marca" href="./">COM 2</a>
+  <div class="barra-in">
+    <div class="titulo"><span class="ico" aria-hidden="true">📅</span><h1>Planificador de Agenda</h1></div>
+  </div>
+</header>
+<div class="com2-carga" id="com2-carga" role="status" aria-live="polite"><div class="com2-rueda"></div><div class="com2-carga-t">Cargando información</div></div>
 <div class="app">
 
-  <div class="header">
-    <div class="hicon">
-      <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><line x1="12" y1="14" x2="12" y2="18"/><line x1="10" y1="16" x2="14" y2="16"/></svg>
-    </div>
-    <div>
-      <div class="htitle">Planificador de Agenda</div>
-      <div class="hsub" id="datos-info"></div>
-    </div>
-  </div>
+  <!-- El título está en la barra azul (13/11) -->
+  <div class="header"><div class="hsub" id="datos-info"></div></div>
 
-  <div id="prog-wrap" class="prog-wrap">
-    <div class="prog-bar"><div class="prog-fill" id="prog-fill" style="width:0%"></div></div>
-    <div class="prog-label" id="prog-label">Cargando agendas...</div>
-  </div>
   <div id="err-msg" class="err" style="display:none"></div>
 
   <div id="main-section" style="display:none">
@@ -163,14 +189,8 @@ tbody td{padding:10px 13px;word-break:break-word;vertical-align:middle}
         <svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
         <select id="date-select"><option value="">— Seleccioná un día —</option></select>
       </div>
-      <button class="btn btn-primary" id="btn-copy">
-        <svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-        COPIAR A-E
-      </button>
-      <button class="btn btn-primary" id="btn-copy-h">
-        <svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-        COPIAR H
-      </button>
+      <button type="button" class="tb-btn" id="btn-copy"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copiar A-E</button>
+      <button type="button" class="tb-btn" id="btn-copy-h"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>Copiar H</button>
 
     </div>
     <div id="plan-content"></div>
@@ -186,7 +206,7 @@ tbody td{padding:10px 13px;word-break:break-word;vertical-align:middle}
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="assets/comun.js?v=202611130130"></script>
+<script src="assets/comun.js?v=202611132310"></script>
 <script src="assets/acceso.js?v=202611130130"></script>
 <script>COM2.acceso();   // solo supervisores y admin con sesión de COM 2</script>
 <script>
@@ -732,24 +752,21 @@ function armarFilas(base,priv){
 }
 
 async function cargar(){
-  const prog=document.getElementById('prog-fill'),lbl=document.getElementById('prog-label');
+  // Pantalla de carga compartida de COM 2 (assets/carga.css), debajo de la barra azul
   try{
-    prog.style.width='15%';lbl.textContent='Cargando agendas...';
     const[base,priv]=await Promise.all([bajarBase(),bajarPrivado()]);
-    prog.style.width='60%';lbl.textContent='Clasificando agendas...';
     await new Promise(r=>setTimeout(r));
     allRows=armarFilas(base,priv).map(c=>{c._cat=clasificar(c);return c;});
-    prog.style.width='100%';
     // Abajo del título solo se avisa si faltan los teléfonos (sin la contraseña)
     document.getElementById('datos-info').textContent=priv?'':'Sin teléfonos: falta la contraseña del sitio';
     buildCircuitos();
     planData=null;
     buildDates();
     document.getElementById('main-section').style.display='block';
-    setTimeout(()=>{document.getElementById('prog-wrap').style.display='none';},400);
+    COM2.carga.listo();
   }catch(err){showErr('No se pudieron cargar las agendas: '+err.message);}
 }
-function showErr(msg){document.getElementById('err-msg').textContent=msg;document.getElementById('err-msg').style.display='block';document.getElementById('prog-wrap').style.display='none';}
+function showErr(msg){COM2.carga.error(msg,()=>{COM2.carga.mostrar();cargar();});}
 cargar();
 document.getElementById('date-select').addEventListener('change',e=>{if(e.target.value)renderPlan(e.target.value);});
 document.getElementById('btn-copy').addEventListener('click',()=>copyToClipboard(buildCopyHtml(),()=>showMsg('Copiado correctamente')));

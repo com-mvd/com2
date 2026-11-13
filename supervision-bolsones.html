@@ -12,13 +12,15 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.heat/0.2.0/leaflet-heat.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="assets/comun.js?v=202611130130"></script>
-<script src="assets/supervision-mapa.js?v=202611121000"></script>
-<link rel="stylesheet" href="assets/supervision.css?v=202611130130">
+<script src="assets/comun.js?v=202611132310"></script>
+<script src="assets/supervision-mapa.js?v=202611132000"></script>
+<link rel="stylesheet" href="assets/barra.css?v=202611132330">
+<link rel="stylesheet" href="assets/carga.css?v=202611131600">
+<link rel="stylesheet" href="assets/supervision.css?v=202611132330">
 </head>
 <body>
-<div class="cargador" id="cargador">Cargando datos…</div>
 <header class="barra">
+  <a class="com2-marca" href="./">COM 2</a>
   <div class="barra-in">
     <div class="titulo">
       <span class="ico" aria-hidden="true">♻</span>
@@ -26,6 +28,7 @@
     </div>
   </div>
 </header>
+<div class="com2-carga" id="com2-carga" role="status" aria-live="polite"><div class="com2-rueda"></div><div class="com2-carga-t">Cargando información</div></div>
 
 <div class="wrap">
 
@@ -175,7 +178,8 @@ const MUNIS = ['A', 'B', 'C', 'CH', 'D', 'E', 'F', 'G'];
 
 // Color de cada municipio: el mismo del formato condicional de la hoja Indicadores
 // de SUPERVISION BOLSONES. Se usa en todas las etiquetas de municipio de la página.
-const COLOR_MUNI = { A: '#C2A289', B: '#FFE599', C: '#B6D7A8', CH: '#6D9EEB', D: '#F9CB9C', E: '#93C47D', F: '#B4A7D6', G: '#A64D79' };
+// SupervisionMapa.tema: en modo oscuro estos colores salen más fuertes (assets/supervision-mapa.js)
+const COLOR_MUNI = SupervisionMapa.tema({ A: '#C2A289', B: '#FFE599', C: '#B6D7A8', CH: '#6D9EEB', D: '#F9CB9C', E: '#93C47D', F: '#B4A7D6', G: '#A64D79' });
 // Etiqueta de municipio: fondo neutro con la marca de color a la izquierda (como los vaciados fijos)
 const chipMuni = (m, largo) => `<span class="mb" style="border-left-color:${COLOR_MUNI[m] || 'var(--gris)'}">${largo ? 'Municipio ' : ''}${esc(m)}</span>`;
 // Día de servicio de cada municipio (ISO: 1 = lunes). CH va viernes y sábado;
@@ -189,7 +193,7 @@ const ATRASO = [
   { n: '3 semanas', c: '#A8431A' },
   { n: '4 semanas o más', c: '#6E2A0F' },
 ];
-const COL = { pend: '#eb6834', atr: '#d03b3b', asig: '#2a78d6', hecho: '#1baf7a', gris: '#B5AFA6' };
+const COL = SupervisionMapa.tema({ pend: '#eb6834', atr: '#d03b3b', asig: '#2a78d6', hecho: '#1baf7a', gris: '#B5AFA6' });
 const RE_ENTREGA = /entrega|cambio/i;
 
 const st = {
@@ -362,6 +366,8 @@ function crearVista(p, contenedor, dia, nombre, pasado = false, arriba = '') {
 const VOp = crearVista('op', 'vOp', () => HOYk, () => ''); // "Hoy" se sobreentiende
 const VInf = crearVista('inf', 'vInf', () => st.infDia, () => '', true,
   `<div class="lado-fecha"><label class="ing-f">Fecha <input type="date" id="infDia"></label></div>`);
+// Operación del día e Informe realizados: la ficha de Pendientes más transportista, gestión, cantidad y planta (13/11)
+VOp.ficha = VInf.ficha = r => fichaRealizado(r);
 
 // Hoja "Realizar hoy": municipios que se atienden ese día según el calendario, solicitudes Nuevo o
 // Asignado de antes de ese día. Se suman las que se gestionaron ese día en esos municipios.
@@ -488,14 +494,36 @@ function fichaPendiente(r) {
     </dl>`;
 }
 
+// Ficha de un punto de Operación del día e Informe realizados (13/11, pedido del usuario): abajo de la línea, lo mismo que la de
+// Pendientes (fecha de solicitud, cantidad de bolsones, observaciones) y después transportista, fecha de gestión,
+// cantidad transportada, planta y hora de descarga. Sin etiqueta de estado. Lo que no tiene dato no sale.
+function fichaRealizado(r) {
+  const fila = (k, val) => val || val === 0 ? `<dt>${k}</dt><dd>${esc(val)}</dd>` : '';
+  const transp = r.transp && r.transp !== '-' ? nomTransp(r.transp) : '';
+  return fichaArriba(r) + `
+    <dl>
+      ${fila('Fecha de solicitud', r.fSolD ? fHora(r.fSolD) : '')}
+      ${fila('Cantidad de bolsones', r.cantSol != null ? fmt(r.cantSol) : '')}
+      ${fila('Observaciones', r.nota)}
+      ${fila('Transportista', transp)}
+      ${fila('Fecha de gestión', r.fGesD ? fHora(r.fGesD) : '')}
+      ${fila('Cantidad transportada', r.cantT != null && r.cantT !== '' ? fmt(r.cantT) : '')}
+      ${fila('Planta', r.planta && r.planta !== '-' ? r.planta : '')}
+      ${fila('Hora de descarga', r.hora)}
+    </dl>`;
+}
+
 // Un punto del mapa. relleno/borde: color de adentro y del contorno
 // n: número que va escrito adentro (el punto se agranda para que entre)
 function punto(v, r, relleno, borde = '#fff', n = null) {
+  // En modo oscuro: colores más fuertes y el contorno blanco pasa a oscuro (assets/supervision-mapa.js)
+  const fino = borde === '#fff', ancho = fino ? 1.5 : 2.5;
+  relleno = SupervisionMapa.color(relleno); borde = SupervisionMapa.borde(borde);
   const m = L.circleMarker([r.lat, r.lng], {
-    renderer: v.rend, radius: n == null ? 6 : 9, color: borde, weight: borde === '#fff' ? 1.5 : 2.5, fillColor: relleno, fillOpacity: .95,
+    renderer: v.rend, radius: n == null ? 6 : 9, color: borde, weight: ancho, fillColor: relleno, fillOpacity: .95,
   }).bindTooltip(esc(r.dir), { direction: 'top', offset: [0, -6] })
     .on('click', e => { L.DomEvent.stopPropagation(e); seleccionar(v, r); });
-  m.borde = { color: borde, weight: borde === '#fff' ? 1.5 : 2.5 };
+  m.borde = { color: borde, weight: ancho };
   m.addTo(v.capa); v.marc.set(r.id, m);
   // El número va encima y deja pasar el mouse al punto (tooltip y clic siguen siendo del punto)
   if (n != null) L.marker([r.lat, r.lng], { interactive: false, keyboard: false,
@@ -520,7 +548,7 @@ function mapaEstado(v, todos, dia, conServicio) {
   for (const r of todos) n[grupoDe(r, dia)]++;
   const def = [['realizados', 'Realizados', COL.hecho], ['asignados', 'Asignados', COL.asig], ['pendientes', 'Pendientes', COL.pend]]
     .filter(([k]) => !(k === 'asignados' && v.pasado) && !(k === 'pendientes' && !conServicio));
-  $(p + 'Toggles').innerHTML = def.map(([k, l, c]) => `<button class="tg ${v.ver[k] ? '' : 'off'}" data-k="${k}" style="--c:${c}"><i></i>${l}<b class="num">${n[k]}</b></button>`).join('');
+  $(p + 'Toggles').innerHTML = def.map(([k, l, c]) => `<button class="tg ${v.ver[k] ? '' : 'off'}" data-k="${k}" style="--c:${SupervisionMapa.color(c)}"><i></i>${l}<b class="num">${n[k]}</b></button>`).join('');
   $(p + 'Toggles').querySelectorAll('.tg').forEach(b => b.onclick = () => {
     elegirFiltro(def.map(d => d[0]), k => v.ver[k], (k, si) => v.ver[k] = si, b.dataset.k);
     renderVista(v);
@@ -534,7 +562,7 @@ function mapaEstado(v, todos, dia, conServicio) {
 }
 
 // Colores de los transportistas: ninguno parecido al naranja de los pendientes
-const COLOR_TRANSP = ['#6250d6', '#0e7490', '#be185d', '#4d7c0f', '#a16207', '#1e293b', '#b91c1c', '#0284c7', '#a21caf', '#65a30d'];
+const COLOR_TRANSP = SupervisionMapa.tema(['#6250d6', '#0e7490', '#be185d', '#4d7c0f', '#a16207', '#1e293b', '#b91c1c', '#0284c7', '#a21caf', '#65a30d']);
 
 function mapaTransportistas(v, todos, dia, conServicio) {
   const p = v.p, grupoDe = v.grupo;
@@ -549,8 +577,8 @@ function mapaTransportistas(v, todos, dia, conServicio) {
   const conPend = conServicio && !v.pasado;
 
   // Filtro (ver elegirFiltro): los transportistas y, si hay, los pendientes (sin transportista)
-  $(p + 'Toggles').innerHTML = nombres.map(t => `<button class="tg ${CON_LINEAS ? 'tg-t' : ''} ${v.ocultos.has(t) ? 'off' : ''}" data-t="${esc(t)}" style="--c:${colorT[t]}"><i></i>${esc(t)}<b class="num">${cuenta(t)}</b></button>`).join('')
-    + (conPend ? `<button class="tg ${v.verPend ? '' : 'off'}" data-pend="1" style="--c:${COL.pend}"><i></i>Pendientes<b class="num">${pend.length}</b></button>` : '');
+  $(p + 'Toggles').innerHTML = nombres.map(t => `<button class="tg ${CON_LINEAS ? 'tg-t' : ''} ${v.ocultos.has(t) ? 'off' : ''}" data-t="${esc(t)}" style="--c:${SupervisionMapa.color(colorT[t])}"><i></i>${esc(t)}<b class="num">${cuenta(t)}</b></button>`).join('')
+    + (conPend ? `<button class="tg ${v.verPend ? '' : 'off'}" data-pend="1" style="--c:${SupervisionMapa.color(COL.pend)}"><i></i>Pendientes<b class="num">${pend.length}</b></button>` : '');
   $(p + 'Toggles').querySelectorAll('.tg').forEach(b => b.onclick = () => {
     // '' = Pendientes (ningún transportista se llama así)
     const claves = [...nombres, ...(conPend ? [''] : [])];
@@ -599,7 +627,7 @@ function dibujarRecorridos(v, porT, nombres, colorT) {
     const linea = (pts, punteada) => {
       const ll = pts.map(r => [r.lat, r.lng]);
       const pl = L.polyline(ll, {
-        renderer: v.rend, color: colorT[t], weight: 3, opacity: .8, dashArray: punteada ? '6 7' : null,
+        renderer: v.rend, color: SupervisionMapa.color(colorT[t]), weight: 3, opacity: .8, dashArray: punteada ? '6 7' : null,
       }).bindTooltip(esc(t), { sticky: true }).addTo(v.capa);
       porCalles(ll).then(camino => { if (camino && v.capa.hasLayer(pl)) pl.setLatLngs(camino); });
     };
@@ -674,7 +702,8 @@ Chart.defaults.color = () => oscuro() ? '#B3ADA5' : '#5F5A54';
 Chart.defaults.plugins.tooltip.enabled = false; // sin etiquetas negras al pasar el mouse
 const graficas = {};
 const AZUL_BARRA = () => oscuro() ? '#5b84c4' : '#1b3f74'; // el azul de la barra del título (más claro en oscuro)
-window.addEventListener('com2:tema', () => Object.values(graficas).forEach(g => g?.update('none')));
+// Al cambiar el tema: las gráficas y los mapas (los puntos cambian de color en oscuro) se vuelven a pintar
+window.addEventListener('com2:tema', () => { Object.values(graficas).forEach(g => g?.update('none')); if (D) render(); });
 
 function grafica(id, cfg, vacio) {
   graficas[id]?.destroy();
@@ -1084,7 +1113,6 @@ const CATS = ['organizacion', 'pendientes', 'atrasados', 'borrar', 'ingreso', 'i
 function mostrarCat(k) {
   document.querySelectorAll('#cats button').forEach(b => b.classList.toggle('on', b.dataset.cat === k));
   document.querySelectorAll('.cat').forEach(c => c.classList.toggle('on', c.dataset.cat === k));
-  history.replaceState(null, '', k === CATS[0] ? location.pathname + location.search : '#' + k);
   // Lo que se dibujó con la pestaña oculta (tamaño 0) se rehace al mostrarla
   if (!D) return;
   if (k === 'ingreso') igualarColumnas();
@@ -1098,7 +1126,10 @@ document.querySelectorAll('#cats button').forEach(b => b.onclick = () => mostrar
 // Alto del título fijo, para que la barra de pestañas quede pegada abajo (cambia con el ancho de pantalla)
 new ResizeObserver(([e]) => document.documentElement.style.setProperty('--alto-barra', e.target.offsetHeight + 'px'))
   .observe(document.querySelector('.barra'));
-if (CATS.includes(location.hash.slice(1))) mostrarCat(location.hash.slice(1));
+// Siempre abre en Organización del servicio (pedido del usuario, 13/11): no se recuerda la pestaña en la dirección,
+// y al volver con atrás / adelante (página guardada por el navegador) vuelve a esa pestaña
+if (location.hash) history.replaceState(null, '', location.pathname + location.search);
+window.addEventListener('pageshow', e => { if (e.persisted) { mostrarCat(CATS[0]); scrollTo(0, 0); } });
 
 // Datos privados: teléfono y descripciones completas de cada solicitud. Están en el bucket "privado" de
 // Supabase (bolsones.json.gz, lo sube n8n), que solo pueden leer supervisores y admin con sesión de COM 2.
@@ -1149,9 +1180,9 @@ async function cargar() {
     D.calendario = CALENDARIO;
     sumarPrivados(priv);
     render();
-    $('cargador')?.remove();
+    COM2.carga.listo();
   } catch (err) {
-    $('cargador').textContent = 'No se pudieron cargar los datos (' + err.message + ').';
+    COM2.carga.error('No se pudieron cargar los datos (' + err.message + ').', () => { COM2.carga.mostrar(); cargar(); });
   }
 }
 cargar();

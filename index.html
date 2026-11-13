@@ -8,7 +8,8 @@
 <title>COM 2</title>
 <link rel="icon" type="image/png" href="assets/logo-ciemsa.png">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="assets/comun.css?v=202611130130">
+<link rel="stylesheet" href="assets/comun.css?v=202611132330">
+<link rel="stylesheet" href="assets/carga.css?v=202611131600">
 <style>
 /* COM 2: login con cédula + contraseña (Supabase Auth) y menú por paneles (Operador / Supervisor / Admin).
    El menú sale de la tabla secciones; cada rol ve su panel y los de abajo (lo controla RLS en la base). */
@@ -56,12 +57,11 @@ label.l:first-of-type{margin-top:0}
 .acc-amber .tile-icon{background:#F5E4CF}.acc-amber .tile-icon svg{stroke:#9A642A}
 .acc-violet .tile-icon{background:#E5DDF0}.acc-violet .tile-icon svg{stroke:#6C5790}
 .vacio{color:var(--text3);font-size:15px}
-.pantalla-cargando{min-height:100vh;display:flex;align-items:center;justify-content:center}
 
 /* Panel Supervisor: un recuadro por servicio con su Actualizar, la hora de la última subida y sus páginas.
    Mismo dibujo que la portada del repo com (10/11/2026): botones chicos, cuadros semitransparentes, páginas en lista.
    El botón Actualizar GPS se sacó a pedido del usuario (10/11): se verá más adelante si se agrega. */
-.sup{max-width:1300px;width:100%;margin:0 auto;padding:clamp(1.6rem,5vh,3rem) 0 2.5rem}
+.sup{width:100%;margin:0 auto;padding:0 0 2.5rem}   /* arriba, los 14 px de .wrap: igual que en todas las páginas (13/11) */
 .btn-act{display:inline-flex;align-items:center;gap:4px;flex:none;background:#fff;color:var(--text);border:1px solid var(--border);border-radius:6px;padding:3px 8px;font:600 10.5px 'DM Sans',system-ui,sans-serif;cursor:pointer;transition:border-color .15s,background-color .15s}
 .btn-act:hover{border-color:#D0CBCB;background:#FBFAF8}
 .btn-act:disabled{cursor:default}
@@ -88,14 +88,14 @@ label.l:first-of-type{margin-top:0}
 .item-arrow{flex:none;color:var(--text3);font-size:18px}
 .sin{font-size:13px;color:var(--text3);padding:.4rem .2rem}
 .sup .grupo{margin-top:2.4rem}
-.cover:has(.sup){max-width:1300px}
+.cover:has(.sup){max-width:none}
 .portada:has(.sup){align-items:flex-start;padding-bottom:0}
 </style>
 </head>
 <body>
 <header id="barra" hidden></header>
 
-<div class="pantalla-cargando" id="vCargando"><div class="cargando"><div class="rueda"></div>Cargando información</div></div>
+<div class="com2-carga" id="vCargando" role="status" aria-live="polite"><div class="com2-rueda"></div><div class="com2-carga-t">Cargando información</div></div>
 
 <!-- Login -->
 <div class="centro" id="vLogin" hidden>
@@ -145,7 +145,7 @@ label.l:first-of-type{margin-top:0}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="assets/comun.js?v=202611130130"></script>
+<script src="assets/comun.js?v=202611132310"></script>
 <script>
 const { sb, esc } = COM2;
 const DOMINIO = '@com.local';   // el usuario es la cédula; por dentro, cédula@com.local
@@ -157,7 +157,8 @@ function ver(v) {
   $('vApp').hidden = !['vClave', 'vMenu'].includes(v);
   $('vClave').hidden = v !== 'vClave';
   $('vMenu').hidden = v !== 'vMenu';
-  if (!['vClave', 'vMenu'].includes(v)) $('barra').hidden = true;
+  // Mientras carga, la barra queda como esté (dibujada con el perfil guardado, o escondida si no hay)
+  if (!['vClave', 'vMenu', 'vCargando'].includes(v)) $('barra').hidden = true;
 }
 function error(el, msg) { $(el).textContent = msg || ''; $(el).hidden = !msg; }
 function dibujarBarra() {
@@ -165,6 +166,9 @@ function dibujarBarra() {
 }
 
 async function arrancar() {
+  // Con el perfil guardado en este navegador, la barra sale enseguida; después se confirma con Supabase
+  const guardado = COM2.perfilGuardado();
+  if (guardado && !perfil) { perfil = guardado; panel = COM2.panelInicial(perfil); dibujarBarra(); }
   ver('vCargando');
   try {
     perfil = await COM2.perfil();
@@ -338,13 +342,10 @@ function dibujarMenu() {
   const del = secciones ? secciones.filter(s => s.panel === panel) : [];
   if (panel === 'supervisor') return dibujarSupervisor(del);
   if (!del.length) { $('menu').innerHTML = '<p class="vacio">Todavía no hay nada en este panel.</p>'; return; }
-  const grupos = {};
-  del.forEach(s => (grupos[s.grupo] ||= []).push(s));
-  const conTitulos = Object.keys(grupos).length > 1;   // con un solo grupo no hace falta el subtítulo
-  $('menu').innerHTML = Object.entries(grupos).map(([g, ss]) =>
-    `<div class="grupo">${conTitulos ? `<h3>${esc(g)}</h3>` : ''}<div class="grid">${ss.map(s =>
-      `<a class="tile acc-${esc(s.color)}" href="${esc(s.archivo)}"><div class="tile-icon">${COM2.icono(s.icono)}</div><div class="tile-name">${esc(s.nombre)}</div></a>`).join('')}</div></div>`
-  ).join('');
+  // Todas las tarjetas juntas, sin títulos de grupo (pedido del usuario, 13/11): hasta 3 por renglón,
+  // en el orden de secciones (grupo y orden)
+  $('menu').innerHTML = `<div class="grupo"><div class="grid">${del.map(s =>
+      `<a class="tile acc-${esc(s.color)}" href="${esc(s.archivo)}"><div class="tile-icon">${COM2.icono(s.icono)}</div><div class="tile-name">${esc(s.nombre)}</div></a>`).join('')}</div></div>`;
 }
 
 arrancar();

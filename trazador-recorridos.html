@@ -6,6 +6,10 @@
 <style>:root{color-scheme:light}body{margin:0}[hidden]{display:none!important}</style>
 <title>COM 2</title>
 <link rel="icon" type="image/png" href="assets/logo-ciemsa.png">
+<!-- DM Sans: la letra del nombre del usuario en la barra, igual que en las demás páginas -->
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/barra.css?v=202611132330">
+<link rel="stylesheet" href="assets/carga.css?v=202611131600">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Condensed:wght@600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
 [hidden]{display:none!important}
@@ -14,31 +18,26 @@
   --font-d:'Barlow Condensed','Arial Narrow',system-ui,sans-serif;
   --font-b:'Barlow',system-ui,-apple-system,'Segoe UI',sans-serif;
   --font-m:'IBM Plex Mono',ui-monospace,Consolas,monospace;
-  --bg:#f1f4f0; --surface:#fafbf9; --fg:#15201b; --muted:#566660; --line:#d3dbd4;
+  /* Fondo, recuadros y bordes como en las demás páginas de COM 2 (13/11; antes eran verdosos) */
+  --bg:#F7F6F3; --surface:#FFFFFF; --fg:#15201b; --muted:#566660; --line:#E6E2DA;
   --accent:#0b6b57; --on-accent:#ffffff; --accent-soft:#dbeee7; --sel:#b45309; --err:#a3261f; --code-bg:#e8eee8;
   --map-bg:#e6ebe5; --map-road:#fbfcfa; --map-casing:#c3ccc4; --map-park:#cfe3cb; --map-water:#b9d5e6;
   --map-text:#3f4c45; --map-halo:rgba(250,251,249,.88); --map-corner:#7c8a82; --map-hl:#d8b24a; --paint:#d4351c;
 }
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    --bg:#101714; --surface:#17201c; --fg:#e6ece8; --muted:#9aa8a1; --line:#2b3832;
-    --accent:#4cc2a2; --on-accent:#06241c; --accent-soft:#1c3a31; --sel:#f0b24a; --err:#ff8b82; --code-bg:#0d1411;
-    --map-bg:#0e1512; --map-road:#2c3b34; --map-casing:#09100d; --map-park:#14271b; --map-water:#11303d;
-    --map-text:#aebdb5; --map-halo:rgba(14,21,18,.88); --map-corner:#6f8178; --map-hl:#8a7230; --paint:#ff6a55;
-    color-scheme:dark;
-  }
-}
+/* Tema: el del botón de la barra de COM 2 (13/11). Ya no sigue al tema del sistema ni tiene casilla propia */
 :root[data-theme="dark"]{
-  --bg:#101714; --surface:#17201c; --fg:#e6ece8; --muted:#9aa8a1; --line:#2b3832;
+  --bg:#1e2126; --surface:#272b31; --fg:#e6ece8; --muted:#9aa8a1; --line:#3b4048;
   --accent:#4cc2a2; --on-accent:#06241c; --accent-soft:#1c3a31; --sel:#f0b24a; --err:#ff8b82; --code-bg:#0d1411;
   --map-bg:#0e1512; --map-road:#2c3b34; --map-casing:#09100d; --map-park:#14271b; --map-water:#11303d;
   --map-text:#aebdb5; --map-halo:rgba(14,21,18,.88); --map-corner:#6f8178; --map-hl:#8a7230; --paint:#ff6a55;
   color-scheme:dark;
 }
 *,*::before,*::after{box-sizing:border-box}
-body{background:var(--bg);color:var(--fg);font:400 15px/1.5 var(--font-b);padding-inline:16px;padding-block:20px 40px}
-.app{max-width:1320px;margin-inline:auto;display:flex;flex-direction:column;gap:16px}
+body{background:var(--bg);color:var(--fg);font:400 15px/1.5 var(--font-b);padding-inline:0;padding-block:20px 40px}
+.app{max-width:var(--com2-ancho);margin-inline:auto;padding-inline:var(--com2-margen);display:flex;flex-direction:column;gap:16px}   /* ancho común de COM 2 */
 header{display:flex;flex-wrap:wrap;align-items:flex-start;gap:8px 16px}
+/* Barra azul de COM 2 (assets/barra.css): a todo el ancho, por encima del margen del body */
+header.barra{display:block;margin:-20px 0 8px}   /* queda a 14 px de lo de abajo, como en las Supervisiones */
 .tema{order:2;margin-left:auto;white-space:nowrap}
 h1,h2{font-family:var(--font-d);margin:0;text-wrap:balance}
 h1{font-size:38px;line-height:1;font-weight:700;letter-spacing:.01em}
@@ -124,18 +123,22 @@ pre{margin:8px 0 0;background:var(--code-bg);border:1px solid var(--line);border
 @media (max-width:920px){.work{grid-template-columns:minmax(0,1fr)}#map{height:clamp(380px,62vh,600px)}h1{font-size:32px}}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="assets/comun.js?v=202611130130"></script>
+<script src="assets/comun.js?v=202611132310"></script>
 <script src="assets/acceso.js?v=202611130130"></script>
-<script>COM2.acceso();   // solo supervisores (o más arriba) y admin con sesión de COM 2</script>
+<script>COM2.acceso().then(p => p && COM2.carga.listo());   // solo supervisores (o más arriba) y admin con sesión de COM 2</script>
 </head>
 <body>
+<header class="barra">
+  <a class="com2-marca" href="./">COM 2</a>
+  <div class="barra-in">
+    <div class="titulo"><span class="ico" aria-hidden="true">🗺️</span><h1>Trazador de recorridos</h1></div>
+  </div>
+</header>
+<div class="com2-carga" id="com2-carga" role="status" aria-live="polite"><div class="com2-rueda"></div><div class="com2-carga-t">Cargando información</div></div>
 <main class="app">
   <header>
-    <label class="chk tema" title="Tildado: fondo oscuro. Destildado: fondo blanco normal. Se recuerda para la próxima vez."><input type="checkbox" id="o-night">Modo nocturno</label>
     <div class="brand">
-      <svg width="58" height="40" viewBox="0 0 58 40" aria-hidden="true"><path d="M6 8 H30 V32 H52" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linejoin="round" stroke-dasharray="3 5" stroke-linecap="round"/><circle cx="6" cy="8" r="5" fill="currentColor"/><circle cx="30" cy="8" r="5" fill="currentColor"/><circle cx="30" cy="32" r="5" fill="currentColor"/><circle cx="52" cy="32" r="5" fill="currentColor"/></svg>
       <div>
-        <h1>Trazador de recorridos</h1>
         <p class="lede">Pintá las cuadras que faltan y la herramienta arma sola el recorrido del camión, o marcá las esquinas a mano, en orden. Todo respeta el sentido de las calles, el camión puede pasar más de una vez por la misma esquina y el CSV de paradas queda listo para el RSU back office.</p>
       </div>
     </div>
@@ -618,27 +621,10 @@ function ppPath(a,b){
   for(i=0;i+1<pp.length;i++)if(arcId(pp[i],pp[i+1])<0)return null;
   return pp;
 }
-/* modo nocturno: la casilla fija data-theme y se recuerda; sin elección previa sigue al sistema */
-var TKEY='trazador-rsu-tema';
-function isNight(){
-  var a=document.documentElement.getAttribute('data-theme');
-  if(a==='dark')return true;
-  if(a==='light')return false;
-  return !!(window.matchMedia&&window.matchMedia('(prefers-color-scheme: dark)').matches);
-}
-function bindNight(){
-  var el=$('o-night'),g=null;
-  try{g=localStorage.getItem(TKEY)}catch(e){}
-  if(g==='dark'||g==='light')document.documentElement.setAttribute('data-theme',g);
-  el.checked=isNight();
-  el.addEventListener('change',function(){
-    var v=el.checked?'dark':'light';
-    document.documentElement.setAttribute('data-theme',v);
-    try{localStorage.setItem(TKEY,v)}catch(e){}
-    scheduleDraw();
-  });
-  try{new MutationObserver(function(){el.checked=isNight()}).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']})}catch(e){}
-}
+/* modo nocturno: desde el 13/11 lo maneja el botón de la barra de COM 2 (data-theme en <html>, assets/comun.js).
+   Se sacó la casilla "Modo nocturno" de la página; el mapa se redibuja solo al cambiar data-theme. */
+function isNight(){return document.documentElement.getAttribute('data-theme')==='dark'}
+function bindNight(){}
 function parseCsv(t){
   var rows=[],row=[],f='',q=false;
   for(var i=0;i<t.length;i++){

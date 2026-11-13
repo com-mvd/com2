@@ -15,26 +15,37 @@ button,input,select{font:inherit;color:inherit}
 .num{font-variant-numeric:tabular-nums}
 
 /* ---- Barra superior ---- */
-.barra{position:sticky;top:0;z-index:20;background:linear-gradient(135deg,#162a4d 0%,#193563 55%,#1b3f74 100%);color:#fff;box-shadow:0 4px 12px rgba(0,0,0,.3);padding-top:env(safe-area-inset-top)}
-.barra-in{padding:10px 24px;display:flex;align-items:center;gap:24px;min-height:62px}
+/* Ancho común de COM 2 (13/11, pedido del usuario): el de las Supervisiones, hasta 1440 px con 16–32 px de margen.
+   --com2-borde es la distancia del borde de la pantalla al borde de ese ancho: ahí van "COM 2" y el usuario de la barra,
+   y ahí empieza y termina el contenido de todas las páginas. Se usa en elementos que ocupan todo el ancho (100%). */
+/* Sin barra de desplazamiento a la derecha (13/11, pedido del usuario): se baja con la ruedita del mouse, el teclado
+   o el dedo. Así tampoco cambia el ancho cuando una página pasa a ser larga, y "COM 2" y el usuario no se corren.
+   Solo la de la página: las tablas y listas con desplazamiento propio conservan la suya. */
+html{scrollbar-width:none;background:var(--bg,#F7F6F3)}
+html::-webkit-scrollbar{display:none}
+:root{--com2-ancho:1440px;--com2-margen:clamp(16px,2.5vw,32px);--com2-borde:calc(max(0px,(100% - var(--com2-ancho)) / 2) + var(--com2-margen))}
+.barra{position:sticky;top:0;z-index:1200;background:linear-gradient(135deg,#162a4d 0%,#193563 55%,#1b3f74 100%);color:#fff;box-shadow:0 4px 12px rgba(0,0,0,.3);padding-top:env(safe-area-inset-top)}
+/* 62 px fijos: es la medida de la barra en todas las páginas (assets/barra.css) */
+.barra-in{box-sizing:border-box;padding:0 var(--com2-borde);display:flex;align-items:center;gap:24px;height:62px}
 .marca{font-family:'Segoe UI',Arial,sans-serif;font-size:30px;font-weight:600;letter-spacing:-.01em;color:#fff;text-decoration:none;white-space:nowrap}
 .paneles{display:flex;align-items:center;gap:2px;padding:3px;height:30px;border-radius:8px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.08)}
+/* En PC el selector de paneles va en el medio de la barra, donde en las demás páginas va el título (13/11) */
+@media (min-width:721px){.barra-in{position:relative}.paneles{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%)}}
+/* Entre 721 y 900 px el lugar es justo: un nombre largo se corta con … para no pisarse con los paneles */
+@media (min-width:721px) and (max-width:900px){.barra .com2-der .usuario-btn{max-width:120px}}
 .panel-btn{border:0;background:transparent;color:#9aa8c2;font-size:11.5px;font-weight:600;height:22px;padding:0 10px;border-radius:5px;cursor:pointer;white-space:nowrap;transition:color .15s,background .15s}
 .panel-btn:hover{color:#fff}
 .panel-btn.on{background:#fff;color:var(--azul2);box-shadow:inset 0 -2px 0 var(--azul2)}
 .usuario{margin-left:auto;position:relative}
 .usuario-btn{display:flex;align-items:center;gap:7px;height:30px;border:0;background:transparent;color:#fff;cursor:pointer;padding:0 8px 0 3px;border-radius:8px;max-width:260px}
 .usuario-btn:hover{background:rgba(255,255,255,.08)}
-.usuario-btn .avatar{width:24px;height:24px;border-radius:50%;background:rgba(255,255,255,.14);display:flex;align-items:center;justify-content:center;flex:none}
-.usuario-btn .avatar svg{width:14px;height:14px}
 .usuario-btn .nombre{font-size:12.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.usuario-btn .flecha{opacity:.7;font-size:11px}
 .menu-usuario{position:absolute;right:0;top:calc(100% + 8px);min-width:200px;background:#fff;color:var(--text);border-radius:12px;box-shadow:0 12px 40px rgba(0,0,0,.25);padding:6px;border:1px solid var(--border)}
 .menu-usuario button{display:block;width:100%;text-align:left;border:0;background:transparent;padding:10px 12px;border-radius:8px;font-size:14.5px;font-weight:600;cursor:pointer}
 .menu-usuario button:hover{background:#F2F4F9}
 .menu-usuario button.salir{color:var(--rojo)}
 @media (max-width:720px){
-  .barra-in{flex-wrap:wrap;gap:8px 12px;padding:8px 12px}
+  .barra-in{flex-wrap:wrap;gap:8px 12px;padding:8px var(--com2-borde);height:auto;min-height:62px}
   .marca{font-size:24px}
   .paneles{order:3;width:100%;justify-content:stretch}
   .panel-btn{flex:1;padding:0 8px;font-size:12px}
@@ -42,8 +53,9 @@ button,input,select{font:inherit;color:inherit}
 }
 
 /* ---- Contenido ---- */
-.wrap{padding:22px 24px 40px;display:flex;flex-direction:column;gap:14px}
-@media (max-width:720px){.wrap{padding:16px 12px 32px}}
+/* 14 px de la barra a lo de abajo, como en las Supervisiones (igual en todas las páginas de COM 2, 13/11) */
+.wrap{box-sizing:border-box;max-width:var(--com2-ancho);margin:0 auto;padding:14px var(--com2-margen) 40px;display:flex;flex-direction:column;gap:14px}
+@media (max-width:720px){.wrap{padding-bottom:32px}}
 .card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);padding:16px}
 .btn{border:0;border-radius:11px;padding:10px 16px;font-size:15px;font-weight:700;cursor:pointer;color:#fff;background:linear-gradient(135deg,#0f172a 0%,#16213e 55%,#1b3f74 100%);white-space:nowrap}
 .btn:disabled{opacity:.55;cursor:default}
@@ -52,8 +64,7 @@ button,input,select{font:inherit;color:inherit}
 .error{color:var(--rojo);font-size:14px;font-weight:600}
 .okmsg{color:var(--verde);font-size:14px;font-weight:600}
 
-.cargando{display:flex;flex-direction:column;align-items:center;gap:12px;padding:70px 0;color:var(--text2);font-weight:600}
-.rueda{width:34px;height:34px;border:3px solid #D9DEEA;border-top-color:var(--azul);border-radius:50%;animation:girar .8s linear infinite}
+/* La pantalla de carga es la de assets/carga.css (igual en todas las páginas) */
 @keyframes girar{to{transform:rotate(360deg)}}
 /* ── Modo oscuro (12/11): botón de la luna a la derecha del usuario (comun.js). Vale para el menú (index) y Usuarios ── */
 :root[data-theme="dark"]{
@@ -65,7 +76,6 @@ button,input,select{font:inherit;color:inherit}
 }
 [data-theme="dark"] body{background:var(--bg);background-attachment:fixed}
 [data-theme="dark"] .in,[data-theme="dark"] .sel{background:#2e3238;border-color:var(--border)}
-[data-theme="dark"] .rueda{border-color:#3b4048;border-top-color:#7fa2dc}
 [data-theme="dark"] .panel-btn.on{background:#ECEAE6;color:#1b3f74;box-shadow:inset 0 -2px 0 #1b3f74}
 /* menú (index) */
 [data-theme="dark"] .login,[data-theme="dark"] .tile,[data-theme="dark"] .item,[data-theme="dark"] .btn-act{background:var(--card);border-color:var(--border)}
