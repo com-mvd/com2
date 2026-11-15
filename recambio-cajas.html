@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#16213e">
+<title>COM 2</title>
+<link rel="icon" type="image/png" href="assets/logo-ciemsa.png">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/barra.css?v=202611132330">
+<link rel="stylesheet" href="assets/carga.css?v=202611131600">
+<style>
+/* Recambio de cajas (15/11/2026). Reemplaza la planilla "Vaciados Cajas 2026" (Ingreso → Pendientes → Resueltos, con
+   dos Apps Script). Datos en las tablas cajas y cajas_recambios de Supabase (sql/16-cajas.sql). Solo supervisor o más arriba (15/11), desde el panel Supervisor, recuadro Bolsones.
+   Pestañas: En curso (los pedidos pendientes, una columna por lugar), Historial y Organización del servicio (lo de la hoja INFO).
+   15/11: Historial solo con lo realizado, sin columna de quién cargó, CSV, filtro de estado ni buscador; sin Cancelar pedido.
+   15/11: pestañas centradas con ícono, como Supervisión de Bolsones; "Pedir recambio" solo dentro de En curso.
+   15/11: se sacó la pestaña Indicadores (se verá más adelante, con más datos) y En curso dejó de mostrar las cajas sin pedido. */
+:root{
+  --bg:#F7F6F3; --card:#FFFFFF; --border:#E6E2DA; --linea:#EFECE6; --campo:#FFFFFF;
+  --text:#1A1714; --text2:#5F5A54; --text3:#9A948C;
+  --azul:#1b3f74; --rojo:#c0392b; --verde:#1baf7a; --ambar:#dd6b10;
+  --f-verde:#E7F6EF; --f-ambar:#FDEEE2; --f-rojo:#FBE9E7; --f-gris:#F1EFEB;
+  --shadow:0 4px 20px rgba(26,23,20,.05),0 1px 3px rgba(26,23,20,.05);
+  --r:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none!important}
+body{font-family:'DM Sans',system-ui,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased;background:var(--bg);min-height:100vh}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+.num{font-variant-numeric:tabular-nums}
+
+.wrap{max-width:var(--com2-ancho);margin:0 auto;padding:14px var(--com2-margen) 48px}
+
+/* Pestañas: las mismas de las Supervisiones (.cats de supervision.css) */
+.cats{position:sticky;top:76px;z-index:1100;display:flex;gap:6px;padding:6px;margin-bottom:14px;border-radius:14px;background:linear-gradient(135deg,#162a4d 0%,#193563 55%,#1b3f74 100%);box-shadow:0 4px 12px rgba(15,23,42,.25);overflow-x:auto;scrollbar-width:none}
+.cats::-webkit-scrollbar{display:none}
+.cats button{flex:none;display:inline-flex;align-items:center;gap:8px;border:0;background:transparent;color:#c7d5ea;font-size:13.5px;font-weight:600;padding:9px 16px;border-radius:10px;white-space:nowrap}
+/* Centradas, como en Supervisión de Agenda: si en el celular no entran, se desplazan sin cortarse */
+.cats button:first-child{margin-left:auto}
+.cats button:last-child{margin-right:auto}
+.cats svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.cats button:hover{background:rgba(255,255,255,.08);color:#fff}
+.cats button.on{background:#fff;color:#0f172a;box-shadow:0 2px 6px rgba(0,0,0,.18)}
+.cats .cuenta{display:inline-block;min-width:20px;margin-left:-2px;padding:1px 6px;border-radius:10px;background:#f59e0b;color:#1A1714;font-size:12px;font-weight:700;text-align:center}
+/* "+ Caja llena": en la cabecera de cada lugar (15/11), abre el pedido con ese lugar ya elegido */
+.btn-pedir{flex:0 0 auto;border-radius:10px;padding:7px 13px;font-size:13.5px;font-weight:700;color:#fff;background:#1A1714;border:1px solid #1A1714;box-shadow:0 2px 6px rgba(0,0,0,.18)}
+.btn-pedir:hover{background:#2e2a26}
+/* En modo oscuro: del tono del fondo de la página, con borde para que se despegue de la tarjeta */
+[data-theme="dark"] .btn-pedir{background:var(--bg);border-color:var(--border);color:#f1f1f1}
+[data-theme="dark"] .btn-pedir:hover{background:#15171b}
+
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow);padding:16px}
+h2{font-size:15px;font-weight:700}
+.sub{font-size:13px;color:var(--text2)}
+
+/* ── En curso: una columna por lugar ── */
+.lugares{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;align-items:start}
+@media (max-width:1000px){.lugares{grid-template-columns:1fr}}
+.lugar h2{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:10px}
+.lugar h2 .sub{font-weight:600}
+.caja{border:1px solid var(--border);border-left:5px solid var(--azul);border-radius:12px;padding:10px 12px;margin-top:8px;background:var(--card)}
+.caja.pend{border-left-color:var(--ambar);background:var(--f-ambar)}
+.caja.tarde{border-left-color:var(--rojo);background:var(--f-rojo)}
+.caja .cab{display:flex;align-items:center;gap:8px}
+.caja .nom{flex:1;min-width:0;font-weight:700;font-size:14.5px}
+.caja .emp{display:block;font-weight:500;font-size:12px;color:var(--text3)}
+.caja .est{font-size:12.5px;font-weight:700;color:var(--azul);white-space:nowrap}
+.caja.pend .est{color:var(--ambar)} .caja.tarde .est{color:var(--rojo)}
+.prio{display:inline-flex;align-items:center;justify-content:center;min-width:24px;height:24px;padding:0 6px;border-radius:12px;background:var(--azul);color:#fff;font-size:12.5px;font-weight:700}
+.caja .det{margin-top:6px;font-size:13px;color:var(--text2);line-height:1.45}
+.caja .det b{color:var(--text);font-weight:600}
+.caja .obs-p{margin-top:7px;padding:7px 9px;border:1px solid var(--border);border-radius:9px;background:var(--card);font-size:13px;color:var(--text);line-height:1.4;overflow-wrap:anywhere}
+.caja .acc{display:flex;flex-wrap:wrap;gap:6px;margin-top:9px}
+.bt{border:1px solid var(--border);background:var(--campo);border-radius:9px;padding:7px 11px;font-size:13px;font-weight:600;color:var(--text2)}
+.bt:hover{border-color:#cfc9be;color:var(--text)}
+.bt.si{border:0;color:#fff;background:linear-gradient(135deg,#162a4d 0%,#193563 55%,#1b3f74 100%)}
+.bt.ok{border:0;color:#fff;background:var(--verde)}
+.bt.no{color:var(--rojo)}
+.bt:disabled{opacity:.5;cursor:default}
+
+/* ── Historial ── */
+.filtros{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:12px}
+.filtros label{display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em}
+.filtros input,.filtros select{height:38px;font-size:14px;padding:0 10px;border:1px solid var(--border);border-radius:9px;background:var(--campo);min-width:0;text-transform:none;letter-spacing:0;font-weight:500;color:var(--text)}
+/* La cantidad, a la altura de los desplegables (mismo alto, centrada) */
+.filtros .der{margin-left:auto;height:38px;display:flex;gap:8px;align-items:center}
+.tabla{width:100%;overflow-x:auto;border:1px solid var(--border);border-radius:12px;background:var(--card)}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{position:sticky;top:0;background:var(--f-gris);text-align:left;font-size:12px;font-weight:700;color:var(--text2);padding:9px 10px;white-space:nowrap;border-bottom:1px solid var(--border)}
+td{padding:8px 10px;border-top:1px solid var(--linea);vertical-align:top}
+tbody tr{cursor:pointer}
+tbody tr:hover td{background:#F3F6FB}
+td.obs{min-width:180px;max-width:320px;color:var(--text2)}
+.chip{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:700;white-space:nowrap}
+.chip.realizado{background:var(--f-verde);color:#0f7a54}
+.chip.pendiente{background:var(--f-ambar);color:#8a5a06}
+.chip.cancelado{background:var(--f-gris);color:var(--text3)}
+.lenta{color:var(--rojo);font-weight:700}
+.vacio{color:var(--text3);font-size:14px;text-align:center;padding:22px}
+.mas{display:block;margin:12px auto 0;border:1px solid var(--border);background:var(--campo);border-radius:10px;padding:9px 18px;font-size:14px;font-weight:600;color:var(--text2)}
+
+/* ── Operativa (hoja INFO) ── */
+.info{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+@media (max-width:1000px){.info{grid-template-columns:1fr}}
+.info h2{margin-bottom:10px;padding-bottom:8px;border-bottom:3px solid var(--c)}
+.info ol,.info ul{padding-left:20px;font-size:14px;line-height:1.55;color:var(--text)}
+.info li{margin-bottom:6px}
+
+/* ── Ventana para pedir / resolver / editar ── */
+.fondo{position:fixed;inset:0;z-index:1300;background:rgba(15,23,42,.45);display:flex;align-items:flex-start;justify-content:center;padding:16px 12px;overflow-y:auto}
+.ventana{margin:auto;width:100%;max-width:520px;background:var(--card);border-radius:var(--r);box-shadow:0 20px 50px rgba(0,0,0,.3);padding:18px}
+.ventana .top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
+.ventana .top h2{font-size:17px}
+.cerrar{border:0;background:none;font-size:24px;line-height:1;color:var(--text3);padding:2px 6px}
+label.l{display:block;font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin:14px 0 6px}
+.in{width:100%;font-size:16px;padding:11px 12px;border:1px solid var(--border);border-radius:11px;background:var(--campo);outline:none}
+.in:focus{border-color:var(--azul);box-shadow:0 0 0 3px rgba(27,63,116,.12)}
+textarea.in{resize:vertical;min-height:70px}
+.opciones{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:8px}
+.op{border:1px solid var(--border);background:var(--campo);border-radius:11px;padding:11px 10px;font-size:14px;font-weight:600;text-align:left;line-height:1.25}
+.op small{display:block;font-size:11.5px;font-weight:500;color:var(--text3);margin-top:2px}
+.op.on{border-color:var(--azul);background:#E8EEF8;box-shadow:inset 0 0 0 1px var(--azul)}
+.op:disabled{opacity:.45;cursor:default}
+.fila2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.fila2 label.l{margin-top:14px}
+.ayuda{font-size:12.5px;color:var(--text3);margin-top:5px}
+.aviso-hora{font-size:13px;color:var(--ambar);font-weight:600;margin-top:6px}
+.botones{display:flex;gap:8px;margin-top:18px}
+.botones .bt{flex:1;padding:13px;font-size:15px;font-weight:700}
+.botones .bt.sec{flex:0 0 auto}
+.dato{font-size:14px;line-height:1.5;color:var(--text2);background:var(--f-gris);border-radius:10px;padding:10px 12px;margin-top:4px}
+.dato b{color:var(--text)}
+
+/* ── Controles propios de fecha/hora y desplegables (15/11): los del navegador desentonaban con la página.
+   El <input>/<select> original queda oculto con su valor y sus eventos; ver fxMejorar() ── */
+.fx-btn{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;text-align:left;cursor:pointer}
+.fx-btn .fx-ph{color:var(--text3)}
+.fx-btn svg{flex:0 0 auto;width:16px;height:16px;stroke:var(--text3);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.fx-btn.abierto{border-color:var(--azul);box-shadow:0 0 0 3px rgba(27,63,116,.12)}
+.filtros .fx-btn{height:38px;min-width:150px;font-size:14px;padding:0 10px;border:1px solid var(--border);border-radius:9px;background:var(--campo);font-weight:500;color:var(--text);text-transform:none;letter-spacing:0}
+.fx-pop{position:fixed;z-index:1500;background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:0 14px 40px rgba(0,0,0,.28);padding:10px;font-size:14px;color:var(--text)}
+.fx-menu{max-height:290px;overflow-y:auto;padding:6px}
+.fx-op{display:block;width:100%;text-align:left;border:0;background:none;border-radius:9px;padding:9px 11px;font-size:14px;font-weight:500;white-space:nowrap}
+.fx-op:hover{background:var(--f-gris)}
+.fx-op.on{background:var(--azul);color:#fff;font-weight:700}
+.fx-cal{width:292px}
+.fx-mes{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.fx-mes b{font-size:14.5px;text-transform:capitalize}
+.fx-nav{border:0;background:none;width:34px;height:34px;border-radius:9px;font-size:20px;line-height:1;color:var(--text2)}
+.fx-nav:hover:not(:disabled){background:var(--f-gris)}
+.fx-nav:disabled{opacity:.25;cursor:default}
+.fx-dias{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}
+.fx-dias span{font-size:11px;font-weight:700;color:var(--text3);padding:4px 0}
+.fx-dia{border:0;background:none;height:36px;border-radius:9px;font-size:13.5px;font-weight:500;font-variant-numeric:tabular-nums}
+.fx-dia:hover:not(:disabled){background:var(--f-gris)}
+.fx-dia.hoy{box-shadow:inset 0 0 0 1px var(--azul);color:var(--azul);font-weight:700}
+.fx-dia.on{background:var(--azul);color:#fff;font-weight:700;box-shadow:none}
+.fx-dia:disabled{opacity:.28;cursor:default}
+.fx-hora{display:flex;align-items:center;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--linea)}
+.fx-hora span{font-size:11.5px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-right:auto}
+.fx-hora input{width:54px;height:38px;text-align:center;border:1px solid var(--border);border-radius:9px;background:var(--campo);font-size:16px;font-weight:600;font-variant-numeric:tabular-nums;outline:none}
+.fx-hora input:focus{border-color:var(--azul);box-shadow:0 0 0 3px rgba(27,63,116,.12)}
+.fx-pie{display:flex;gap:6px;margin-top:10px}
+.fx-pie button{flex:1;border:1px solid var(--border);background:var(--campo);border-radius:9px;padding:8px;font-size:13px;font-weight:600;color:var(--text2)}
+.fx-pie button:hover{background:var(--f-gris)}
+.fx-pie button.si{background:var(--azul);border-color:var(--azul);color:#fff}
+
+/* Aviso abajo */
+.aviso{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translateX(-50%);max-width:calc(100% - 32px);background:#1A1714;color:#fff;border-radius:12px;padding:12px 16px;font-size:14px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:1400}
+.aviso.error{background:var(--rojo)}
+
+@media (max-width:600px){
+  .btn-pedir{padding:9px 14px;font-size:14px}
+  .fila2{grid-template-columns:1fr;gap:0}
+  .filtros .der{margin-left:0}
+}
+
+/* ── Modo oscuro (botón de la luna, assets/comun.js) ── */
+:root[data-theme="dark"]{
+  --bg:#1e2126; --card:#272b31; --border:#3b4048; --linea:#33373e; --campo:#2e3238;
+  --text:#ECEAE6; --text2:#B3ADA5; --text3:#857F77;
+  --azul:#7fa2dc; --rojo:#ff8b7e; --verde:#4fd1a0; --ambar:#f79a52;
+  --f-verde:#1f3a31; --f-ambar:#3c2c22; --f-rojo:#3d2826; --f-gris:#30343a;
+  --shadow:0 4px 20px rgba(0,0,0,.35),0 1px 3px rgba(0,0,0,.3);
+  color-scheme:dark;
+}
+[data-theme="dark"] tbody tr:hover td{background:#2b3242}
+[data-theme="dark"] .op.on{background:#2b3242}
+[data-theme="dark"] .chip.realizado{color:#7fe0bb}
+[data-theme="dark"] .chip.pendiente{color:#f5c56e}
+[data-theme="dark"] .aviso{background:#ECEAE6;color:#1A1714}
+[data-theme="dark"] .periodo button.on{color:#14171b}
+[data-theme="dark"] .prio{color:#14171b}
+[data-theme="dark"] .fx-op.on,[data-theme="dark"] .fx-dia.on,[data-theme="dark"] .fx-pie button.si{color:#14171b}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="assets/comun.js?v=202611132310"></script>
+<script src="assets/acceso.js?v=202611130130"></script>
+</head>
+<body>
+
+<header class="barra">
+  <a class="com2-marca" href="./">COM 2</a>
+  <div class="barra-in">
+    <div class="titulo"><h1>Recambio de cajas</h1></div>
+  </div>
+</header>
+
+<div class="com2-carga" id="com2-carga" role="status" aria-live="polite">
+  <div class="com2-rueda"></div><div class="com2-carga-t">Cargando información</div>
+</div>
+
+<div class="wrap" id="pagina" hidden>
+  <nav class="cats" id="cats">
+    <button type="button" data-v="curso" class="on"><svg viewBox="0 0 24 24"><path d="M3 7h11v9H3z"/><path d="M14 10h4l3 3v3h-7"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg>En curso<span class="cuenta" id="cuentaPend" hidden></span></button>
+    <button type="button" data-v="historial"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="M9 10h6M9 14h6M9 18h3"/></svg>Historial</button>
+    <button type="button" data-v="operativa"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Organización del servicio</button>
+  </nav>
+
+  <section id="v-curso">
+    <div class="lugares" id="lugares"></div>
+  </section>
+
+  <section id="v-historial" hidden>
+    <div class="filtros">
+      <label>Desde<input type="date" id="fDesde"></label>
+      <label>Hasta<input type="date" id="fHasta"></label>
+      <label>Lugar<select id="fLugar"></select></label>
+      <label>Empresa<select id="fEmpresa"></select></label>
+      <div class="der"><span class="sub" id="hCuenta"></span></div>
+    </div>
+    <div class="tabla"><table>
+      <thead><tr><th>Lugar</th><th>Caja</th><th>Fecha pedido</th><th>Fecha realizado</th><th>Observaciones</th><th>Demora</th></tr></thead>
+      <tbody id="hFilas"></tbody>
+    </table></div>
+    <button type="button" class="mas" id="hMas" hidden>Ver más</button>
+  </section>
+
+  <section id="v-operativa" hidden>
+    <div class="info" id="info"></div>
+  </section>
+</div>
+
+<div class="fondo" id="fondo" hidden><div class="ventana" id="ventana" role="dialog" aria-modal="true"></div></div>
+<div class="aviso" id="aviso" hidden></div>
+
+<script>
+// ── Constantes ─────────────────────────────────────────────────────────────
+// Orden de los lugares en la pantalla (las cajas de cada uno salen de la tabla cajas)
+const LUGARES = ['Univar', 'Filadelfia', 'Faro'];
+// Colores de los pedidos en curso según el tiempo desde el pedido: naranja desde 4 h, rojo desde 8 h
+// (pedido del usuario, 15/11). En el historial, la demora va en rojo desde HORAS_ROJO.
+const HORAS_NARANJA = 4, HORAS_ROJO = 8;
+// Horarios de descarga de cajas (hoja INFO): un pedido fuera de estos horarios lleva un aviso
+const HORARIOS = [{ nombre: 'DFR', desde: '23:00', hasta: '20:30' }, { nombre: 'ETRA', desde: '06:00', hasta: '20:00' }];
+// Lo que estaba en la hoja INFO de la planilla
+const INFO = [
+  { titulo: 'Operativa de recambios de cajas', color: '#6d9eeb', tipo: 'ol', items: [
+    // Texto actualizado por el usuario el 15/11
+    'El pedido de las cajas debe realizarse siempre al momento en que se llena la caja.',
+    'Cuando haya más de un pedido de recambio en simultáneo, se debe indicar el orden de prioridad a la empresa.',
+    'La empresa debe confirmar la recepción del pedido e indicar un tiempo estimado para la realización del recambio.',
+    'Los transportistas deben descargar únicamente en la caja marcada con el indicador (cono).',
+    'Una vez que esa caja esté llena, solicitar a un transportista que mueva el indicador a la siguiente caja vacía.',
+    'La caja debe estar llena pero sin sobrepasar el límite, porque dificultaría el recambio de la misma.',
+  ] },
+  { titulo: 'Operativa en días de paro', color: '#e06666', tipo: 'ul', items: [
+    'Se habilitará ETRA para la descarga de las cajas.',
+    'Las descargas de cajas en ETRA no pueden contener residuos voluminosos, solo mezclados.',
+  ] },
+  { titulo: 'Horarios para descargas de cajas', color: '#93c47d', tipo: 'ul', items: HORARIOS.map(h => `Horario ${h.nombre}: ${h.desde} a ${h.hasta}`) },
+];
+const POR_PAGINA = 60;
+const CAMPOS = 'id,lugar,caja,estado,pedido,obs_pedido,prioridad,eta,realizado,obs_realizado,creado,creado_nombre,resuelto_nombre,modificado,modificado_nombre';
+
+const sb = COM2.sb, esc = COM2.esc;
+const $ = id => document.getElementById(id);
+
+// ── Fechas: las de la base son hora de Montevideo sin zona ("2026-11-15T08:14:00") ──
+const ahora = () => new Date().toLocaleString('sv-SE', { timeZone: 'America/Montevideo' }).slice(0, 16).replace(' ', 'T');
+const hoy = () => ahora().slice(0, 10);
+const ms = s => s ? Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10), +s.slice(11, 13) || 0, +s.slice(14, 16) || 0) : NaN;
+const min = (a, b) => Math.round((ms(b) - ms(a)) / 60000);
+const campo = s => s ? String(s).slice(0, 16) : '';                       // para <input type=datetime-local>
+function fLinda(s, conAnio) {
+  if (!s) return '';
+  const anio = s.slice(0, 4) !== hoy().slice(0, 4) || conAnio ? '/' + s.slice(2, 4) : '';
+  return `${s.slice(8, 10)}/${s.slice(5, 7)}${anio} ${s.slice(11, 16)}`;
+}
+function dur(m) {
+  if (!(m >= 0)) return '';
+  if (m < 60) return m + ' min';
+  if (m < 1440) return Math.floor(m / 60) + ' h' + (m % 60 ? ' ' + (m % 60) + ' min' : '');
+  const d = Math.floor(m / 1440), h = Math.round((m % 1440) / 60);
+  return d + ' d' + (h ? ' ' + h + ' h' : '');
+}
+// ¿La hora "HH:MM" está dentro de algún horario de descarga? (DFR cruza la medianoche)
+function enHorario(hhmm) {
+  const dentro = h => h.desde <= h.hasta ? hhmm >= h.desde && hhmm <= h.hasta : hhmm >= h.desde || hhmm <= h.hasta;
+  return HORARIOS.filter(dentro).map(h => h.nombre);
+}
+
+// ── Datos ──────────────────────────────────────────────────────────────────
+let yo = null, cajas = [], recs = [], vista = 'curso', mostrar = POR_PAGINA;
+// Las cajas de hoy siempre con número (15/11, a pedido): "Volkemax" se ve "Volkemax 1". En el historial no se toca,
+// porque ahí hay nombres viejos sin número que eran otra caja ("Richard Gonzalez" ≠ "Richard Gonzalez 1")
+const nomCaja = c => /\d\s*$/.test(c) ? c : c + ' 1';
+const empresaDe = (l, c) => (cajas.find(x => x.lugar === l && x.caja === c) || {}).empresa || '';
+const pendienteDe = (l, c) => recs.find(r => r.estado === 'pendiente' && r.lugar === l && r.caja === c);
+
+function mensaje(e) {
+  if (!e) return 'Error';
+  if (e.code === '23505') return 'Ya hay un pedido pendiente para esa caja';
+  if (e.code === '23514') return 'La fecha de realizado tiene que ser igual o posterior a la del pedido';
+  if (e.code === '42501') return 'Tu usuario no tiene permiso para esto';
+  return e.message || 'Error';
+}
+
+async function leerTodo() {
+  const c = await sb.from('cajas').select('lugar,caja,empresa,activa,orden').order('orden').order('caja');
+  if (c.error) throw new Error(mensaje(c.error));
+  // De a 1000 (el máximo que devuelve Supabase por pedido)
+  const todas = [];
+  for (let d = 0; ; d += 1000) {
+    const r = await sb.from('cajas_recambios').select(CAMPOS).order('pedido', { ascending: false }).order('id', { ascending: false }).range(d, d + 999);
+    if (r.error) throw new Error(mensaje(r.error));
+    todas.push(...r.data);
+    if (r.data.length < 1000) break;
+  }
+  cajas = c.data; recs = todas;
+}
+const ordenar = () => recs.sort((a, b) => ms(b.pedido) - ms(a.pedido) || b.id - a.id);
+
+// Cambios de otros usuarios, en vivo (Realtime respeta los permisos de la tabla)
+function escucharCambios() {
+  sb.channel('cajas-recambios').on('postgres_changes', { event: '*', schema: 'public', table: 'cajas_recambios' }, p => {
+    if (p.eventType === 'DELETE') recs = recs.filter(r => r.id !== p.old.id);
+    else { recs = recs.filter(r => r.id !== p.new.id); recs.push(p.new); ordenar(); }
+    dibujar();
+  }).subscribe();
+}
+// Si la pestaña estuvo dormida (celular), vuelve a leer todo al volver
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState !== 'visible' || !yo) return;
+  try { await leerTodo(); dibujar(); } catch (e) {}
+});
+// Cada minuto se actualiza el "hace X" de los pendientes (si no hay una ventana abierta)
+setInterval(() => { if (vista === 'curso' && $('fondo').hidden) dibujarCurso(); }, 60000);
+
+// Guarda un cambio solo si nadie lo tocó desde que se leyó (si no, avisa y vuelve a leer)
+async function cambiar(rec, cambios) {
+  let q = sb.from('cajas_recambios').update(cambios).eq('id', rec.id);
+  q = rec.modificado ? q.eq('modificado', rec.modificado) : q.is('modificado', null);
+  const r = await q.select(CAMPOS);
+  if (r.error) throw new Error(mensaje(r.error));
+  if (!r.data.length) {
+    await leerTodo(); dibujar();
+    throw new Error('Ese pedido cambió mientras tanto (otra persona). Ya se actualizó la pantalla: revisalo y probá de nuevo');
+  }
+  recs = recs.filter(x => x.id !== rec.id); recs.push(r.data[0]); ordenar();
+}
+
+// ── Aviso abajo ────────────────────────────────────────────────────────────
+let avisoT;
+function aviso(texto, error = false) {
+  $('aviso').textContent = texto;
+  $('aviso').className = 'aviso' + (error ? ' error' : '');
+  $('aviso').hidden = false;
+  clearTimeout(avisoT); avisoT = setTimeout(() => $('aviso').hidden = true, error ? 6000 : 2500);
+}
+
+// ── Pestañas ───────────────────────────────────────────────────────────────
+$('cats').querySelectorAll('button[data-v]').forEach(b => b.onclick = () => { vista = b.dataset.v; dibujar(); scrollTo(0, 0); });
+function dibujar() {
+  $('cats').querySelectorAll('button[data-v]').forEach(b => b.classList.toggle('on', b.dataset.v === vista));
+  for (const v of ['curso', 'historial', 'operativa']) $('v-' + v).hidden = v !== vista;
+  const n = recs.filter(r => r.estado === 'pendiente').length;
+  $('cuentaPend').hidden = !n; $('cuentaPend').textContent = n;
+  if (vista === 'curso') dibujarCurso();
+  if (vista === 'historial') dibujarHistorial();
+  if (vista === 'operativa') dibujarOperativa();
+}
+
+// ── En curso: solo los pedidos pendientes, en una columna por lugar ─────────
+// Color según el tiempo desde el pedido: azul hasta 4 h, naranja de 4 a 8 h, rojo 8 h o más
+const nivel = m => m >= HORAS_ROJO * 60 ? 'tarde' : m >= HORAS_NARANJA * 60 ? 'pend' : '';
+function dibujarCurso() {
+  const pend = recs.filter(r => r.estado === 'pendiente');
+  // El más viejo arriba
+  const orden = (a, b) => ms(a.pedido) - ms(b.pedido);
+  // Siempre las tres columnas: cada una tiene su botón "+ Caja llena"
+  $('lugares').innerHTML = LUGARES.map(l => {
+      const lista = pend.filter(r => r.lugar === l).sort(orden);
+      return `<div class="card lugar"><h2>${esc(l)}<button type="button" class="btn-pedir" data-l="${esc(l)}">+ Caja llena</button></h2>`
+        + (lista.length ? lista.map(pedidoHTML).join('') : '<div class="vacio">Sin pedidos en curso</div>') + '</div>';
+    }).join('');
+  $('lugares').querySelectorAll('button[data-l]').forEach(b => b.onclick = () => abrirPedido(null, { lugar: b.dataset.l }));
+  $('lugares').querySelectorAll('button[data-a]').forEach(b => b.onclick = () => {
+    const r = recs.find(x => x.id === +b.dataset.id);
+    if (!r) return;
+    if (b.dataset.a === 'editar') abrirPedido(r);
+  });
+}
+function pedidoHTML(r) {
+  // La empresa abajo, solo si el nombre de la caja no la dice ya ("Volkemax 2" ya es de Volkemax)
+  const empresa = empresaDe(r.lugar, r.caja);
+  const emp = empresa && !sinTildes(r.caja).startsWith(sinTildes(empresa)) ? `<span class="emp">${esc(empresa)}</span>` : '';
+  const m = min(r.pedido, ahora());
+  // Sin "Planilla" (los copiados de la planilla vieja): solo se muestra el nombre de quien pidió en COM 2
+  const quien = r.creado_nombre && r.creado_nombre !== 'Planilla' ? ' · ' + esc(r.creado_nombre) : '';
+  return `<div class="caja ${nivel(m)}"><div class="cab"><div class="nom">${esc(nomCaja(r.caja))}${emp}</div><span class="est num">hace ${dur(m)}</span></div>
+      <div class="det">Pedido <b class="num">${fLinda(r.pedido)}</b>${quien}</div>
+      ${r.obs_pedido ? `<div class="obs-p">${esc(r.obs_pedido)}</div>` : ''}
+      <div class="acc"><button type="button" class="bt" data-a="editar" data-id="${r.id}">Editar o cerrar</button></div></div>`;
+}
+
+// ── Controles propios de fecha/hora y desplegables (15/11) ─────────────────
+// Los del navegador (calendario y lista) desentonaban. Se tapa cada <input type=date|datetime-local> y cada
+// <select> con un botón que abre un panel con el estilo de la página. El control original queda oculto con su
+// valor y recibe los eventos input/change de siempre: el resto del código no cambia.
+const FX_MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+const FX_CHEV = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+const FX_CAL = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>';
+let fxAbierto = null;   // { pop, btn }
+function fxCerrar() { if (!fxAbierto) return; fxAbierto.pop.remove(); fxAbierto.btn.classList.remove('abierto'); fxAbierto = null; }
+function fxAbrir(btn, pop) {
+  fxCerrar();
+  document.body.appendChild(pop); btn.classList.add('abierto'); fxAbierto = { pop, btn };
+  const r = btn.getBoundingClientRect(), w = pop.offsetWidth, h = pop.offsetHeight;
+  let top = r.bottom + 6;
+  if (top + h > innerHeight - 8) top = r.top - 6 - h >= 8 ? r.top - 6 - h : Math.max(8, innerHeight - h - 8);
+  pop.style.left = Math.max(8, Math.min(r.left, innerWidth - w - 8)) + 'px';
+  pop.style.top = top + 'px';
+}
+document.addEventListener('pointerdown', e => { if (fxAbierto && !fxAbierto.pop.contains(e.target) && !fxAbierto.btn.contains(e.target)) fxCerrar(); }, true);
+window.addEventListener('keydown', e => { if (fxAbierto && e.key === 'Escape') { e.stopImmediatePropagation(); fxCerrar(); } }, true);   // Escape cierra el panel, no la ventana
+window.addEventListener('resize', fxCerrar);
+document.addEventListener('scroll', e => { if (fxAbierto && !fxAbierto.pop.contains(e.target)) fxCerrar(); }, true);
+function fxAvisar(el) { el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); }
+
+function fxSelect(sel) {
+  const btn = document.createElement('button');
+  btn.type = 'button'; btn.className = ('fx-btn ' + sel.className).trim();
+  sel.hidden = true; sel.after(btn);
+  const pintar = () => { const o = sel.options[sel.selectedIndex]; btn.innerHTML = `<span>${esc(o ? o.text : '')}</span>${FX_CHEV}`; };
+  new MutationObserver(pintar).observe(sel, { childList: true });   // llenarFiltros() cambia las opciones
+  sel.addEventListener('change', pintar); pintar();
+  btn.onclick = () => {
+    if (fxAbierto && fxAbierto.btn === btn) return fxCerrar();
+    const pop = document.createElement('div');
+    pop.className = 'fx-pop fx-menu'; pop.style.minWidth = btn.offsetWidth + 'px';
+    pop.innerHTML = [...sel.options].map((o, i) => `<button type="button" class="fx-op${i === sel.selectedIndex ? ' on' : ''}" data-i="${i}">${esc(o.text)}</button>`).join('');
+    pop.onclick = e => {
+      const b = e.target.closest('.fx-op'); if (!b) return;
+      sel.selectedIndex = +b.dataset.i; fxCerrar(); fxAvisar(sel);
+    };
+    fxAbrir(btn, pop);
+  };
+}
+
+function fxFecha(inp) {
+  const conHora = inp.type === 'datetime-local', opcional = !inp.required;
+  const btn = document.createElement('button');
+  btn.type = 'button'; btn.className = ('fx-btn ' + inp.className).trim();
+  inp.type = 'hidden'; inp.after(btn);
+  const pintar = () => {
+    const v = inp.value;
+    btn.innerHTML = (v ? `<span class="num">${v.slice(8, 10)}/${v.slice(5, 7)}/${v.slice(0, 4)}${conHora ? ' ' + v.slice(11, 16) : ''}</span>`
+      : `<span class="fx-ph">${conHora ? 'dd/mm/aaaa --:--' : 'dd/mm/aaaa'}</span>`) + FX_CAL;
+  };
+  inp.addEventListener('input', pintar); pintar();
+  btn.onclick = () => {
+    if (fxAbierto && fxAbierto.btn === btn) return fxCerrar();
+    const ya = ahora(), hoy = ya.slice(0, 10);
+    let sel = inp.value.slice(0, 10), hh = (inp.value || ya).slice(11, 13), mm = (inp.value || ya).slice(14, 16);
+    let a = +(sel || hoy).slice(0, 4), m = +(sel || hoy).slice(5, 7) - 1;
+    const dos = n => String(n).padStart(2, '0');
+    const iso = d => `${a}-${dos(m + 1)}-${dos(d)}`;
+    const guardar = () => { if (sel) { inp.value = conHora ? `${sel}T${hh}:${mm}` : sel; fxAvisar(inp); } };
+    const pop = document.createElement('div');
+    pop.className = 'fx-pop fx-cal';
+    const leerHora = () => {   // lo escrito en hora y minutos, corregido a 00-23 y 00-59
+      for (const [id, max] of [['fxH', 23], ['fxM', 59]]) {
+        const x = pop.querySelector('#' + id); if (!x) continue;
+        const v = dos(Math.min(max, Math.max(0, parseInt(x.value, 10) || 0)));
+        x.value = v; if (id === 'fxH') hh = v; else mm = v;
+      }
+    };
+    const dibujarCal = () => {
+      const primero = (new Date(Date.UTC(a, m, 1)).getUTCDay() + 6) % 7, dias = new Date(Date.UTC(a, m + 1, 0)).getUTCDate();
+      let celdas = '<i></i>'.repeat(primero);
+      for (let d = 1; d <= dias; d++) {
+        const f = iso(d);   // no hay fechas futuras: ni pedidos ni recambios
+        celdas += `<button type="button" class="fx-dia${f === sel ? ' on' : ''}${f === hoy ? ' hoy' : ''}" data-f="${f}"${f > hoy ? ' disabled' : ''}>${d}</button>`;
+      }
+      pop.innerHTML = `<div class="fx-mes"><button type="button" class="fx-nav" data-n="-1" aria-label="Mes anterior">‹</button><b>${FX_MESES[m]} ${a}</b>`
+        + `<button type="button" class="fx-nav" data-n="1" aria-label="Mes siguiente"${iso(1).slice(0, 7) >= hoy.slice(0, 7) ? ' disabled' : ''}>›</button></div>`
+        + `<div class="fx-dias">${['L', 'M', 'M', 'J', 'V', 'S', 'D'].map(x => `<span>${x}</span>`).join('')}${celdas}</div>`
+        + (conHora ? `<div class="fx-hora"><span>Hora</span><input id="fxH" inputmode="numeric" maxlength="2" value="${hh}" aria-label="Hora"><b>:</b><input id="fxM" inputmode="numeric" maxlength="2" value="${mm}" aria-label="Minutos"></div>` : '')
+        + (opcional || conHora ? `<div class="fx-pie">${opcional ? '<button type="button" data-p="borrar">Borrar</button>' : ''}${conHora ? '<button type="button" class="si" data-p="listo">Listo</button>' : ''}</div>` : '');   // sin "Ahora"/"Hoy" (15/11, a pedido)
+      pop.querySelectorAll('.fx-hora input').forEach(x => {
+        x.onfocus = () => x.select();
+        x.onchange = () => { leerHora(); guardar(); };
+        x.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); pop.querySelector('[data-p="listo"]').click(); } };
+      });
+    };
+    pop.onclick = e => {
+      const n = e.target.closest('[data-n]'), d = e.target.closest('[data-f]'), p = e.target.closest('[data-p]');
+      if (n) { m += +n.dataset.n; if (m < 0) { m = 11; a--; } if (m > 11) { m = 0; a++; } leerHora(); dibujarCal(); }
+      else if (d) { leerHora(); sel = d.dataset.f; guardar(); if (conHora) dibujarCal(); else fxCerrar(); }
+      else if (p && p.dataset.p === 'borrar') { inp.value = ''; fxAvisar(inp); fxCerrar(); }
+      else if (p && p.dataset.p === 'listo') { leerHora(); if (!sel) sel = hoy; guardar(); fxCerrar(); }
+    };
+    dibujarCal();
+    fxAbrir(btn, pop);
+  };
+}
+function fxMejorar(raiz) {
+  raiz.querySelectorAll('input[type=date], input[type=datetime-local]').forEach(fxFecha);
+  raiz.querySelectorAll('select:not([data-fx])').forEach(s => { s.dataset.fx = '1'; fxSelect(s); });
+}
+
+// ── Ventana ────────────────────────────────────────────────────────────────
+function abrirVentana(html) {
+  $('ventana').innerHTML = html;
+  fxMejorar($('ventana'));
+  $('fondo').hidden = false;
+  document.body.style.overflow = 'hidden';
+  $('ventana').querySelector('.cerrar').onclick = cerrarVentana;
+}
+function cerrarVentana() { fxCerrar(); $('fondo').hidden = true; document.body.style.overflow = ''; }
+$('fondo').onclick = e => { if (e.target === $('fondo')) cerrarVentana(); };
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('fondo').hidden) cerrarVentana(); });
+const cabeza = t => `<div class="top"><h2>${t}</h2><button type="button" class="cerrar" aria-label="Cerrar">×</button></div>`;
+// Pedir un recambio nuevo, o editar uno (pendiente o del historial)
+function abrirPedido(r, pre = {}) {
+  const nuevo = !r;
+  let lugar = r ? r.lugar : pre.lugar || '', caja = r ? r.caja : pre.caja || '';
+  const hist = r && r.estado !== 'pendiente';
+  // Desde el historial (15/11, pedido del usuario): los mismos campos y en el mismo orden que la tabla del historial
+  const formHist = () => `
+      <div class="fila2">
+        <div><label class="l">Lugar</label><div class="dato">${esc(r.lugar)}</div></div>
+        <div><label class="l">Caja</label><div class="dato">${esc(r.caja)}</div></div>
+      </div>
+      <label class="l" for="iPed">Fecha pedido</label>
+      <input class="in num" type="datetime-local" id="iPed" required value="${campo(r.pedido)}">
+      <div class="aviso-hora" id="avHora" hidden></div>
+      <label class="l" for="iHec">Fecha realizado</label>
+      <input class="in num" type="datetime-local" id="iHec" required value="${campo(r.realizado)}">
+      <label class="l" for="iObsH">Observaciones</label>
+      <textarea class="in" id="iObsH" maxlength="500">${esc(r.obs_realizado)}</textarea>
+      <label class="l">Demora</label>
+      <div class="dato num" id="dDem"></div>`;
+  // Pedir uno nuevo, o editar uno en curso
+  const formCurso = () => `
+      ${nuevo ? `<label class="l">Lugar</label><div class="dato">${esc(lugar)}</div>
+      <label class="l">Caja</label><div class="opciones" id="opC"></div>`
+      : `<div class="fila2">
+        <div><label class="l">Lugar</label><div class="dato">${esc(r.lugar)}</div></div>
+        <div><label class="l">Caja</label><div class="dato">${esc(nomCaja(r.caja))}</div></div>
+      </div>`}
+      <label class="l" for="iPed">Fecha y hora del pedido</label>
+      <input class="in num" type="datetime-local" id="iPed" required value="${campo(r ? r.pedido : ahora())}">
+      <div class="aviso-hora" id="avHora" hidden></div>
+      ${nuevo ? '' : `<label class="l" for="iObs">Observaciones</label>
+      <textarea class="in" id="iObs" maxlength="500" placeholder="Ej.: la empresa no contesta, se vuelve a pedir">${esc(r.obs_pedido)}</textarea>`}
+      ${nuevo ? '' : `<label class="l" for="iRes">Fecha y hora de resuelto</label>
+      <input class="in num" type="datetime-local" id="iRes">`}`;
+  abrirVentana(cabeza(nuevo ? 'Registrar recambio' : hist ? 'Editar recambio' : 'Editar o cerrar') + `
+    <form id="fp" autocomplete="off">
+      ${hist ? formHist() : formCurso()}
+      <div class="botones">
+        ${!nuevo && yo.rol === 'admin' ? `<button type="button" class="bt sec no" id="bBorrar">Borrar</button>` : ''}
+        ${hist ? `<button type="button" class="bt sec" id="bReabrir">Volver a pendiente</button>` : ''}
+        <button type="submit" class="bt si" id="bGuardar">${nuevo ? 'Registrar recambio' : 'Guardar cambios'}</button>
+      </div>
+    </form>`);
+  // Demora (solo lectura), se recalcula al cambiar las fechas
+  if (hist) {
+    const demora = () => { const m = min($('iPed').value, $('iHec').value); $('dDem').textContent = m >= 0 ? dur(m) : '–'; };
+    $('iPed').addEventListener('input', demora); $('iHec').addEventListener('input', demora); demora();
+  }
+
+  const avHora = () => {
+    const v = $('iPed').value, h = enHorario(v.slice(11, 16));
+    $('avHora').hidden = !v || h.length === HORARIOS.length;
+    $('avHora').textContent = !h.length ? 'Fuera de los horarios de descarga (DFR y ETRA)' : 'Solo ' + h.join(' y ') + ' recibe a esa hora';
+  };
+  $('iPed').oninput = avHora; avHora();
+  // Editar o cerrar (15/11): si se carga la fecha de resuelto, el botón cierra el pedido y pasa al historial
+  if ($('iRes')) $('iRes').addEventListener('input', () => { $('bGuardar').textContent = $('iRes').value ? 'Cerrar recambio' : 'Guardar cambios'; });
+
+  if (nuevo) {
+    const dibujarOps = () => {
+      const lista = cajas.filter(c => c.lugar === lugar && c.activa);
+      $('opC').innerHTML = lista.map(c => {
+        const p = pendienteDe(lugar, c.caja);
+        return `<button type="button" class="op${c.caja === caja ? ' on' : ''}" data-c="${esc(c.caja)}" ${p ? 'disabled' : ''}>${esc(nomCaja(c.caja))}${p ? '<small>Ya está pedida</small>' : ''}</button>`;
+      }).join('');
+      $('opC').querySelectorAll('button').forEach(b => b.onclick = () => { caja = b.dataset.c; dibujarOps(); });
+    };
+    if (caja && pendienteDe(lugar, caja)) caja = '';
+    dibujarOps();
+  }
+  // Borrar (solo admin, 15/11): la base también lo exige (política "admin borra recambios", sql/16)
+  if ($('bBorrar')) $('bBorrar').onclick = async () => {
+    if (!confirm(`¿Borrar el recambio de ${nomCaja(r.caja)} de ${r.lugar} pedido el ${fLinda(r.pedido)}? No se puede deshacer.`)) return;
+    $('bBorrar').disabled = true;
+    const q = await sb.from('cajas_recambios').delete().eq('id', r.id).select('id');
+    if (q.error || !q.data.length) { $('bBorrar').disabled = false; return aviso(q.error ? mensaje(q.error) : 'No se pudo borrar', true); }
+    recs = recs.filter(x => x.id !== r.id);
+    cerrarVentana(); aviso('Recambio borrado'); dibujar();
+  };
+  if ($('bReabrir')) $('bReabrir').onclick = async () => {
+    if (!confirm(`¿Volver a poner como pendiente ${r.caja} de ${r.lugar}? Se borra la fecha de realizado.`)) return;
+    try { await cambiar(r, { estado: 'pendiente', realizado: null }); cerrarVentana(); aviso('Volvió a pendiente'); dibujar(); }
+    catch (e) { aviso(e.message, true); }
+  };
+
+  $('fp').onsubmit = async e => {
+    e.preventDefault();
+    if (nuevo && (!lugar || !caja)) return aviso('Elegí la caja', true);
+    const ped = $('iPed').value;
+    if (!ped) return aviso('Falta la fecha y hora del pedido', true);
+    if (ms(ped) > ms(ahora()) + 5 * 60000) return aviso('La fecha y hora del pedido no puede ser futura', true);
+    // Al pedir no hay observaciones (15/11, pedido del usuario): se agregan con Editar mientras está en curso
+    const datos = { pedido: ped };
+    if ($('iObs')) datos.obs_pedido = $('iObs').value.trim();
+    if (hist) {
+      if (!$('iHec').value) return aviso('Falta la fecha realizado', true);
+      if (ms($('iHec').value) < ms(ped)) return aviso('La fecha realizado tiene que ser después de la del pedido', true);
+      datos.realizado = $('iHec').value;
+      datos.obs_realizado = $('iObsH').value.trim();
+    } else if (!nuevo && $('iRes').value) {   // cerrar desde Editar: la observación pasa a la del historial
+      const res = $('iRes').value;
+      if (ms(res) < ms(ped)) return aviso('La fecha de resuelto tiene que ser después de la del pedido', true);
+      if (ms(res) > ms(ahora()) + 5 * 60000) return aviso('La fecha de resuelto no puede ser futura', true);
+      Object.assign(datos, { estado: 'realizado', realizado: res, obs_realizado: datos.obs_pedido });
+    }
+    $('bGuardar').disabled = true;
+    try {
+      if (nuevo) {
+        const q = await sb.from('cajas_recambios').insert({ lugar, caja, ...datos }).select(CAMPOS);
+        if (q.error) throw new Error(mensaje(q.error));
+        recs = recs.filter(x => x.id !== q.data[0].id); recs.push(q.data[0]); ordenar();
+        aviso('Pedido cargado: ' + caja + ' de ' + lugar);
+      } else {
+        await cambiar(r, datos);
+        aviso(datos.estado === 'realizado' ? 'Listo: ' + r.caja + ' de ' + r.lugar + ' realizado' : 'Cambios guardados');
+      }
+      cerrarVentana(); dibujar();
+    } catch (err) {
+      aviso(err.message, true);
+      $('bGuardar').disabled = false;
+    }
+  };
+}
+
+
+// ── Historial ──────────────────────────────────────────────────────────────
+function llenarFiltros() {
+  const opt = (v, t) => `<option value="${esc(v)}">${esc(t)}</option>`;
+  $('fLugar').innerHTML = opt('', 'Todos') + LUGARES.map(l => opt(l, l)).join('');
+  $('fEmpresa').innerHTML = opt('', 'Todas') + [...new Set(cajas.map(c => c.empresa).filter(Boolean))].sort().map(e => opt(e, e)).join('');
+  for (const id of ['fDesde', 'fHasta', 'fLugar', 'fEmpresa']) $(id).oninput = () => { mostrar = POR_PAGINA; dibujarHistorial(); };
+}
+const sinTildes = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+// En el historial van solo los recambios ya cerrados (realizados); los pendientes están en En curso
+function filtrados() {
+  const d = $('fDesde').value, h = $('fHasta').value, l = $('fLugar').value, em = $('fEmpresa').value;
+  return recs.filter(r => r.estado === 'realizado' && (!d || r.pedido.slice(0, 10) >= d) && (!h || r.pedido.slice(0, 10) <= h)
+    && (!l || r.lugar === l) && (!em || empresaDe(r.lugar, r.caja) === em))
+    // Lo más nuevo arriba según la fecha y hora de realizado (15/11, a pedido)
+    .sort((a, b) => ms(b.realizado) - ms(a.realizado) || b.id - a.id);
+}
+function dibujarHistorial() {
+  const f = filtrados();
+  $('hCuenta').textContent = f.length.toLocaleString('es-UY') + ' recambio' + (f.length === 1 ? '' : 's');
+  const ver = f.slice(0, mostrar);
+  $('hFilas').innerHTML = ver.length ? ver.map(r => {
+    const m = min(r.pedido, r.realizado);
+    return `<tr data-id="${r.id}"><td>${esc(r.lugar)}</td><td>${esc(r.caja)}</td>
+      <td class="num">${fLinda(r.pedido, true)}</td><td class="num">${fLinda(r.realizado, true)}</td>
+      <td class="obs">${esc(r.obs_realizado)}</td><td class="num${m >= HORAS_ROJO * 60 ? ' lenta' : ''}">${dur(m)}</td></tr>`;
+  }).join('') : '<tr><td colspan="6" class="vacio">No hay recambios con esos filtros</td></tr>';
+  $('hMas').hidden = f.length <= mostrar;
+  $('hFilas').querySelectorAll('tr[data-id]').forEach(tr => tr.onclick = () => {
+    const r = recs.find(x => x.id === +tr.dataset.id);
+    if (r) abrirPedido(r);
+  });
+}
+$('hMas').onclick = () => { mostrar += POR_PAGINA; dibujarHistorial(); };
+// ── Operativa ──────────────────────────────────────────────────────────────
+function dibujarOperativa() {
+  $('info').innerHTML = INFO.map(b => `<div class="card" style="--c:${b.color}"><h2>${esc(b.titulo)}</h2>
+    <${b.tipo}>${b.items.map(i => `<li>${esc(i)}</li>`).join('')}</${b.tipo}>${b.nota ? `<p class="sub" style="margin-top:8px">${esc(b.nota)}</p>` : ''}</div>`).join('');
+}
+
+// ── Inicio ─────────────────────────────────────────────────────────────────
+async function iniciar() {
+  COM2.carga.mostrar('Cargando información');
+  try {
+    await leerTodo();
+    llenarFiltros();
+    fxMejorar($('v-historial'));
+    $('pagina').hidden = false;
+    dibujar();
+    COM2.carga.listo();
+    escucharCambios();
+  } catch (e) {
+    COM2.carga.error('No se pudieron leer los recambios (' + e.message + ')', iniciar);
+  }
+}
+// Entran supervisor, auxiliar, sup gral y admin (no operadores)
+COM2.acceso().then(p => { if (p) { yo = p; iniciar(); } });
+</script>
+</body>
+</html>
