@@ -13,7 +13,7 @@
 <style>
 /* Recambio de cajas (15/11/2026). Reemplaza la planilla "Vaciados Cajas 2026" (Ingreso → Pendientes → Resueltos, con
    dos Apps Script). Datos en las tablas cajas y cajas_recambios de Supabase (sql/16-cajas.sql). Solo supervisor o más arriba (15/11), desde el panel Supervisor, recuadro Bolsones.
-   Pestañas: En curso (los pedidos pendientes, una columna por lugar), Historial y Organización del servicio (lo de la hoja INFO).
+   Pestañas: Organización del servicio (lo de la hoja INFO; a la izquierda desde el 15/11), En curso (los pedidos pendientes, una columna por lugar; abre en esta) e Historial.
    15/11: Historial solo con lo realizado, sin columna de quién cargó, CSV, filtro de estado ni buscador; sin Cancelar pedido.
    15/11: pestañas centradas con ícono, como Supervisión de Bolsones; "Pedir recambio" solo dentro de En curso.
    15/11: se sacó la pestaña Indicadores (se verá más adelante, con más datos) y En curso dejó de mostrar las cajas sin pedido. */
@@ -91,8 +91,8 @@ h2{font-size:15px;font-weight:700}
 table{width:100%;border-collapse:collapse;font-size:13.5px}
 th{position:sticky;top:0;background:var(--f-gris);text-align:left;font-size:12px;font-weight:700;color:var(--text2);padding:9px 10px;white-space:nowrap;border-bottom:1px solid var(--border)}
 td{padding:8px 10px;border-top:1px solid var(--linea);vertical-align:top}
-tbody tr{cursor:pointer}
-tbody tr:hover td{background:#F3F6FB}
+tbody tr[data-id]{cursor:pointer}
+tbody tr[data-id]:hover td{background:#F3F6FB}
 td.obs{min-width:180px;max-width:320px;color:var(--text2)}
 .chip{display:inline-block;padding:2px 8px;border-radius:10px;font-size:12px;font-weight:700;white-space:nowrap}
 .chip.realizado{background:var(--f-verde);color:#0f7a54}
@@ -127,7 +127,6 @@ textarea.in{resize:vertical;min-height:70px}
 .fila2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .fila2 label.l{margin-top:14px}
 .ayuda{font-size:12.5px;color:var(--text3);margin-top:5px}
-.aviso-hora{font-size:13px;color:var(--ambar);font-weight:600;margin-top:6px}
 .botones{display:flex;gap:8px;margin-top:18px}
 .botones .bt{flex:1;padding:13px;font-size:15px;font-weight:700}
 .botones .bt.sec{flex:0 0 auto}
@@ -187,7 +186,7 @@ textarea.in{resize:vertical;min-height:70px}
   --shadow:0 4px 20px rgba(0,0,0,.35),0 1px 3px rgba(0,0,0,.3);
   color-scheme:dark;
 }
-[data-theme="dark"] tbody tr:hover td{background:#2b3242}
+[data-theme="dark"] tbody tr[data-id]:hover td{background:#2b3242}
 [data-theme="dark"] .op.on{background:#2b3242}
 [data-theme="dark"] .chip.realizado{color:#7fe0bb}
 [data-theme="dark"] .chip.pendiente{color:#f5c56e}
@@ -215,9 +214,9 @@ textarea.in{resize:vertical;min-height:70px}
 
 <div class="wrap" id="pagina" hidden>
   <nav class="cats" id="cats">
+    <button type="button" data-v="operativa"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Organización del servicio</button>
     <button type="button" data-v="curso" class="on"><svg viewBox="0 0 24 24"><path d="M3 7h11v9H3z"/><path d="M14 10h4l3 3v3h-7"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg>En curso<span class="cuenta" id="cuentaPend" hidden></span></button>
     <button type="button" data-v="historial"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="M9 10h6M9 14h6M9 18h3"/></svg>Historial</button>
-    <button type="button" data-v="operativa"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Organización del servicio</button>
   </nav>
 
   <section id="v-curso">
@@ -296,11 +295,6 @@ function dur(m) {
   if (m < 1440) return Math.floor(m / 60) + ' h' + (m % 60 ? ' ' + (m % 60) + ' min' : '');
   const d = Math.floor(m / 1440), h = Math.round((m % 1440) / 60);
   return d + ' d' + (h ? ' ' + h + ' h' : '');
-}
-// ¿La hora "HH:MM" está dentro de algún horario de descarga? (DFR cruza la medianoche)
-function enHorario(hhmm) {
-  const dentro = h => h.desde <= h.hasta ? hhmm >= h.desde && hhmm <= h.hasta : hhmm >= h.desde || hhmm <= h.hasta;
-  return HORARIOS.filter(dentro).map(h => h.nombre);
 }
 
 // ── Datos ──────────────────────────────────────────────────────────────────
@@ -409,10 +403,8 @@ function pedidoHTML(r) {
   const empresa = empresaDe(r.lugar, r.caja);
   const emp = empresa && !sinTildes(r.caja).startsWith(sinTildes(empresa)) ? `<span class="emp">${esc(empresa)}</span>` : '';
   const m = min(r.pedido, ahora());
-  // Sin "Planilla" (los copiados de la planilla vieja): solo se muestra el nombre de quien pidió en COM 2
-  const quien = r.creado_nombre && r.creado_nombre !== 'Planilla' ? ' · ' + esc(r.creado_nombre) : '';
   return `<div class="caja ${nivel(m)}"><div class="cab"><div class="nom">${esc(nomCaja(r.caja))}${emp}</div><span class="est num">hace ${dur(m)}</span></div>
-      <div class="det">Pedido <b class="num">${fLinda(r.pedido)}</b>${quien}</div>
+      <div class="det">Pedido <b class="num">${fLinda(r.pedido)}</b></div>
       ${r.obs_pedido ? `<div class="obs-p">${esc(r.obs_pedido)}</div>` : ''}
       <div class="acc"><button type="button" class="bt" data-a="editar" data-id="${r.id}">Editar o cerrar</button></div></div>`;
 }
@@ -535,7 +527,7 @@ function cerrarVentana() { fxCerrar(); $('fondo').hidden = true; document.body.s
 $('fondo').onclick = e => { if (e.target === $('fondo')) cerrarVentana(); };
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('fondo').hidden) cerrarVentana(); });
 const cabeza = t => `<div class="top"><h2>${t}</h2><button type="button" class="cerrar" aria-label="Cerrar">×</button></div>`;
-// Pedir un recambio nuevo, o editar uno (pendiente o del historial)
+// Pedir un recambio nuevo, o editar uno (en curso, o del historial: solo el admin)
 function abrirPedido(r, pre = {}) {
   const nuevo = !r;
   let lugar = r ? r.lugar : pre.lugar || '', caja = r ? r.caja : pre.caja || '';
@@ -548,7 +540,6 @@ function abrirPedido(r, pre = {}) {
       </div>
       <label class="l" for="iPed">Fecha pedido</label>
       <input class="in num" type="datetime-local" id="iPed" required value="${campo(r.pedido)}">
-      <div class="aviso-hora" id="avHora" hidden></div>
       <label class="l" for="iHec">Fecha realizado</label>
       <input class="in num" type="datetime-local" id="iHec" required value="${campo(r.realizado)}">
       <label class="l" for="iObsH">Observaciones</label>
@@ -565,7 +556,6 @@ function abrirPedido(r, pre = {}) {
       </div>`}
       <label class="l" for="iPed">Fecha y hora del pedido</label>
       <input class="in num" type="datetime-local" id="iPed" required value="${campo(r ? r.pedido : ahora())}">
-      <div class="aviso-hora" id="avHora" hidden></div>
       ${nuevo ? '' : `<label class="l" for="iObs">Observaciones</label>
       <textarea class="in" id="iObs" maxlength="500" placeholder="Ej.: la empresa no contesta, se vuelve a pedir">${esc(r.obs_pedido)}</textarea>`}
       ${nuevo ? '' : `<label class="l" for="iRes">Fecha y hora de resuelto</label>
@@ -574,8 +564,7 @@ function abrirPedido(r, pre = {}) {
     <form id="fp" autocomplete="off">
       ${hist ? formHist() : formCurso()}
       <div class="botones">
-        ${!nuevo && yo.rol === 'admin' ? `<button type="button" class="bt sec no" id="bBorrar">Borrar</button>` : ''}
-        ${hist ? `<button type="button" class="bt sec" id="bReabrir">Volver a pendiente</button>` : ''}
+        ${!nuevo && (!hist || yo.rol === 'admin') ? `<button type="button" class="bt sec no" id="bBorrar">Borrar</button>` : ''}
         <button type="submit" class="bt si" id="bGuardar">${nuevo ? 'Registrar recambio' : 'Guardar cambios'}</button>
       </div>
     </form>`);
@@ -585,12 +574,7 @@ function abrirPedido(r, pre = {}) {
     $('iPed').addEventListener('input', demora); $('iHec').addEventListener('input', demora); demora();
   }
 
-  const avHora = () => {
-    const v = $('iPed').value, h = enHorario(v.slice(11, 16));
-    $('avHora').hidden = !v || h.length === HORARIOS.length;
-    $('avHora').textContent = !h.length ? 'Fuera de los horarios de descarga (DFR y ETRA)' : 'Solo ' + h.join(' y ') + ' recibe a esa hora';
-  };
-  $('iPed').oninput = avHora; avHora();
+  // Sin aviso de horarios de descarga al cargar la hora (sacado el 15/11, a pedido); los horarios siguen en la info
   // Editar o cerrar (15/11): si se carga la fecha de resuelto, el botón cierra el pedido y pasa al historial
   if ($('iRes')) $('iRes').addEventListener('input', () => { $('bGuardar').textContent = $('iRes').value ? 'Cerrar recambio' : 'Guardar cambios'; });
 
@@ -606,7 +590,7 @@ function abrirPedido(r, pre = {}) {
     if (caja && pendienteDe(lugar, caja)) caja = '';
     dibujarOps();
   }
-  // Borrar (solo admin, 15/11): la base también lo exige (política "admin borra recambios", sql/16)
+  // Borrar (15/11): en curso cualquiera de supervisión; del historial solo el admin. La base también lo exige (sql/19)
   if ($('bBorrar')) $('bBorrar').onclick = async () => {
     if (!confirm(`¿Borrar el recambio de ${nomCaja(r.caja)} de ${r.lugar} pedido el ${fLinda(r.pedido)}? No se puede deshacer.`)) return;
     $('bBorrar').disabled = true;
@@ -614,11 +598,6 @@ function abrirPedido(r, pre = {}) {
     if (q.error || !q.data.length) { $('bBorrar').disabled = false; return aviso(q.error ? mensaje(q.error) : 'No se pudo borrar', true); }
     recs = recs.filter(x => x.id !== r.id);
     cerrarVentana(); aviso('Recambio borrado'); dibujar();
-  };
-  if ($('bReabrir')) $('bReabrir').onclick = async () => {
-    if (!confirm(`¿Volver a poner como pendiente ${r.caja} de ${r.lugar}? Se borra la fecha de realizado.`)) return;
-    try { await cambiar(r, { estado: 'pendiente', realizado: null }); cerrarVentana(); aviso('Volvió a pendiente'); dibujar(); }
-    catch (e) { aviso(e.message, true); }
   };
 
   $('fp').onsubmit = async e => {
@@ -681,9 +660,11 @@ function dibujarHistorial() {
   const f = filtrados();
   $('hCuenta').textContent = f.length.toLocaleString('es-UY') + ' recambio' + (f.length === 1 ? '' : 's');
   const ver = f.slice(0, mostrar);
+  // Editar o borrar lo ya cerrado: solo el admin (15/11). Los demás ven la tabla sin poder tocarla
+  const admin = yo.rol === 'admin';
   $('hFilas').innerHTML = ver.length ? ver.map(r => {
     const m = min(r.pedido, r.realizado);
-    return `<tr data-id="${r.id}"><td>${esc(r.lugar)}</td><td>${esc(r.caja)}</td>
+    return `<tr${admin ? ` data-id="${r.id}"` : ''}><td>${esc(r.lugar)}</td><td>${esc(r.caja)}</td>
       <td class="num">${fLinda(r.pedido, true)}</td><td class="num">${fLinda(r.realizado, true)}</td>
       <td class="obs">${esc(r.obs_realizado)}</td><td class="num${m >= HORAS_ROJO * 60 ? ' lenta' : ''}">${dur(m)}</td></tr>`;
   }).join('') : '<tr><td colspan="6" class="vacio">No hay recambios con esos filtros</td></tr>';
