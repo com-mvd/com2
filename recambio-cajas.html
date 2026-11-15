@@ -13,7 +13,7 @@
 <style>
 /* Recambio de cajas (15/11/2026). Reemplaza la planilla "Vaciados Cajas 2026" (Ingreso → Pendientes → Resueltos, con
    dos Apps Script). Datos en las tablas cajas y cajas_recambios de Supabase (sql/16-cajas.sql). Solo supervisor o más arriba (15/11), desde el panel Supervisor, recuadro Bolsones.
-   Pestañas: Organización del servicio (lo de la hoja INFO; a la izquierda desde el 15/11), En curso (los pedidos pendientes, una columna por lugar; abre en esta) e Historial.
+   Pestañas: Organización del servicio (lo de la hoja INFO; a la izquierda desde el 15/11), En curso (los pedidos pendientes, una columna por lugar) e Historial. Abre siempre en Organización del servicio.
    15/11: Historial solo con lo realizado, sin columna de quién cargó, CSV, filtro de estado ni buscador; sin Cancelar pedido.
    15/11: pestañas centradas con ícono, como Supervisión de Bolsones; "Pedir recambio" solo dentro de En curso.
    15/11: se sacó la pestaña Indicadores (se verá más adelante, con más datos) y En curso dejó de mostrar las cajas sin pedido. */
@@ -214,12 +214,12 @@ textarea.in{resize:vertical;min-height:70px}
 
 <div class="wrap" id="pagina" hidden>
   <nav class="cats" id="cats">
-    <button type="button" data-v="operativa"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Organización del servicio</button>
-    <button type="button" data-v="curso" class="on"><svg viewBox="0 0 24 24"><path d="M3 7h11v9H3z"/><path d="M14 10h4l3 3v3h-7"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg>En curso<span class="cuenta" id="cuentaPend" hidden></span></button>
+    <button type="button" data-v="operativa" class="on"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Organización del servicio</button>
+    <button type="button" data-v="curso"><svg viewBox="0 0 24 24"><path d="M3 7h11v9H3z"/><path d="M14 10h4l3 3v3h-7"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg>En curso<span class="cuenta" id="cuentaPend" hidden></span></button>
     <button type="button" data-v="historial"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="M9 10h6M9 14h6M9 18h3"/></svg>Historial</button>
   </nav>
 
-  <section id="v-curso">
+  <section id="v-curso" hidden>
     <div class="lugares" id="lugares"></div>
   </section>
 
@@ -238,7 +238,7 @@ textarea.in{resize:vertical;min-height:70px}
     <button type="button" class="mas" id="hMas" hidden>Ver más</button>
   </section>
 
-  <section id="v-operativa" hidden>
+  <section id="v-operativa">
     <div class="info" id="info"></div>
   </section>
 </div>
@@ -298,7 +298,8 @@ function dur(m) {
 }
 
 // ── Datos ──────────────────────────────────────────────────────────────────
-let yo = null, cajas = [], recs = [], vista = 'curso', mostrar = POR_PAGINA;
+// Abre siempre en Organización del servicio (15/11, a pedido)
+let yo = null, cajas = [], recs = [], vista = 'operativa', mostrar = POR_PAGINA;
 // Las cajas de hoy siempre con número (15/11, a pedido): "Volkemax" se ve "Volkemax 1". En el historial no se toca,
 // porque ahí hay nombres viejos sin número que eran otra caja ("Richard Gonzalez" ≠ "Richard Gonzalez 1")
 const nomCaja = c => /\d\s*$/.test(c) ? c : c + ' 1';
