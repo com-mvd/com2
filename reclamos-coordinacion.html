@@ -1,0 +1,1131 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<meta name="theme-color" content="#16213e">
+<title>COM 2</title>
+<link rel="icon" type="image/png" href="assets/logo-ciemsa.png">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="assets/barra.css?v=202611132330">
+<link rel="stylesheet" href="assets/carga.css?v=202611131600">
+<style>
+/* Reclamos Coordinación (17/11/2026). Pedidos que se cargan con foto y ubicación, se ven en el mapa y se mandan a atender:
+   Sin asignar → Asignado → Resuelto. Viene del "Mapa operativo (activos + pendientes)" de un compañero, que guardaba
+   en el navegador o en la planilla "CASOS VIP". Acá: tabla reclamos_coordinacion y bucket privado reclamos-fotos de Supabase
+   (sql/21-reclamos-coordinacion.sql). 17/11, a pedido: sin tipo, dirección ni detalle; con grupo; ubicación solo con el
+   enlace largo de Google Maps (o eligiendo en el mapa); mapa sin botones de zoom. Solo supervisor o más arriba. Mapa liso: sin camiones ni bases.
+   Pestañas: Mapa (lo abierto, en el mapa y en la lista) e Historial (lo resuelto). */
+:root{
+  --bg:#F7F6F3; --card:#FFFFFF; --border:#E6E2DA; --linea:#EFECE6; --campo:#FFFFFF;
+  --text:#1A1714; --text2:#5F5A54; --text3:#9A948C;
+  --azul:#1b3f74; --rojo:#c0392b; --verde:#1baf7a; --ambar:#dd6b10;
+  --f-verde:#E7F6EF; --f-ambar:#FDEEE2; --f-rojo:#FBE9E7; --f-gris:#F1EFEB; --f-azul:#E8EEF8;
+  /* Colores de los estados en el mapa y en la lista */
+  --e-sin:#d03b3b; --e-asig:#2a78d6; --e-res:#1baf7a;
+  --shadow:0 4px 20px rgba(26,23,20,.05),0 1px 3px rgba(26,23,20,.05);
+  --r:16px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+[hidden]{display:none!important}
+body{font-family:'DM Sans',system-ui,sans-serif;color:var(--text);-webkit-font-smoothing:antialiased;background:var(--bg);min-height:100vh}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+.num{font-variant-numeric:tabular-nums}
+
+.wrap{max-width:var(--com2-ancho);margin:0 auto;padding:14px var(--com2-margen) 24px}
+
+/* Pestañas: las mismas de las Supervisiones (.cats de supervision.css) */
+.cats{position:sticky;top:76px;z-index:1100;display:flex;gap:6px;padding:6px;margin-bottom:14px;border-radius:14px;background:linear-gradient(135deg,#162a4d 0%,#193563 55%,#1b3f74 100%);box-shadow:0 4px 12px rgba(15,23,42,.25);overflow-x:auto;scrollbar-width:none}
+.cats::-webkit-scrollbar{display:none}
+.cats button{flex:none;display:inline-flex;align-items:center;gap:8px;border:0;background:transparent;color:#c7d5ea;font-size:13.5px;font-weight:600;padding:9px 16px;border-radius:10px;white-space:nowrap}
+.cats button:first-child{margin-left:auto}
+.cats button:last-child{margin-right:auto}
+.cats svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.cats button:hover{background:rgba(255,255,255,.08);color:#fff}
+.cats button.on{background:#fff;color:#0f172a;box-shadow:0 2px 6px rgba(0,0,0,.18)}
+.cats .cuenta{display:inline-block;min-width:20px;margin-left:-2px;padding:1px 6px;border-radius:10px;background:#f59e0b;color:#1A1714;font-size:12px;font-weight:700;text-align:center}
+
+.card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--shadow)}
+h2{font-size:15px;font-weight:700}
+.sub{font-size:13px;color:var(--text2)}
+
+/* ── Mapa: la lista a la izquierda y el mapa al lado, del alto de la pantalla ── */
+/* ── Mapa (17/11, a pedido): sin panel a la izquierda. El mapa ocupa todo y arriba, dentro de él, van los filtros
+   Sin asignar / Asignado y "+ Nuevo reclamo". Los reclamos se eligen tocando el pin ── */
+.btn-nuevo{flex:0 0 auto;border-radius:10px;padding:8px 14px;font-size:13.5px;font-weight:700;color:#fff;background:#1A1714;border:1px solid #1A1714;box-shadow:0 2px 8px rgba(0,0,0,.25)}
+.btn-nuevo:hover{background:#2e2a26}
+[data-theme="dark"] .btn-nuevo{background:var(--bg);border-color:var(--border);color:#f1f1f1}
+[data-theme="dark"] .btn-nuevo:hover{background:#15171b}
+.sobre-mapa{position:absolute;top:12px;right:12px;z-index:500;display:flex;justify-content:flex-end;pointer-events:none}
+.sobre-mapa>*{pointer-events:auto}
+body.eligiendo .sobre-mapa{display:none}
+
+/* Barra lateral fina a la izquierda del mapa (17/11, a pedido): filtros de estado y, abajo, los municipios con
+   reclamos en curso en dos columnas (municipio | cuántos sin asignar + asignados; los resueltos no cuentan) */
+.mapa-cont{display:grid;grid-template-columns:200px minmax(0,1fr);gap:14px;height:calc(100vh - 62px - 14px - 50px - 14px - 24px);height:calc(100dvh - 62px - 14px - 50px - 14px - 24px);min-height:380px}
+.lateral{padding:12px 10px;overflow-y:auto;scrollbar-width:none}
+.lateral::-webkit-scrollbar{display:none}
+.fila-lat{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:8px;width:100%;text-align:left;border:1px solid transparent;background:none;border-radius:9px;padding:7px 8px;font-size:13.5px;font-weight:600;color:var(--text)}
+.fila-lat:hover{background:var(--f-gris)}
+.fila-lat span{display:flex;align-items:center;gap:7px;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fila-lat i{flex:0 0 auto;width:9px;height:9px;border-radius:50%;background:var(--c)}
+.fila-lat b{font-variant-numeric:tabular-nums;font-size:13.5px;color:var(--text2)}
+.fila-lat.off{opacity:.45}
+.fila-lat.off i{background:var(--text3)}
+.fila-lat.on{background:var(--azul);color:#fff}
+.fila-lat.on b{color:#fff}
+[data-theme="dark"] .fila-lat.on,[data-theme="dark"] .fila-lat.on b{color:#14171b}
+.lateral .vacio{padding:8px 4px;font-size:13px;text-align:left}
+/* Lista (Zona Limpia y los 8 municipios) arriba y la referencia de colores abajo de todo, discreta */
+.lateral{display:flex;flex-direction:column}
+.lista-lat{display:flex;flex-direction:column;gap:2px}
+.fila-lat.zl{margin-bottom:6px;border-color:var(--border)}
+.fila-lat.cero b{color:var(--text3);font-weight:500}
+.ref-lat{margin-top:auto;padding:10px 6px 2px;border-top:1px solid var(--linea);display:flex;flex-direction:column;gap:5px;font-size:11.5px;color:var(--text3)}
+.ref-lat span{display:flex;align-items:center;gap:7px}
+.ref-lat i{width:8px;height:8px;border-radius:50%}
+.ref-lat i.cuad{border-radius:3px}
+.ref-lat .ref-sep{height:1px;background:var(--linea);margin:3px 0}
+/* Recursos del municipio elegido (como en el Mapa de monitoreo) */
+.tit-rec{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin:14px 4px 6px}
+.lista-rec{display:flex;flex-direction:column;gap:2px}
+.fila-rec{display:flex;align-items:center;gap:8px;width:100%;text-align:left;border:0;background:none;border-radius:9px;padding:6px 8px}
+.fila-rec:hover{background:var(--f-gris)}
+.fila-rec i{flex:0 0 auto;width:9px;height:9px;border-radius:3px}
+.fila-rec span{display:flex;flex-direction:column;min-width:0}
+.fila-rec b{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fila-rec small{font-size:11.5px;color:var(--text3)}
+.rec-w{background:none;border:0}
+.rec{width:100%;height:100%;border-radius:8px;background:var(--card);border:2.5px solid var(--c);display:grid;place-items:center;font-size:14px;line-height:1;box-shadow:0 2px 6px rgba(0,0,0,.3)}
+.rec-w.on .rec{box-shadow:0 0 0 4px rgba(27,63,116,.35),0 2px 6px rgba(0,0,0,.3)}
+.pop-rec{font:13px/1.4 'DM Sans',system-ui,sans-serif;color:var(--text)}
+.pop-rec b{font-size:14px}
+.pop-rec div{color:var(--text2)}
+/* La etiqueta de Leaflet con los colores de la página (en oscuro ya no queda blanca; 17/11) */
+.leaflet-popup-content-wrapper,.leaflet-popup-tip{background:var(--card);color:var(--text);box-shadow:var(--shadow)}
+.leaflet-popup-content-wrapper{border:1px solid var(--border);border-radius:12px}
+.leaflet-container a.leaflet-popup-close-button{color:var(--text3)}
+
+.mapa-caja{position:relative;overflow:hidden;padding:0;height:100%}
+#mapa{position:absolute;inset:0;background:#e9e6df}
+.leaflet-container{font:inherit}
+.leaflet-tooltip{border-radius:8px;border:1px solid var(--border);box-shadow:var(--shadow);font-size:12.5px;color:var(--text);padding:4px 8px}
+.leaflet-tooltip small{display:block;color:var(--text3);font-size:11.5px}
+.pin-w{background:none;border:0}
+.pin{width:100%;height:100%;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:var(--c);border:2.5px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.35)}
+.pin::after{content:"";position:absolute;left:50%;top:50%;width:9px;height:9px;margin:-4.5px 0 0 -4.5px;border-radius:50%;background:#fff}
+.pin-w.on .pin{box-shadow:0 0 0 4px rgba(27,63,116,.35),0 2px 6px rgba(0,0,0,.35)}
+/* Sin asignar hace más de MIN_DEMORA: late */
+.pin-w.viejo .pin{animation:late 1.6s ease-out infinite}
+@keyframes late{0%{box-shadow:0 0 0 0 rgba(208,59,59,.55),0 2px 6px rgba(0,0,0,.35)}100%{box-shadow:0 0 0 14px rgba(208,59,59,0),0 2px 6px rgba(0,0,0,.35)}}
+.elegir{position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:600;display:flex;align-items:center;gap:10px;background:#1A1714;color:#fff;border-radius:12px;padding:9px 10px 9px 14px;font-size:14px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.25);white-space:nowrap}
+.elegir button{border:0;background:rgba(255,255,255,.16);color:#fff;border-radius:8px;padding:6px 10px;font-size:13px;font-weight:600}
+body.eligiendo #mapa{cursor:crosshair}
+body.eligiendo .leaflet-interactive{cursor:crosshair}
+
+@media (max-width:600px){
+  .btn-nuevo .largo{display:none}
+}
+/* Celular: la barra pasa arriba del mapa, con estados y municipios en dos columnas */
+@media (max-width:700px){
+  .mapa-cont{grid-template-columns:1fr;grid-template-rows:auto minmax(320px,1fr)}
+  .lateral{padding:10px;max-height:38vh}
+  .lista-lat{display:grid;grid-template-columns:1fr 1fr;gap:2px 10px}
+  .fila-lat.zl{grid-column:1/-1}
+  .ref-lat{flex-direction:row;gap:14px;margin-top:8px;padding-top:8px}
+}
+
+/* ── Historial ── */
+.filtros{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:12px}
+.filtros label{display:flex;flex-direction:column;gap:4px;font-size:11.5px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em}
+.filtros input,.filtros select{height:38px;font-size:14px;padding:0 10px;border:1px solid var(--border);border-radius:9px;background:var(--campo);min-width:0;text-transform:none;letter-spacing:0;font-weight:500;color:var(--text)}
+.filtros .der{margin-left:auto;height:38px;display:flex;gap:8px;align-items:center}
+.tabla{width:100%;overflow-x:auto;border:1px solid var(--border);border-radius:12px;background:var(--card)}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th{position:sticky;top:0;background:var(--f-gris);text-align:left;font-size:12px;font-weight:700;color:var(--text2);padding:9px 10px;white-space:nowrap;border-bottom:1px solid var(--border)}
+td{padding:8px 10px;border-top:1px solid var(--linea);vertical-align:top}
+tbody tr[data-id]{cursor:pointer}
+tbody tr[data-id]:hover td{background:#F3F6FB}
+td.obs{min-width:160px;max-width:300px;color:var(--text2)}
+/* Historial (17/11): links a la ubicación y a las fotos, y la casilla Respondido */
+.tabla a.ver{color:var(--azul);font-weight:600;text-decoration:none;white-space:nowrap}
+.tabla a.ver:hover{text-decoration:underline}
+th.centro,td.centro{text-align:center}
+td.centro input{width:18px;height:18px;accent-color:var(--azul);cursor:pointer;vertical-align:middle}
+td.centro input:disabled{cursor:default}
+.lenta{color:var(--rojo);font-weight:700}
+.mas{display:block;margin:12px auto 0;border:1px solid var(--border);background:var(--campo);border-radius:10px;padding:9px 18px;font-size:14px;font-weight:600;color:var(--text2)}
+
+/* ── Ventanas ── */
+.fondo{position:fixed;inset:0;z-index:1300;background:rgba(15,23,42,.45);display:flex;align-items:flex-start;justify-content:center;padding:16px 12px;overflow-y:auto;scrollbar-width:none}
+.fondo::-webkit-scrollbar{display:none}
+.ventana{margin:auto;width:100%;max-width:560px;background:var(--card);border-radius:var(--r);box-shadow:0 20px 50px rgba(0,0,0,.3);padding:18px}
+.ventana .top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
+.ventana .top h2{font-size:17px}
+.cerrar{border:0;background:none;font-size:24px;line-height:1;color:var(--text3);padding:2px 6px}
+label.l{display:block;font-size:12px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.06em;margin:14px 0 6px}
+.in{width:100%;font-size:16px;padding:11px 12px;border:1px solid var(--border);border-radius:11px;background:var(--campo);outline:none}
+.in:focus{border-color:var(--azul);box-shadow:0 0 0 3px rgba(27,63,116,.12)}
+textarea.in{resize:vertical;min-height:70px}
+.opciones{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}
+.op{border:1px solid var(--border);background:var(--campo);border-radius:11px;padding:11px 10px;font-size:14px;font-weight:600;text-align:left;line-height:1.25}
+.op.on{border-color:var(--azul);background:var(--f-azul);box-shadow:inset 0 0 0 1px var(--azul)}
+.fila2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.ubic{display:flex;gap:8px}
+.ubic .in{flex:1;min-width:0}
+.bt{border:1px solid var(--border);background:var(--campo);border-radius:9px;padding:7px 11px;font-size:13px;font-weight:600;color:var(--text2);white-space:nowrap}
+.bt:hover{border-color:#cfc9be;color:var(--text)}
+.bt.si{border:0;color:#fff;background:linear-gradient(135deg,#162a4d 0%,#193563 55%,#1b3f74 100%)}
+.bt.ok{border:0;color:#fff;background:var(--verde)}
+.bt.no{color:var(--rojo)}
+.bt:disabled{opacity:.5;cursor:default}
+.ayuda{font-size:12.5px;color:var(--text3);margin-top:6px;line-height:1.4}
+.ayuda.ok{color:var(--verde);font-weight:600}
+.ayuda.mal{color:var(--rojo);font-weight:600}
+.botones{display:flex;gap:8px;margin-top:18px}
+.botones .bt{flex:1;padding:13px;font-size:15px;font-weight:700}
+.botones .bt.sec{flex:0 0 auto}
+.dato{font-size:14px;line-height:1.5;color:var(--text2);background:var(--f-gris);border-radius:10px;padding:10px 12px;margin-top:4px;overflow-wrap:anywhere}
+.dato b{color:var(--text)}
+
+/* Foto: se suelta, se pega con Ctrl+V o se elige (en el celular, también la cámara) */
+.foto-zona{display:grid;place-items:center;min-height:120px;border:2px dashed var(--border);border-radius:12px;background:var(--f-gris);color:var(--text3);font-size:13.5px;text-align:center;padding:14px;cursor:pointer;position:relative;overflow:hidden}
+.foto-zona.encima{border-color:var(--azul);background:var(--f-azul)}
+.foto-zona img{max-width:100%;max-height:260px;border-radius:8px;display:block}
+.foto-zona .quitar{position:absolute;top:8px;right:8px;width:30px;height:30px;border-radius:50%;border:0;background:rgba(0,0,0,.6);color:#fff;font-size:18px;line-height:1}
+
+/* Ficha: foto y enlace, cada uno con su botón de copiar (17/11) */
+/* La ficha va ancha y en dos columnas (17/11, a pedido: que entre entera en la pantalla, sin barra para desplazar):
+   a la izquierda la foto y el enlace con sus botones de copiar; a la derecha los campos y el botón */
+.ventana.ficha{max-width:820px}
+.ficha-cols{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:18px;margin-top:12px}
+.ficha-cols .l:first-child{margin-top:0}
+.copiar{display:flex;flex-direction:column;gap:8px}
+.copiar .bt{padding:9px 14px;font-size:14px}
+.foto-ficha{display:block;border-radius:12px;overflow:hidden;background:var(--f-gris)}
+.foto-ficha img{display:block;width:100%;height:200px;object-fit:cover}
+.link-ficha{font-size:12.5px;color:var(--azul);overflow-wrap:anywhere;padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:var(--f-gris);text-decoration:none;margin-top:4px}
+.link-ficha:hover{text-decoration:underline}
+.ficha .foto-zona{min-height:96px;padding:10px;font-size:13px}
+.ficha .foto-zona img{max-height:130px}
+.ficha .botones{margin-top:14px}
+@media (max-width:700px){
+  .ficha-cols{grid-template-columns:1fr;gap:10px}
+  .foto-ficha img{height:140px}
+  .ficha .l{margin-top:10px}
+}
+/* Ficha */
+.pasos{display:flex;align-items:center;gap:6px;margin:4px 0 12px;flex-wrap:wrap}
+.paso{padding:3px 10px;border-radius:12px;font-size:12px;font-weight:700;background:var(--f-gris);color:var(--text3)}
+.paso.on{background:var(--c);color:#fff}
+.paso.ya{color:var(--text2)}
+.pasos i{color:var(--text3);font-style:normal}
+.fotos{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:6px}
+.fotos a{display:block;position:relative;border-radius:12px;overflow:hidden;background:var(--f-gris);min-height:140px}
+.fotos img{display:block;width:100%;max-height:300px;object-fit:cover}
+.fotos span{position:absolute;left:8px;bottom:8px;background:rgba(0,0,0,.6);color:#fff;font-size:11.5px;font-weight:700;padding:2px 8px;border-radius:8px}
+.renglones{display:grid;grid-template-columns:auto 1fr;gap:5px 14px;font-size:14px;margin-top:8px}
+.renglones>span{color:var(--text3);font-weight:600;font-size:13px}
+.renglones>div{overflow-wrap:anywhere}
+.accion{margin-top:14px;padding-top:12px;border-top:1px solid var(--linea)}
+.asig{display:flex;gap:8px}
+.asig .in{flex:1;min-width:0}
+.links{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.links a,.links button{text-decoration:none}
+
+/* ── Controles propios de fecha/hora y desplegables (copiados de recambio-cajas.html) ── */
+/* ── Controles propios de fecha/hora y desplegables (15/11): los del navegador desentonaban con la página.
+   El <input>/<select> original queda oculto con su valor y sus eventos; ver fxMejorar() ── */
+.fx-btn{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;text-align:left;cursor:pointer}
+.fx-btn .fx-ph{color:var(--text3)}
+.fx-btn svg{flex:0 0 auto;width:16px;height:16px;stroke:var(--text3);fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.fx-btn.abierto{border-color:var(--azul);box-shadow:0 0 0 3px rgba(27,63,116,.12)}
+.filtros .fx-btn{height:38px;min-width:150px;font-size:14px;padding:0 10px;border:1px solid var(--border);border-radius:9px;background:var(--campo);font-weight:500;color:var(--text);text-transform:none;letter-spacing:0}
+.fx-pop{position:fixed;z-index:1500;background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:0 14px 40px rgba(0,0,0,.28);padding:10px;font-size:14px;color:var(--text)}
+.fx-menu{max-height:290px;overflow-y:auto;padding:6px}
+.fx-op{display:block;width:100%;text-align:left;border:0;background:none;border-radius:9px;padding:9px 11px;font-size:14px;font-weight:500;white-space:nowrap}
+.fx-op:hover{background:var(--f-gris)}
+.fx-op.on{background:var(--azul);color:#fff;font-weight:700}
+.fx-cal{width:292px}
+.fx-mes{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.fx-mes b{font-size:14.5px;text-transform:capitalize}
+.fx-nav{border:0;background:none;width:34px;height:34px;border-radius:9px;font-size:20px;line-height:1;color:var(--text2)}
+.fx-nav:hover:not(:disabled){background:var(--f-gris)}
+.fx-nav:disabled{opacity:.25;cursor:default}
+.fx-dias{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;text-align:center}
+.fx-dias span{font-size:11px;font-weight:700;color:var(--text3);padding:4px 0}
+.fx-dia{border:0;background:none;height:36px;border-radius:9px;font-size:13.5px;font-weight:500;font-variant-numeric:tabular-nums}
+.fx-dia:hover:not(:disabled){background:var(--f-gris)}
+.fx-dia.hoy{box-shadow:inset 0 0 0 1px var(--azul);color:var(--azul);font-weight:700}
+.fx-dia.on{background:var(--azul);color:#fff;font-weight:700;box-shadow:none}
+.fx-dia:disabled{opacity:.28;cursor:default}
+.fx-hora{display:flex;align-items:center;gap:6px;margin-top:10px;padding-top:10px;border-top:1px solid var(--linea)}
+.fx-hora span{font-size:11.5px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-right:auto}
+.fx-hora input{width:54px;height:38px;text-align:center;border:1px solid var(--border);border-radius:9px;background:var(--campo);font-size:16px;font-weight:600;font-variant-numeric:tabular-nums;outline:none}
+.fx-hora input:focus{border-color:var(--azul);box-shadow:0 0 0 3px rgba(27,63,116,.12)}
+.fx-pie{display:flex;gap:6px;margin-top:10px}
+.fx-pie button{flex:1;border:1px solid var(--border);background:var(--campo);border-radius:9px;padding:8px;font-size:13px;font-weight:600;color:var(--text2)}
+.fx-pie button:hover{background:var(--f-gris)}
+.fx-pie button.si{background:var(--azul);border-color:var(--azul);color:#fff}
+
+/* Aviso abajo */
+.aviso{position:fixed;left:50%;bottom:calc(18px + env(safe-area-inset-bottom));transform:translateX(-50%);max-width:calc(100% - 32px);background:#1A1714;color:#fff;border-radius:12px;padding:12px 16px;font-size:14px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:1400}
+.aviso.error{background:var(--rojo)}
+
+@media (max-width:600px){
+  .fila2{grid-template-columns:1fr;gap:0}
+  .filtros .der{margin-left:0}
+  .ubic{flex-direction:column}
+}
+
+/* ── Modo oscuro (botón de la luna, assets/comun.js) ── */
+:root[data-theme="dark"]{
+  --bg:#1e2126; --card:#272b31; --border:#3b4048; --linea:#33373e; --campo:#2e3238;
+  --text:#ECEAE6; --text2:#B3ADA5; --text3:#857F77;
+  --azul:#7fa2dc; --rojo:#ff8b7e; --verde:#4fd1a0; --ambar:#f79a52;
+  --f-verde:#1f3a31; --f-ambar:#3c2c22; --f-rojo:#3d2826; --f-gris:#30343a; --f-azul:#2b3242;
+  --e-sin:#ff5252; --e-asig:#3d9bff; --e-res:#2ee88f;
+  --shadow:0 4px 20px rgba(0,0,0,.35),0 1px 3px rgba(0,0,0,.3);
+  color-scheme:dark;
+}
+[data-theme="dark"] #mapa{background:#2a2d31}
+[data-theme="dark"] .leaflet-tile-pane{filter:invert(1) hue-rotate(180deg) brightness(1.08) contrast(.82)}
+[data-theme="dark"] .leaflet-tooltip{background:#33373e;color:var(--text);border-color:#484d55}
+[data-theme="dark"] .leaflet-tooltip-top:before{border-top-color:#33373e}
+[data-theme="dark"] .leaflet-bar a{background:#33373e;color:var(--text);border-color:#484d55}
+[data-theme="dark"] .pin{border-color:#15181c}
+[data-theme="dark"] .pin::after{background:#15181c}
+[data-theme="dark"] tbody tr[data-id]:hover td{background:#2b3242}
+[data-theme="dark"] .aviso{background:#ECEAE6;color:#1A1714}
+[data-theme="dark"] .paso.on{color:#14171b}
+[data-theme="dark"] .fx-op.on,[data-theme="dark"] .fx-dia.on,[data-theme="dark"] .fx-pie button.si{color:#14171b}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="assets/comun.js?v=202611132310"></script>
+<script src="assets/acceso.js?v=202611130130"></script>
+<script src="assets/supervision-mapa.js?v=202611132000"></script>
+<script src="assets/municipios.js?v=202611171500"></script>
+<script src="assets/monitoreo.js?v=202611171800"></script>
+</head>
+<body>
+
+<header class="barra">
+  <a class="com2-marca" href="./">COM 2</a>
+  <div class="barra-in">
+    <div class="titulo"><h1>Reclamos Coordinación</h1></div>
+  </div>
+</header>
+
+<div class="com2-carga" id="com2-carga" role="status" aria-live="polite">
+  <div class="com2-rueda"></div><div class="com2-carga-t">Cargando información</div>
+</div>
+
+<div class="wrap" id="pagina" hidden>
+  <nav class="cats" id="cats">
+    <button type="button" data-v="mapa" class="on"><svg viewBox="0 0 24 24"><path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></svg>Mapa<span class="cuenta" id="cuentaAbiertos" hidden></span></button>
+    <button type="button" data-v="historial"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="M9 10h6M9 14h6M9 18h3"/></svg>Historial</button>
+  </nav>
+
+  <section id="v-mapa">
+    <div class="mapa-cont">
+    <aside class="card lateral" id="lateral"></aside>
+    <div class="card mapa-caja" id="mapaCaja">
+      <div id="mapa"></div>
+      <div class="sobre-mapa">
+        <button type="button" class="btn-nuevo" id="bNuevo">+ Nuevo<span class="largo"> reclamo</span></button>
+      </div>
+      <div class="elegir" id="elegir" hidden><span>Tocá en el mapa dónde es</span><button type="button" id="elegirNo">Cancelar</button></div>
+    </div>
+    </div>
+  </section>
+
+  <section id="v-historial" hidden>
+    <div class="filtros">
+      <label>Desde<input type="date" id="fDesde"></label>
+      <label>Hasta<input type="date" id="fHasta"></label>
+      <label>Servicio<select id="fServ"></select></label>
+      <label>Grupo<select id="fGrupo"></select></label>
+      <label>Municipio<select id="fMuni"></select></label>
+      <div class="der"><span class="sub" id="hCuenta"></span></div>
+    </div>
+    <div class="tabla"><table>
+      <thead><tr><th>Fecha y hora</th><th>Ubicación</th><th>Foto</th><th>Servicio</th><th>Solicitante</th><th>Grupo</th><th>Transportista</th><th>Resuelto</th><th>Foto final</th><th class="centro">Respondido</th></tr></thead>
+      <tbody id="hFilas"></tbody>
+    </table></div>
+    <button type="button" class="mas" id="hMas" hidden>Ver más</button>
+  </section>
+</div>
+
+<div class="fondo" id="fondo" hidden><div class="ventana" id="ventana" role="dialog" aria-modal="true"></div></div>
+<div class="aviso" id="aviso" hidden></div>
+<input type="file" id="archivo" accept="image/*" hidden>
+
+<script>
+// ── Constantes ─────────────────────────────────────────────────────────────
+// Grupos que piden (los del mapa del compañero)
+const GRUPOS = ['Coordinación', 'Monitoreo', 'Interno IM'];
+// Quién pide (desplegable, 17/11, a pedido). Para sumar a alguien, agregarlo acá
+const SOLICITANTES = ['Leonardo Herou', 'Carlos Gomez', 'Miguel Sande', 'Daniel Veirana', 'Luis Sosa', 'Ines', 'Salerti', 'Matias'];
+// Servicio a asignar (17/11, a pedido): primer filtro del embudo de la barra lateral. Si se suma uno, cambiar también sql/21
+const SERVICIOS = ['Municipio', 'Zona Limpia'];   // 'Municipio' se llamaba 'Reclamos' (cambiado el 17/11, a pedido)
+const ESTADOS = {
+  sin_asignar: { n: 'Sin asignar', css: '--e-sin' },
+  asignado: { n: 'Asignado', css: '--e-asig' },
+  resuelto: { n: 'Resuelto', css: '--e-res' },
+};
+const MIN_DEMORA = 60;          // sin asignar hace 60 min o más: el pin late y el "hace" va en rojo
+const HORAS_ROJO = 8;           // en el historial, la demora va en rojo desde 8 h
+const CENTRO = [-34.865, -56.17], ZOOM = 12;   // Montevideo
+const FOTO_LADO = 1280, FOTO_CALIDAD = 0.78;   // la foto se achica a 1280 px de lado (jpg ~150 KB) antes de subirla
+const BUCKET = 'reclamos-fotos';
+const POR_PAGINA = 60;
+const CAMPOS = 'id,lat,lng,municipio,servicio,grupo,solicitante,pedido,foto,estado,respondido,asignado_a,asignado,resuelto,foto_resuelto,obs_resuelto,creado,creado_nombre,asignado_nombre,resuelto_nombre,modificado,modificado_nombre';
+
+const sb = COM2.sb, esc = COM2.esc;
+const esSup = () => !!yo && yo.rol !== 'operador';   // supervisor o más arriba
+const $ = id => document.getElementById(id);
+const colorEst = e => getComputedStyle(document.documentElement).getPropertyValue(ESTADOS[e].css).trim();
+
+// ── Fechas: las de la base son hora de Montevideo sin zona ("2026-11-17T08:14:00") ──
+const ahora = () => new Date().toLocaleString('sv-SE', { timeZone: 'America/Montevideo' }).slice(0, 16).replace(' ', 'T');
+const hoy = () => ahora().slice(0, 10);
+const ms = s => s ? Date.UTC(+s.slice(0, 4), +s.slice(5, 7) - 1, +s.slice(8, 10), +s.slice(11, 13) || 0, +s.slice(14, 16) || 0) : NaN;
+const min = (a, b) => Math.round((ms(b) - ms(a)) / 60000);
+const campo = s => s ? String(s).slice(0, 16) : '';
+function fLinda(s, conAnio) {
+  if (!s) return '';
+  const anio = s.slice(0, 4) !== hoy().slice(0, 4) || conAnio ? '/' + s.slice(2, 4) : '';
+  return `${s.slice(8, 10)}/${s.slice(5, 7)}${anio} ${s.slice(11, 16)}`;
+}
+function dur(m) {
+  if (!(m >= 0)) return '';
+  if (m < 1) return 'recién';
+  if (m < 60) return m + ' min';
+  if (m < 1440) return Math.floor(m / 60) + ' h' + (m % 60 ? ' ' + (m % 60) + ' min' : '');
+  const d = Math.floor(m / 1440), h = Math.round((m % 1440) / 60);
+  return d + ' d' + (h ? ' ' + h + ' h' : '');
+}
+const sinTildes = s => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+const muniTxt = m => m ? 'Municipio ' + m : 'Fuera de Montevideo';
+
+// ── Ubicación: solo el enlace largo de Google Maps (17/11, a pedido), o el que arma "Elegir en el mapa" ──
+const esLinkGoogle = t => /^https?:\/\/((www\.)?google\.[a-z.]+\/maps|maps\.google\.[a-z.]+\/)/i.test((t || '').trim());
+function coordsDe(t) {
+  t = (t || '').trim(); if (!esLinkGoogle(t)) return null;
+  let d = t; try { d = decodeURIComponent(t); } catch (e) {}
+  let m = d.match(/!3d(-?\d+(?:\.\d+)?)!4d(-?\d+(?:\.\d+)?)/);
+  if (!m) m = d.match(/[?&](?:q|ll|query|destination|center|daddr|saddr)=(?:loc:)?(-?\d+(?:\.\d+)?)[,+ ]\s*\+?(-?\d+(?:\.\d+)?)/);
+  if (!m) m = d.match(/\/(?:place|search|dir)\/(-?\d+\.\d+)[,+ ]\s*\+?(-?\d+\.\d+)/);
+  if (!m) m = d.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+  if (!m) m = d.match(/(-?\d{1,2}\.\d{4,})[,+\s\/]+(-?\d{1,3}\.\d{4,})/);
+  if (!m) return null;
+  const lat = parseFloat(m[1]), lng = parseFloat(m[2]);
+  if (lat < -36 || lat > -33 || lng < -59 || lng > -53) return null;   // fuera de Uruguay
+  return { lat, lng };
+}
+const linkDe = c => `https://www.google.com/maps?q=${c.lat.toFixed(6)},${c.lng.toFixed(6)}`;   // enlace largo
+const linkMaps = r => `https://www.google.com/maps/search/?api=1&query=${r.lat},${r.lng}`;
+const linkIr = r => `https://www.google.com/maps/dir/?api=1&destination=${r.lat},${r.lng}`;
+
+// ── Datos ──────────────────────────────────────────────────────────────────
+let yo = null, recs = [], vista = 'mapa', mostrar = POR_PAGINA, elegido = null;
+
+function mensaje(e) {
+  if (!e) return 'Error';
+  if (e.code === '42501' || /row-level security/i.test(e.message || '')) return 'Tu usuario no tiene permiso para esto';
+  if (e.code === '23514') return 'Hay un dato fuera de lo permitido (revisá fechas y ubicación)';
+  return e.message || 'Error';
+}
+async function leerTodo() {
+  const todas = [];
+  for (let d = 0; ; d += 1000) {
+    const r = await sb.from('reclamos_coordinacion').select(CAMPOS).order('pedido', { ascending: false }).order('id', { ascending: false }).range(d, d + 999);
+    if (r.error) throw new Error(mensaje(r.error));
+    todas.push(...r.data);
+    if (r.data.length < 1000) break;
+  }
+  recs = todas;
+}
+const ordenar = () => recs.sort((a, b) => ms(b.pedido) - ms(a.pedido) || b.id - a.id);
+const poner = r => { recs = recs.filter(x => x.id !== r.id); recs.push(r); ordenar(); };
+const abiertos = () => recs.filter(r => r.estado !== 'resuelto');
+
+function escucharCambios() {
+  sb.channel('reclamos-coordinacion').on('postgres_changes', { event: '*', schema: 'public', table: 'reclamos_coordinacion' }, p => {
+    if (p.eventType === 'DELETE') recs = recs.filter(r => r.id !== p.old.id);
+    else poner(p.new);
+    dibujar();
+  }).subscribe();
+}
+document.addEventListener('visibilitychange', async () => {
+  if (document.visibilityState !== 'visible' || !yo) return;
+  try { await leerTodo(); dibujar(); } catch (e) {}
+});
+// Cada minuto se actualiza el "hace X" (si no hay una ventana abierta)
+setInterval(() => { if (vista === 'mapa' && $('fondo').hidden) dibujarMapa(); }, 60000);
+
+// Guarda un cambio solo si nadie lo tocó desde que se leyó (si no, avisa y vuelve a leer)
+async function cambiar(rec, cambios) {
+  let q = sb.from('reclamos_coordinacion').update(cambios).eq('id', rec.id);
+  q = rec.modificado ? q.eq('modificado', rec.modificado) : q.is('modificado', null);
+  const r = await q.select(CAMPOS);
+  if (r.error) throw new Error(mensaje(r.error));
+  if (!r.data.length) {
+    await leerTodo(); dibujar();
+    throw new Error('Ese reclamo cambió mientras tanto (otra persona). Ya se actualizó la pantalla: revisalo y probá de nuevo');
+  }
+  poner(r.data[0]);
+  return r.data[0];
+}
+
+// ── Fotos: se achican en el navegador y van al bucket privado; se ven con links firmados (1 h) ──
+const urls = new Map();   // ruta → { u, hasta }
+async function prepararFotos(rutas) {
+  const faltan = [...new Set(rutas.filter(p => p && !(urls.get(p) && urls.get(p).hasta > Date.now())))];
+  for (let i = 0; i < faltan.length; i += 100) {
+    const r = await sb.storage.from(BUCKET).createSignedUrls(faltan.slice(i, i + 100), 3600);
+    if (r.error || !r.data) continue;
+    r.data.forEach(x => { if (x.signedUrl) urls.set(x.path, { u: x.signedUrl, hasta: Date.now() + 3500 * 1000 }); });
+  }
+}
+const urlFoto = p => (p && urls.get(p) || {}).u || '';
+const leerArchivo = f => new Promise((ok, mal) => { const r = new FileReader(); r.onload = () => ok(r.result); r.onerror = mal; r.readAsDataURL(f); });
+function achicar(dataUrl) {
+  return new Promise((ok, mal) => {
+    const img = new Image();
+    img.onload = () => {
+      const k = Math.min(1, FOTO_LADO / Math.max(img.naturalWidth, img.naturalHeight));
+      const c = document.createElement('canvas');
+      c.width = Math.max(1, Math.round(img.naturalWidth * k)); c.height = Math.max(1, Math.round(img.naturalHeight * k));
+      const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, c.width, c.height); x.drawImage(img, 0, 0, c.width, c.height);
+      c.toBlob(b => b ? ok(b) : mal(new Error('No se pudo leer la foto')), 'image/jpeg', FOTO_CALIDAD);
+    };
+    img.onerror = () => mal(new Error('Ese archivo no es una foto que se pueda leer'));
+    img.src = dataUrl;
+  });
+}
+async function subirFoto(blob) {
+  const ruta = `${ahora().slice(0, 7)}/${crypto.randomUUID()}.jpg`;
+  const r = await sb.storage.from(BUCKET).upload(ruta, blob, { contentType: 'image/jpeg', upsert: false });
+  if (r.error) throw new Error('No se pudo subir la foto (' + mensaje(r.error) + ')');
+  return ruta;
+}
+const borrarFotos = rutas => { rutas = rutas.filter(Boolean); if (rutas.length) sb.storage.from(BUCKET).remove(rutas).catch(() => {}); };
+
+// Zona de foto (en una ventana): clic para elegir, soltar o pegar con Ctrl+V. foto = { blob, url } o null.
+// inicial: link de una foto ya guardada, que se muestra como { url, existente: true } hasta que se quite o se cambie
+let zonaActiva = null;   // { el, set }
+function zonaFoto(el, alCambiar, inicial) {
+  let foto = inicial ? { url: inicial, existente: true } : null;
+  const pintar = () => {
+    if (foto) {
+      el.innerHTML = (foto.existente ? `<a href="${foto.url}" target="_blank" rel="noopener"><img src="${foto.url}" alt="Foto"></a>` : `<img src="${foto.url}" alt="Foto">`)
+        + `<button type="button" class="quitar" aria-label="Quitar foto">×</button>`;
+      el.querySelector('.quitar').onclick = e => { e.stopPropagation(); poner(null); };
+    } else el.innerHTML = '<div>Se puede:<br>Tocar para cargar foto<br>Pegar con Ctrl+V<br>Arrastrar la foto</div>';
+  };
+  const poner = async f => {
+    if (foto && foto.url.startsWith('blob:')) URL.revokeObjectURL(foto.url);
+    foto = null;
+    if (f) {
+      try { const b = await achicar(await leerArchivo(f)); foto = { blob: b, url: URL.createObjectURL(b) }; }
+      catch (e) { aviso(e.message, true); }
+    }
+    pintar(); alCambiar && alCambiar(foto);
+  };
+  el.onclick = () => { if (!foto) { zonaActiva = { poner }; $('archivo').click(); } };
+  ['dragenter', 'dragover'].forEach(ev => el.addEventListener(ev, e => { e.preventDefault(); el.classList.add('encima'); }));
+  ['dragleave', 'drop'].forEach(ev => el.addEventListener(ev, e => { e.preventDefault(); el.classList.remove('encima'); }));
+  el.addEventListener('drop', e => { const f = [...(e.dataTransfer.files || [])].find(x => x.type.startsWith('image/')); if (f) poner(f); });
+  zonaActiva = { poner };
+  pintar();
+  return { valor: () => foto, poner };
+}
+$('archivo').onchange = e => { const f = e.target.files[0]; if (f && zonaActiva) zonaActiva.poner(f); e.target.value = ''; };
+document.addEventListener('paste', e => {
+  if ($('fondo').hidden || !zonaActiva) return;
+  const it = [...(e.clipboardData && e.clipboardData.items || [])].find(x => x.type.startsWith('image/'));
+  if (it) { e.preventDefault(); zonaActiva.poner(it.getAsFile()); }
+});
+
+// ── Aviso abajo ────────────────────────────────────────────────────────────
+let avisoT;
+function aviso(texto, error = false) {
+  $('aviso').textContent = texto;
+  $('aviso').className = 'aviso' + (error ? ' error' : '');
+  $('aviso').hidden = false;
+  clearTimeout(avisoT); avisoT = setTimeout(() => $('aviso').hidden = true, error ? 6000 : 2500);
+}
+
+// ── Pestañas ───────────────────────────────────────────────────────────────
+$('cats').querySelectorAll('button[data-v]').forEach(b => b.onclick = () => { vista = b.dataset.v; dibujar(); scrollTo(0, 0); });
+function dibujar() {
+  $('cats').querySelectorAll('button[data-v]').forEach(b => b.classList.toggle('on', b.dataset.v === vista));
+  $('v-mapa').hidden = vista !== 'mapa'; $('v-historial').hidden = vista !== 'historial';
+  const n = abiertos().length;
+  $('cuentaAbiertos').hidden = !n; $('cuentaAbiertos').textContent = n;
+  if (vista === 'mapa') { mapa.invalidateSize(); dibujarMapa(); }
+  if (vista === 'historial') dibujarHistorial();
+}
+
+// ── Mapa ───────────────────────────────────────────────────────────────────
+const mapa = L.map('mapa', { zoomControl: false, attributionControl: false }).setView(CENTRO, ZOOM);
+L.tileLayer(SupervisionMapa.teselas, { maxZoom: 19, subdomains: 'abcd' }).addTo(mapa);
+const capa = L.layerGroup().addTo(mapa);
+// Si cambia el tamaño del recuadro (ventana, celular girado, pestaña), el mapa se reacomoda y no quedan franjas grises
+new ResizeObserver(() => mapa.invalidateSize()).observe(document.getElementById('mapaCaja'));
+const pines = new Map();
+let encuadrado = false;
+
+// Barra lateral (17/11, a pedido; reemplaza al filtro escalonado): una sola lista con Zona Limpia y los 8 municipios
+// (los reclamos del servicio Municipio, por municipio), cada uno con cuántos tiene sin resolver (sin asignar + asignados).
+// Los 8 municipios salen siempre, aunque tengan 0; "Fuera de Mvd." solo si hay alguno fuera de Montevideo.
+// Tocar uno deja en el mapa solo eso y lo encuadra; tocarlo de nuevo vuelve a mostrar todo.
+// El estado no se filtra: se ve por el color del pin (referencia abajo del panel).
+let filtro = null;   // null = todo; { servicio: 'Zona Limpia' } o { servicio: 'Municipio', municipio: 'B' }
+const claveFiltro = f => f ? f.servicio + '|' + (f.municipio ?? '') : '';
+const pasaFiltro = r => !filtro || (r.servicio === filtro.servicio && (filtro.municipio === undefined || r.municipio === filtro.municipio));
+function encuadrarFiltro() {
+  // Los reclamos de lo elegido y, en un municipio, también sus recursos
+  const ps = abiertos().filter(pasaFiltro).map(r => [r.lat, r.lng]).concat((recursosVista || []).map(p => p.pos));
+  if (ps.length) mapa.flyToBounds(L.latLngBounds(ps).pad(0.2), { maxZoom: 15, duration: .6 });
+}
+
+let recursosVista = null;   // recursos del municipio elegido (los que se ven en el mapa y en el panel)
+function dibujarMapa() {
+  const ab = abiertos(), ya = ahora();
+  recursosVista = filtro && filtro.servicio === 'Municipio' && filtro.municipio ? recursosDe(filtro.municipio) : null;
+  dibujarRecursos(recursosVista);
+  const opciones = [{ servicio: 'Zona Limpia', txt: 'Zona Limpia' }, ...Municipios.orden.map(m => ({ servicio: 'Municipio', municipio: m, txt: 'Municipio ' + m }))];
+  if (ab.some(r => r.servicio === 'Municipio' && r.municipio === '')) opciones.push({ servicio: 'Municipio', municipio: '', txt: 'Fuera de Mvd.' });
+  const actual = claveFiltro(filtro);
+  $('lateral').innerHTML = '<div class="lista-lat">' + opciones.map(o => {
+    const f = o.municipio === undefined ? { servicio: o.servicio } : { servicio: o.servicio, municipio: o.municipio };
+    const n = ab.filter(r => r.servicio === f.servicio && (f.municipio === undefined || r.municipio === f.municipio)).length;
+    const k = claveFiltro(f);
+    return `<button type="button" class="fila-lat${k === actual ? ' on' : actual ? ' off' : ''}${n ? '' : ' cero'}${o.municipio === undefined ? ' zl' : ''}" data-k="${esc(k)}"><span>${esc(o.txt)}</span><b>${n}</b></button>`;
+  }).join('') + '</div>'
+    + `<div class="ref-lat">${['sin_asignar', 'asignado'].map(e => `<span><i style="background:var(${ESTADOS[e].css})"></i>${ESTADOS[e].n}</span>`).join('')}` + '</div>';
+  $('lateral').querySelectorAll('button[data-k]').forEach(b => b.onclick = () => {
+    const [servicio, municipio] = b.dataset.k.split('|');
+    filtro = b.dataset.k === actual ? null : servicio === 'Zona Limpia' ? { servicio } : { servicio, municipio };
+    recSel = null; mapa.closePopup();
+    dibujarMapa(); encuadrarFiltro();
+  });
+
+  const lista = ab.filter(pasaFiltro);
+
+  // Pines
+  capa.clearLayers(); pines.clear();
+  for (const r of lista) {
+    const m = min(r.pedido, ya), viejo = r.estado === 'sin_asignar' && m >= MIN_DEMORA;
+    const pin = L.marker([r.lat, r.lng], {
+      icon: L.divIcon({ className: 'pin-w' + (viejo ? ' viejo' : '') + (elegido === r.id ? ' on' : ''), html: `<div class="pin" style="--c:${colorEst(r.estado)}"></div>`, iconSize: [28, 28], iconAnchor: [14, 30] }),
+      keyboard: false, zIndexOffset: r.estado === 'sin_asignar' ? 1000 : 0
+    });   // sin cartel al pasar el mouse (17/11, a pedido): la información está en la ficha, al tocar el pin
+    pin.on('click', () => { if (!eligiendo) abrirFicha(r); });
+    pin.addTo(capa); pines.set(r.id, pin);
+  }
+  // La primera vez, encuadra lo abierto
+  if (!encuadrado && lista.length) {
+    encuadrado = true;
+    mapa.fitBounds(L.latLngBounds(lista.map(r => [r.lat, r.lng])).pad(0.25), { maxZoom: 15 });
+  }
+}
+// ── Recursos del municipio elegido (17/11, a pedido) ───────────────────────
+// Misma lógica y mismas fuentes que el Mapa de monitoreo (assets/monitoreo.js, generado de centro-operativo/index.html):
+// planilla de transportistas, tareas especiales, asistencia de ZL y el archivo de n8n centro-operativo.json.gz.
+// Se ven solo en el mapa (no en el panel lateral) al elegir un municipio: los planificados de Reclamos y Zona Limpia (no
+// agenda ni bolsones) de ese municipio que están en turno ahora y ya resolvieron algo hoy, todos en verde, en la ubicación
+// de su último punto resuelto (17/11, a pedido).
+const COLOR_REC = { con: '#1baf7a', pocas: '#b7791f', parado: '#6250d6', sin_tarea: '#d03b3b' };
+const capaRec = L.layerGroup().addTo(mapa);
+let recSel = null, modeloRec = null, modeloAt = 0;
+function iniciarRecursos() {
+  if (!window.Monitoreo) return;
+  Monitoreo.alCambiar(() => { modeloAt = 0; if (vista === 'mapa' && $('fondo').hidden) dibujarMapa(); });
+  Monitoreo.cargar();
+  setInterval(() => Monitoreo.cargarBases(), Monitoreo.CFG.CADA_BASES * 1000);
+  setInterval(() => { Monitoreo.cargarPlan(); Monitoreo.cargarTE(); }, Monitoreo.CFG.CADA_PLAN * 1000);
+  setInterval(() => Monitoreo.cargarAsis(), Monitoreo.CFG.CADA_ASIS * 1000);
+}
+const esRecZl = p => p.zl || !!(p.per.rec || p.per.zl) || !(p.per.age || p.per.bol || /bols|agend|volumin/i.test((p.grupo || '') + ' ' + p.nombre));
+const munRec = p => Monitoreo.munDe(p) || (p.pos ? Municipios.de(p.pos[0], p.pos[1]) : '');
+// Recursos de un municipio (null si todavía no se leyó la planilla)
+function recursosDe(mun) {
+  if (!window.Monitoreo || !Monitoreo.DATA.plan) return null;
+  if (!modeloRec || Date.now() - modeloAt > 30000) { modeloRec = Monitoreo.armar(); modeloAt = Date.now(); }
+  const M = modeloRec;
+  // Solo los planificados que están en turno ahora (dentro de su horario) y que ya resolvieron algo hoy (17/11, a pedido).
+  // Afuera los que no salieron o se retiraron. Van en el lugar de su último punto resuelto.
+  return M.P.filter(p => M.W >= p.S && M.W <= p.E && p.done.length && !p.approx && p.pos && !['no_salio', 'retirado'].includes(p.st)
+      && esRecZl(p) && munRec(p) === mun)
+    .sort((a, b) => b.lastF - a.lastF);
+}
+const colorRec = () => COLOR_REC.con;   // todos en verde (17/11, a pedido)
+function popupRec(p) {
+  // Solo el nombre y la hora del último punto resuelto (17/11, a pedido)
+  return `<div class="pop-rec"><b>${esc(p.nombre)}</b><div>Último punto resuelto ${Monitoreo.hhmm(p.lastF)}</div></div>`;
+}
+function dibujarRecursos(recs) {
+  capaRec.clearLayers();
+  for (const p of recs || []) {
+    const [ico] = Monitoreo.tipoDe(p);
+    const mk = L.marker(p.pos, {
+      icon: L.divIcon({ className: 'rec-w' + (recSel === p.id ? ' on' : ''), html: `<div class="rec" style="--c:${colorRec(p)}">${ico}</div>`, iconSize: [26, 26], iconAnchor: [13, 13] }),
+      keyboard: false, zIndexOffset: -500
+    }).bindPopup(popupRec(p), { maxWidth: 260, autoPanPadding: [40, 40] });
+    mk.on('popupopen', () => { recSel = p.id; }); mk.on('popupclose', () => { if (recSel === p.id) recSel = null; });
+    mk.addTo(capaRec); mk._recId = p.id;
+    if (recSel === p.id) setTimeout(() => mk.openPopup(), 0);
+  }
+}
+// Transportista en la ficha: primero los recursos del municipio del reclamo, del más cercano al más lejano; después los ya usados
+function opcionesTransportista(r) {
+  const dist = p => { const R = 6371, rad = Math.PI / 180, dLa = (p.pos[0] - r.lat) * rad, dLn = (p.pos[1] - r.lng) * rad;
+    const a = Math.sin(dLa / 2) ** 2 + Math.cos(r.lat * rad) * Math.cos(p.pos[0] * rad) * Math.sin(dLn / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(a)); };
+  const km = d => d < 1 ? Math.round(d * 1000) + ' m' : d.toFixed(1).replace('.', ',') + ' km';
+  const rs = (r.servicio === 'Municipio' && r.municipio ? recursosDe(r.municipio) : null) || [];
+  const cerca = rs.map(p => ({ p, d: dist(p) })).sort((a, b) => a.d - b.d);
+  const ya = new Set(cerca.map(x => x.p.nombre));
+  return `<datalist id="lTra">${cerca.map(({ p, d }) => `<option value="${esc(p.nombre)}">a ${km(d)} · último punto ${Monitoreo.hhmm(p.lastF)}</option>`).join('')}`
+    + nombresUsados('asignado_a').filter(n => !ya.has(n)).map(n => `<option value="${esc(n)}">`).join('') + '</datalist>';
+}
+
+function centrar(r) {
+  elegido = r.id;
+  mapa.flyTo([r.lat, r.lng], Math.max(mapa.getZoom(), 16), { duration: .6 });
+  dibujarMapa();
+}
+document.addEventListener('com2:tema', () => { if (vista === 'mapa') dibujarMapa(); });
+
+// Elegir un punto en el mapa (desde el formulario): se cierra la ventana, se toca el mapa y vuelve con la ubicación
+let eligiendo = null;   // función que recibe {lat,lng} o null
+function elegirEnMapa(volver) {
+  eligiendo = volver; cerrarVentana();
+  if (vista !== 'mapa') { vista = 'mapa'; dibujar(); }
+  document.body.classList.add('eligiendo'); $('elegir').hidden = false;
+}
+function terminarElegir(c) {
+  const f = eligiendo; eligiendo = null;
+  document.body.classList.remove('eligiendo'); $('elegir').hidden = true;
+  if (f) f(c);
+}
+mapa.on('click', e => { if (eligiendo) terminarElegir({ lat: e.latlng.lat, lng: e.latlng.lng }); });
+$('elegirNo').onclick = () => terminarElegir(null);
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && eligiendo) terminarElegir(null); });
+
+// ── Controles propios de fecha/hora y desplegables (15/11) ─────────────────
+// Los del navegador (calendario y lista) desentonaban. Se tapa cada <input type=date|datetime-local> y cada
+// <select> con un botón que abre un panel con el estilo de la página. El control original queda oculto con su
+// valor y recibe los eventos input/change de siempre: el resto del código no cambia.
+const FX_MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+const FX_CHEV = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
+const FX_CAL = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>';
+let fxAbierto = null;   // { pop, btn }
+function fxCerrar() { if (!fxAbierto) return; fxAbierto.pop.remove(); fxAbierto.btn.classList.remove('abierto'); fxAbierto = null; }
+function fxAbrir(btn, pop) {
+  fxCerrar();
+  document.body.appendChild(pop); btn.classList.add('abierto'); fxAbierto = { pop, btn };
+  const r = btn.getBoundingClientRect(), w = pop.offsetWidth, h = pop.offsetHeight;
+  let top = r.bottom + 6;
+  if (top + h > innerHeight - 8) top = r.top - 6 - h >= 8 ? r.top - 6 - h : Math.max(8, innerHeight - h - 8);
+  pop.style.left = Math.max(8, Math.min(r.left, innerWidth - w - 8)) + 'px';
+  pop.style.top = top + 'px';
+}
+document.addEventListener('pointerdown', e => { if (fxAbierto && !fxAbierto.pop.contains(e.target) && !fxAbierto.btn.contains(e.target)) fxCerrar(); }, true);
+window.addEventListener('keydown', e => { if (fxAbierto && e.key === 'Escape') { e.stopImmediatePropagation(); fxCerrar(); } }, true);   // Escape cierra el panel, no la ventana
+window.addEventListener('resize', fxCerrar);
+document.addEventListener('scroll', e => { if (fxAbierto && !fxAbierto.pop.contains(e.target)) fxCerrar(); }, true);
+function fxAvisar(el) { el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); }
+
+function fxSelect(sel) {
+  const btn = document.createElement('button');
+  btn.type = 'button'; btn.className = ('fx-btn ' + sel.className).trim();
+  sel.hidden = true; sel.after(btn);
+  const pintar = () => { const o = sel.options[sel.selectedIndex]; btn.innerHTML = `<span>${esc(o ? o.text : '')}</span>${FX_CHEV}`; };
+  new MutationObserver(pintar).observe(sel, { childList: true });   // llenarFiltros() cambia las opciones
+  sel.addEventListener('change', pintar); pintar();
+  btn.onclick = () => {
+    if (fxAbierto && fxAbierto.btn === btn) return fxCerrar();
+    const pop = document.createElement('div');
+    pop.className = 'fx-pop fx-menu'; pop.style.minWidth = btn.offsetWidth + 'px';
+    pop.innerHTML = [...sel.options].map((o, i) => `<button type="button" class="fx-op${i === sel.selectedIndex ? ' on' : ''}" data-i="${i}">${esc(o.text)}</button>`).join('');
+    pop.onclick = e => {
+      const b = e.target.closest('.fx-op'); if (!b) return;
+      sel.selectedIndex = +b.dataset.i; fxCerrar(); fxAvisar(sel);
+    };
+    fxAbrir(btn, pop);
+  };
+}
+
+function fxFecha(inp) {
+  const conHora = inp.type === 'datetime-local', opcional = !inp.required;
+  const btn = document.createElement('button');
+  btn.type = 'button'; btn.className = ('fx-btn ' + inp.className).trim();
+  inp.type = 'hidden'; inp.after(btn);
+  const pintar = () => {
+    const v = inp.value;
+    btn.innerHTML = (v ? `<span class="num">${v.slice(8, 10)}/${v.slice(5, 7)}/${v.slice(0, 4)}${conHora ? ' ' + v.slice(11, 16) : ''}</span>`
+      : `<span class="fx-ph">${conHora ? 'dd/mm/aaaa --:--' : 'dd/mm/aaaa'}</span>`) + FX_CAL;
+  };
+  inp.addEventListener('input', pintar); pintar();
+  btn.onclick = () => {
+    if (fxAbierto && fxAbierto.btn === btn) return fxCerrar();
+    const ya = ahora(), hoy = ya.slice(0, 10);
+    let sel = inp.value.slice(0, 10), hh = (inp.value || ya).slice(11, 13), mm = (inp.value || ya).slice(14, 16);
+    let a = +(sel || hoy).slice(0, 4), m = +(sel || hoy).slice(5, 7) - 1;
+    const dos = n => String(n).padStart(2, '0');
+    const iso = d => `${a}-${dos(m + 1)}-${dos(d)}`;
+    const guardar = () => { if (sel) { inp.value = conHora ? `${sel}T${hh}:${mm}` : sel; fxAvisar(inp); } };
+    const pop = document.createElement('div');
+    pop.className = 'fx-pop fx-cal';
+    const leerHora = () => {   // lo escrito en hora y minutos, corregido a 00-23 y 00-59
+      for (const [id, max] of [['fxH', 23], ['fxM', 59]]) {
+        const x = pop.querySelector('#' + id); if (!x) continue;
+        const v = dos(Math.min(max, Math.max(0, parseInt(x.value, 10) || 0)));
+        x.value = v; if (id === 'fxH') hh = v; else mm = v;
+      }
+    };
+    const dibujarCal = () => {
+      const primero = (new Date(Date.UTC(a, m, 1)).getUTCDay() + 6) % 7, dias = new Date(Date.UTC(a, m + 1, 0)).getUTCDate();
+      let celdas = '<i></i>'.repeat(primero);
+      for (let d = 1; d <= dias; d++) {
+        const f = iso(d);   // no hay fechas futuras: ni pedidos ni recambios
+        celdas += `<button type="button" class="fx-dia${f === sel ? ' on' : ''}${f === hoy ? ' hoy' : ''}" data-f="${f}"${f > hoy ? ' disabled' : ''}>${d}</button>`;
+      }
+      pop.innerHTML = `<div class="fx-mes"><button type="button" class="fx-nav" data-n="-1" aria-label="Mes anterior">‹</button><b>${FX_MESES[m]} ${a}</b>`
+        + `<button type="button" class="fx-nav" data-n="1" aria-label="Mes siguiente"${iso(1).slice(0, 7) >= hoy.slice(0, 7) ? ' disabled' : ''}>›</button></div>`
+        + `<div class="fx-dias">${['L', 'M', 'M', 'J', 'V', 'S', 'D'].map(x => `<span>${x}</span>`).join('')}${celdas}</div>`
+        + (conHora ? `<div class="fx-hora"><span>Hora</span><input id="fxH" inputmode="numeric" maxlength="2" value="${hh}" aria-label="Hora"><b>:</b><input id="fxM" inputmode="numeric" maxlength="2" value="${mm}" aria-label="Minutos"></div>` : '')
+        + (opcional || conHora ? `<div class="fx-pie">${opcional ? '<button type="button" data-p="borrar">Borrar</button>' : ''}${conHora ? '<button type="button" class="si" data-p="listo">Listo</button>' : ''}</div>` : '');   // sin "Ahora"/"Hoy" (15/11, a pedido)
+      pop.querySelectorAll('.fx-hora input').forEach(x => {
+        x.onfocus = () => x.select();
+        x.onchange = () => { leerHora(); guardar(); };
+        x.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); pop.querySelector('[data-p="listo"]').click(); } };
+      });
+    };
+    pop.onclick = e => {
+      const n = e.target.closest('[data-n]'), d = e.target.closest('[data-f]'), p = e.target.closest('[data-p]');
+      if (n) { m += +n.dataset.n; if (m < 0) { m = 11; a--; } if (m > 11) { m = 0; a++; } leerHora(); dibujarCal(); }
+      else if (d) { leerHora(); sel = d.dataset.f; guardar(); if (conHora) dibujarCal(); else fxCerrar(); }
+      else if (p && p.dataset.p === 'borrar') { inp.value = ''; fxAvisar(inp); fxCerrar(); }
+      else if (p && p.dataset.p === 'listo') { leerHora(); if (!sel) sel = hoy; guardar(); fxCerrar(); }
+    };
+    dibujarCal();
+    fxAbrir(btn, pop);
+  };
+}
+function fxMejorar(raiz) {
+  raiz.querySelectorAll('input[type=date], input[type=datetime-local]').forEach(fxFecha);
+  raiz.querySelectorAll('select:not([data-fx])').forEach(s => { s.dataset.fx = '1'; fxSelect(s); });
+}
+
+// ── Ventana ────────────────────────────────────────────────────────────────
+// En la pestaña Mapa, la ventana va centrada en el medio del mapa (17/11, a pedido), no de la pantalla:
+// el fondo deja como margen lo que hay alrededor de la parte visible del mapa. Si no entra, baja como siempre.
+function ubicarVentana() {
+  const f = $('fondo');
+  f.style.padding = '';
+  if (vista !== 'mapa' || $('fondo').hidden) return;
+  const r = $('mapaCaja').getBoundingClientRect();
+  const top = Math.max(r.top, 0), bottom = Math.min(r.bottom, innerHeight);
+  if (bottom - top < 200) return;
+  f.style.padding = `${top + 12}px ${Math.max(innerWidth - r.right, 0) + 12}px ${innerHeight - bottom + 12}px ${Math.max(r.left, 0) + 12}px`;
+  if ($('ventana').offsetHeight > bottom - top - 24) f.style.padding = '';   // no entra en el mapa: al medio de la pantalla
+}
+addEventListener('resize', ubicarVentana);
+function abrirVentana(html, clase = '') {
+  $('ventana').className = 'ventana' + (clase ? ' ' + clase : '');
+  $('ventana').innerHTML = html;
+  fxMejorar($('ventana'));
+  $('fondo').hidden = false;
+  ubicarVentana();
+  document.body.style.overflow = 'hidden';
+  $('ventana').querySelector('.cerrar').onclick = cerrarVentana;
+}
+function cerrarVentana() { fxCerrar(); $('fondo').hidden = true; document.body.style.overflow = ''; zonaActiva = null; }
+$('fondo').onclick = e => { if (e.target === $('fondo')) cerrarVentana(); };
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('fondo').hidden) cerrarVentana(); });
+const cabeza = t => `<div class="top"><h2>${t}</h2><button type="button" class="cerrar" aria-label="Cerrar">×</button></div>`;
+const nombresUsados = campo => [...new Set(recs.map(r => r[campo]).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
+const datalist = (id, items) => `<datalist id="${id}">${items.map(n => `<option value="${esc(n)}">`).join('')}</datalist>`;
+
+// ── Nuevo reclamo / editar ─────────────────────────────────────────────────
+// b = borrador: se conserva al ir a elegir en el mapa y volver.
+// 17/11, a pedido: sin tipo, dirección ni detalle; con grupo; la ubicación solo con el enlace largo de Google Maps.
+const MAL_UBIC = 'Ingresar con enlace largo de google maps';
+function abrirFormulario(r, b) {
+  const nuevo = !r;
+  b = b || (r ? { ubic: linkDe(r), servicio: r.servicio, solicitante: r.solicitante, grupo: r.grupo, pedido: campo(r.pedido) }
+              : { ubic: '', servicio: '', solicitante: '', grupo: '', pedido: ahora() });
+  abrirVentana(cabeza(nuevo ? 'Nuevo reclamo' : 'Editar reclamo') + `
+    <form id="fr" autocomplete="off">
+      <label class="l" for="iUbic">Ubicación</label>
+      <div class="ubic">
+        <input class="in" id="iUbic" placeholder="Enlace largo de Google Maps" value="${esc(b.ubic)}">
+        <button type="button" class="bt" id="bElegir">📍 Elegir en el mapa</button>
+      </div>
+      <div class="ayuda" id="ayUbic"></div>
+      <label class="l">Foto${nuevo ? '' : ' (dejala vacía para mantener la que tiene)'}</label>
+      <div class="foto-zona" id="zFoto" tabindex="0" role="button" aria-label="Foto del reclamo"></div>
+      <label class="l" for="iServ">Servicio a asignar</label>
+      <select class="in" id="iServ"><option value="">Elegí el servicio</option>${SERVICIOS.map(x => `<option${x === b.servicio ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select>
+      <label class="l" for="iSol">Solicitante</label>
+      <select class="in" id="iSol"><option value="">Elegí quién lo pidió</option>${[...SOLICITANTES, ...(b.solicitante && !SOLICITANTES.includes(b.solicitante) ? [b.solicitante] : [])].map(n => `<option${n === b.solicitante ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select>
+      <div class="fila2">
+        <div><label class="l" for="iGrupo">Grupo</label><select class="in" id="iGrupo"><option value="">Elegí el grupo</option>${GRUPOS.map(g => `<option${g === b.grupo ? ' selected' : ''}>${esc(g)}</option>`).join('')}</select></div>
+        <div><label class="l" for="iPed">Fecha y hora</label><input class="in num" type="datetime-local" id="iPed" required value="${esc(b.pedido)}"></div>
+      </div>
+      <div class="botones">
+        ${!nuevo ? '<button type="button" class="bt sec no" id="bBorrar">Borrar</button>' : ''}
+        <button type="submit" class="bt si" id="bGuardar">${nuevo ? 'Cargar reclamo' : 'Guardar cambios'}</button>
+      </div>
+    </form>`);
+
+  const zona = zonaFoto($('zFoto'));
+  // Al volver de elegir en el mapa, la foto que ya estaba
+  if (b._blob) zona.poner(new File([b._blob], 'foto.jpg', { type: 'image/jpeg' }));
+  const leer = () => {
+    b.ubic = $('iUbic').value; b.servicio = $('iServ').value; b.solicitante = $('iSol').value; b.grupo = $('iGrupo').value; b.pedido = $('iPed').value;
+    const fv = zona.valor(); b._blob = fv ? fv.blob : null;
+  };
+  // Vacío: sin aviso (el campo ya dice que va el enlace largo). Algo que no es el enlace largo: en rojo y no deja cargar
+  const revisarUbic = (forzar) => {
+    const v = $('iUbic').value.trim(), c = coordsDe(v), a = $('ayUbic');
+    if (c) { a.className = 'ayuda'; a.textContent = ''; }   // bien: no muestra nada (17/11, a pedido); el municipio se calcula al guardar
+    else if (v || forzar === true) { a.className = 'ayuda mal'; a.textContent = MAL_UBIC; }
+    else { a.className = 'ayuda'; a.textContent = ''; }
+  };
+  $('iUbic').addEventListener('input', revisarUbic); revisarUbic();
+  $('bElegir').onclick = () => {
+    leer();
+    elegirEnMapa(c => { if (c) b.ubic = linkDe(c); abrirFormulario(r, b); });
+  };
+  if ($('bBorrar')) $('bBorrar').onclick = () => borrar(r);
+
+  $('fr').onsubmit = async e => {
+    e.preventDefault(); leer();
+    const c = coordsDe(b.ubic);
+    if (!c) { revisarUbic(true); return $('iUbic').focus(); }
+    // Todo es obligatorio (17/11, a pedido): ubicación, foto, solicitante, grupo y fecha
+    if (!b._blob && (nuevo || !r.foto)) return aviso('Falta la foto', true);
+    if (!b.servicio) return aviso('Elegí el servicio a asignar', true);
+    if (!b.solicitante) return aviso('Elegí el solicitante', true);
+    if (!b.grupo) return aviso('Elegí el grupo', true);
+    if (!b.pedido) return aviso('Falta la fecha y hora', true);
+    if (ms(b.pedido) > ms(ahora()) + 5 * 60000) return aviso('La fecha y hora no puede ser futura', true);
+    const datos = { lat: +c.lat.toFixed(6), lng: +c.lng.toFixed(6), municipio: Municipios.de(c.lat, c.lng), servicio: b.servicio, grupo: b.grupo,
+      solicitante: b.solicitante.trim(), pedido: b.pedido };
+    $('bGuardar').disabled = true; $('bGuardar').textContent = b._blob ? 'Subiendo la foto…' : 'Guardando…';
+    let nueva = '';
+    try {
+      if (b._blob) nueva = datos.foto = await subirFoto(b._blob);
+      let g;
+      if (nuevo) {
+        const q = await sb.from('reclamos_coordinacion').insert(datos).select(CAMPOS);
+        if (q.error) throw new Error(mensaje(q.error));
+        g = q.data[0]; poner(g);
+      } else g = await cambiar(r, datos);
+      if (!nuevo && r.foto && datos.foto !== undefined && datos.foto !== r.foto) borrarFotos([r.foto]);   // la foto vieja ya no se usa
+      cerrarVentana(); aviso(nuevo ? 'Reclamo cargado' : 'Cambios guardados');
+      if (nuevo) { vista = 'mapa'; dibujar(); centrar(g); } else dibujar();   // al editar desde el historial, se queda ahí
+    } catch (err) {
+      if (nueva) borrarFotos([nueva]);
+      aviso(err.message, true);
+      $('bGuardar').disabled = false; $('bGuardar').textContent = nuevo ? 'Cargar reclamo' : 'Guardar cambios';
+    }
+  };
+}
+$('bNuevo').onclick = () => abrirFormulario(null);
+
+async function borrar(r) {
+  if (!confirm(`¿Borrar el reclamo de ${muniTxt(r.municipio)} del ${fLinda(r.pedido)}? No se puede deshacer.`)) return;
+  const q = await sb.from('reclamos_coordinacion').delete().eq('id', r.id).select('id');
+  if (q.error || !q.data.length) return aviso(q.error ? mensaje(q.error) : 'No se pudo borrar', true);
+  borrarFotos([r.foto, r.foto_resuelto]);
+  recs = recs.filter(x => x.id !== r.id); if (elegido === r.id) elegido = null;
+  cerrarVentana(); aviso('Reclamo borrado'); dibujar();
+}
+
+// ── Ficha (17/11, a pedido): arriba solo los 3 estados con el actual pintado; debajo la foto y el enlace, cada uno con su botón de copiar;
+// debajo los campos Transportista, Fecha y hora de resuelto y Foto final, con un solo botón de guardar.
+//   Todo obligatorio (17/11, a pedido): para asignar, el transportista; para resolver, además la fecha y hora y la
+//   foto final. Ya no se puede volver a Sin asignar. En uno resuelto, el admin puede borrar la fecha para reabrirlo.
+async function abrirFicha(r) {
+  elegido = r.id;
+  await prepararFotos([r.foto, r.foto_resuelto]);
+  r = recs.find(x => x.id === r.id) || r;
+  const orden = ['sin_asignar', 'asignado', 'resuelto'], i = orden.indexOf(r.estado);
+  const puede = r.estado !== 'resuelto' || esSup();   // lo resuelto (historial) lo edita supervisión, no el operador
+  const pasos = orden.map((k, j) => `<span class="paso${k === r.estado ? ' on' : j < i ? ' ya' : ''}" style="--c:var(${ESTADOS[k].css})">${ESTADOS[k].n}</span>`).join('<i>›</i>');
+  const txtBoton = () => {
+    if (!$('iTra')) return '';
+    const t = $('iTra').value.trim(), res = $('iRes').value;
+    if (r.estado === 'resuelto' && !res) return 'Reabrir';
+    return res ? (r.estado === 'resuelto' ? 'Guardar cambios' : 'Marcar resuelto') : r.estado === 'asignado' ? 'Guardar cambios' : 'Asignar';
+  };
+  abrirVentana(`<div class="top"><div class="pasos" style="margin:0">${pasos}</div><button type="button" class="cerrar" aria-label="Cerrar">×</button></div>
+    <div class="ficha-cols">
+    <div class="copiar">
+      ${urlFoto(r.foto) ? `<a class="foto-ficha" href="${esc(urlFoto(r.foto))}" target="_blank" rel="noopener"><img src="${esc(urlFoto(r.foto))}" alt="Foto del reclamo"></a>
+      <button type="button" class="bt si" id="bCopiarFoto">Copiar foto</button>` : '<div class="dato">Este reclamo no tiene foto</div>'}
+      <a class="link-ficha" href="${esc(linkMaps(r))}" target="_blank" rel="noopener">${esc(linkMaps(r))}</a>
+      <button type="button" class="bt si" id="bCopiarUbic">Copiar ubicación</button>
+      ${esSup() ? '<button type="button" class="bt" id="bEditarR">Editar datos del reclamo</button>' : ''}
+    </div>
+    <form id="fa" autocomplete="off">
+      <label class="l" for="iTra">Transportista</label>
+      <input class="in" id="iTra" maxlength="80" list="lTra" placeholder="A quién se manda" value="${esc(r.asignado_a)}"${puede ? '' : ' disabled'}>${opcionesTransportista(r)}
+      <label class="l" for="iRes">Fecha y hora de resuelto</label>
+      <input class="in num" type="datetime-local" id="iRes" value="${esc(campo(r.resuelto))}"${puede ? '' : ' disabled'}>
+      <label class="l">Foto final</label>
+      <div class="foto-zona" id="zFin" tabindex="0" role="button" aria-label="Foto final"></div>
+      ${puede ? `<div class="botones"><button type="submit" class="bt si" id="bGuardarF">Guardar</button></div>` : ''}
+    </form>
+    </div>`, 'ficha');
+  if (vista === 'mapa') dibujarMapa();
+  const zona = zonaFoto($('zFin'), null, urlFoto(r.foto_resuelto));
+  if (!puede) { $('zFin').onclick = null; zonaActiva = null; if (!r.foto_resuelto) $('zFin').innerHTML = '<div>Sin foto final</div>'; else $('zFin').querySelector('.quitar').remove(); }
+  const pintarBoton = () => { if ($('bGuardarF')) $('bGuardarF').textContent = txtBoton(); };
+  $('iTra').addEventListener('input', pintarBoton); $('iRes').addEventListener('input', pintarBoton); pintarBoton();
+
+  // Foto y enlace, cada uno con su botón (17/11, a pedido), para pegarlos en WhatsApp o Telegram
+  if ($('bCopiarFoto')) $('bCopiarFoto').onclick = () => copiarFoto(r);
+  if ($('bEditarR')) $('bEditarR').onclick = () => abrirFormulario(r);
+  $('bCopiarUbic').onclick = () => copiarUbicacion(r);
+
+  $('fa').onsubmit = async e => {
+    e.preventDefault();
+    if (!puede) return;
+    const t = $('iTra').value.trim(), res = $('iRes').value, f = zona.valor();
+    const reabrir = r.estado === 'resuelto' && !res;
+    if (!t) return aviso('Falta el transportista', true);
+    if (!reabrir && res && !f) return aviso('Falta la foto final', true);
+    if (!reabrir && !res && f && !f.existente) return aviso('Falta la fecha y hora de resuelto', true);
+    if (res && ms(res) < ms(r.pedido)) return aviso('La fecha de resuelto tiene que ser después de la del pedido', true);
+    if (res && ms(res) > ms(ahora()) + 5 * 60000) return aviso('La fecha de resuelto no puede ser futura', true);
+    const estado = res ? 'resuelto' : 'asignado';
+    const cambios = { estado, asignado_a: t, resuelto: res || null };
+    // Foto final: solo vale si queda resuelto. Una nueva se sube; la que ya estaba se mantiene; si se quitó, se borra
+    const nuevaFoto = estado === 'resuelto' && f && !f.existente;
+    if (estado === 'resuelto') cambios.foto_resuelto = f && f.existente ? r.foto_resuelto : '';
+    if (estado === r.estado && t === r.asignado_a && (res || null) === (r.resuelto ? campo(r.resuelto) : null) && !nuevaFoto && (cambios.foto_resuelto ?? r.foto_resuelto) === r.foto_resuelto) return cerrarVentana();
+    if (r.estado === 'resuelto' && estado !== 'resuelto' && !confirm('¿Reabrir este reclamo? Vuelve al mapa y se borra la foto final.')) return;
+    const b = $('bGuardarF'); b.disabled = true; b.textContent = nuevaFoto ? 'Subiendo la foto…' : 'Guardando…';
+    let nueva = '';
+    try {
+      if (nuevaFoto) nueva = cambios.foto_resuelto = await subirFoto(f.blob);
+      const vieja = r.foto_resuelto;
+      const g = await cambiar(r, cambios);
+      if (vieja && vieja !== g.foto_resuelto) borrarFotos([vieja]);   // la foto final anterior ya no se usa
+      if (estado === 'resuelto' && elegido === r.id) elegido = null;
+      cerrarVentana();
+      aviso(estado === 'resuelto' ? (r.estado === 'resuelto' ? 'Cambios guardados' : 'Resuelto: pasó al historial')
+        : estado === 'asignado' ? (r.estado === 'asignado' ? 'Cambios guardados' : 'Asignado a ' + t) : 'Quedó sin asignar');
+      dibujar();
+    } catch (err) {
+      if (nueva) borrarFotos([nueva]);
+      aviso(err.message, true); b.disabled = false; pintarBoton();
+    }
+  };
+}
+
+// Copiar por separado (17/11): con foto y enlace juntos en el portapapeles, WhatsApp pega solo la foto.
+// La foto se copia como PNG (lo que acepta el portapapeles) y va como promesa para no perder el permiso del clic.
+async function copiarFoto(r) {
+  if (!window.ClipboardItem) return aviso('Este navegador no deja copiar fotos: abrila y copiala a mano', true);
+  const png = fetch(urlFoto(r.foto)).then(x => x.blob()).then(createImageBitmap).then(img => new Promise((ok, mal) => {
+    const c = document.createElement('canvas'); c.width = img.width; c.height = img.height;
+    c.getContext('2d').drawImage(img, 0, 0);
+    c.toBlob(b => b ? ok(b) : mal(new Error('foto')), 'image/png');
+  }));
+  try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]); aviso('Foto copiada'); }
+  catch (e) { aviso('No se pudo copiar la foto', true); }
+}
+async function copiarUbicacion(r) {
+  try { await navigator.clipboard.writeText(linkMaps(r)); aviso('Ubicación copiada'); }
+  catch (e) { aviso('No se pudo copiar la ubicación', true); }
+}
+
+// ── Historial (lo resuelto) ────────────────────────────────────────────────
+function llenarFiltros() {
+  const opt = (v, t) => `<option value="${esc(v)}">${esc(t)}</option>`;
+  $('fServ').innerHTML = opt('', 'Todos') + SERVICIOS.map(x => opt(x, x)).join('');
+  $('fGrupo').innerHTML = opt('', 'Todos') + GRUPOS.map(g => opt(g, g)).join('');
+  $('fMuni').innerHTML = opt('', 'Todos') + Municipios.orden.map(m => opt(m, 'Municipio ' + m)).join('');
+  for (const id of ['fDesde', 'fHasta', 'fServ', 'fGrupo', 'fMuni']) $(id).oninput = () => { mostrar = POR_PAGINA; dibujarHistorial(); };
+}
+function filtrados() {
+  const d = $('fDesde').value, h = $('fHasta').value, t = $('fGrupo').value, mu = $('fMuni').value, sv = $('fServ').value;
+  return recs.filter(r => r.estado === 'resuelto' && (!d || r.pedido.slice(0, 10) >= d) && (!h || r.pedido.slice(0, 10) <= h)
+    && (!sv || r.servicio === sv) && (!t || r.grupo === t) && (!mu || r.municipio === mu))
+    .sort((a, b) => ms(b.resuelto) - ms(a.resuelto) || b.id - a.id);
+}
+// Columnas (17/11, a pedido): solo lo que se carga en el mapa hasta cerrar (ubicación, foto, servicio, solicitante,
+// grupo y fecha al cargar; transportista, fecha de resuelto y foto final al cerrar) y a la derecha la casilla
+// Respondido, que cualquiera de supervisión marca o desmarca (función reclamos_respondido de sql/21).
+// Las fotos abren en otra pestaña; tocar el resto de la fila abre la ficha.
+function dibujarHistorial() {
+  const f = filtrados();
+  $('hCuenta').textContent = f.length.toLocaleString('es-UY') + ' reclamo' + (f.length === 1 ? '' : 's');
+  const ver = f.slice(0, mostrar);
+  const verFoto = (pth, t) => !pth ? '–' : urlFoto(pth) ? `<a class="ver" href="${esc(urlFoto(pth))}" target="_blank" rel="noopener">${t}</a>` : '…';
+  $('hFilas').innerHTML = ver.length ? ver.map(r => `<tr data-id="${r.id}">
+      <td class="num">${fLinda(r.pedido, true)}</td>
+      <td><a class="ver" href="${esc(linkMaps(r))}" target="_blank" rel="noopener">${esc(muniTxt(r.municipio))}</a></td>
+      <td>${verFoto(r.foto, 'Ver foto')}</td>
+      <td>${esc(r.servicio)}</td><td>${esc(r.solicitante)}</td><td>${esc(r.grupo)}</td><td>${esc(r.asignado_a)}</td>
+      <td class="num">${fLinda(r.resuelto, true)}</td>
+      <td>${verFoto(r.foto_resuelto, 'Ver foto final')}</td>
+      <td class="centro"><input type="checkbox" data-resp="${r.id}"${r.respondido ? ' checked' : ''}${esSup() ? '' : ' disabled'} aria-label="Respondido"></td></tr>`).join('')
+    : '<tr><td colspan="10" class="vacio">No hay reclamos resueltos con esos filtros</td></tr>';
+  $('hMas').hidden = f.length <= mostrar;
+  $('hFilas').querySelectorAll('tr[data-id]').forEach(tr => tr.onclick = e => {
+    if (e.target.closest('a, input')) return;   // los links y la casilla no abren la ficha
+    const r = recs.find(x => x.id === +tr.dataset.id); if (r) abrirFicha(r);
+  });
+  $('hFilas').querySelectorAll('input[data-resp]').forEach(c => c.onchange = async () => {
+    const id = +c.dataset.resp, valor = c.checked;
+    c.disabled = true;
+    const q = await sb.rpc('reclamos_respondido', { p_id: id, p_valor: valor });
+    c.disabled = false;
+    if (q.error) { c.checked = !valor; return aviso(mensaje(q.error), true); }
+    const r = recs.find(x => x.id === id); if (r) r.respondido = valor;
+  });
+  // Links de las fotos de lo que se ve: si faltan, se piden y se vuelve a dibujar
+  const faltan = ver.flatMap(r => [r.foto, r.foto_resuelto]).filter(x => x && !urlFoto(x));
+  if (faltan.length && !dibujarHistorial.pidiendo) {
+    dibujarHistorial.pidiendo = true;
+    prepararFotos(faltan).finally(() => { dibujarHistorial.pidiendo = false; if (vista === 'historial' && faltan.some(urlFoto)) dibujarHistorial(); });
+  }
+}
+$('hMas').onclick = () => { mostrar += POR_PAGINA; dibujarHistorial(); };
+
+// ── Inicio ─────────────────────────────────────────────────────────────────
+async function iniciar() {
+  COM2.carga.mostrar('Cargando información');
+  try {
+    await leerTodo();
+    llenarFiltros();
+    fxMejorar($('v-historial'));
+    $('pagina').hidden = false;
+    $('bNuevo').hidden = !esSup();   // el operador no carga reclamos nuevos
+    dibujar();
+    COM2.carga.listo();
+    escucharCambios();
+    iniciarRecursos();
+  } catch (e) {
+    COM2.carga.error('No se pudieron leer los reclamos (' + e.message + ')', iniciar);
+  }
+}
+// Entran todos (17/11): el operador solo asigna y resuelve lo que está en curso; supervisor, auxiliar, sup gral y admin
+// además cargan reclamos nuevos, editan todo (también en el historial), marcan Respondido y borran. La base lo exige igual (sql/21).
+COM2.acceso({ roles: [...COM2.ROLES_SUPERVISION, 'operador'] }).then(p => { if (p) { yo = p; iniciar(); } });
+</script>
+</body>
+</html>

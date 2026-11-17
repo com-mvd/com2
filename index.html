@@ -70,7 +70,8 @@ label.l:first-of-type{margin-top:0}
 @keyframes gira{to{transform:rotate(360deg)}}
 .sup .estado{font-size:10px;color:var(--text3);white-space:nowrap;font-variant-numeric:tabular-nums}
 .sup .estado.err{color:#B02020}
-.servicios{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;align-items:start;text-align:left}
+.servicios{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px;align-items:start;text-align:left}   /* 5 desde que está Generales (17/11) */
+@media (max-width:1200px){.servicios{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media (max-width:960px){.servicios{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:480px){.servicios{grid-template-columns:1fr}}
 .serv{background:rgba(255,255,255,.55);border:1px solid var(--border);border-radius:18px;padding:1rem .85rem;box-shadow:0 4px 20px rgba(26,23,20,.06),0 1px 3px rgba(26,23,20,.05)}
@@ -258,6 +259,9 @@ async function mostrarMenu() {
 const BASES = COM2.URL + '/storage/v1/object/public/bases/';
 const N8N = 'https://blatancy-scouting-virtuous.ngrok-free.dev/webhook/';
 const SERVICIOS = [   // colores de la portada de com: c = punto e ícono, cb = fondo del ícono
+  // Generales (17/11): páginas que no son de un servicio del Grafana (Reclamos Coordinación). Sin base: no lleva Actualizar.
+  // Es el único recuadro que sale también en el panel Operador (con sus páginas de panel 'operador').
+  { id: 'generales', nombre: 'Generales', c: '#6C5790', cb: '#E5DDF0', sinBase: true },
   { id: 'bolsones', nombre: 'Bolsones', c: '#D2691E', cb: '#FCE3CD' },
   { id: 'agenda', nombre: 'Agenda', c: '#346A92', cb: '#DDECF4' },
   { id: 'zona-limpia', nombre: 'Zona Limpia', c: '#39745E', cb: '#DCEDE4' },
@@ -278,18 +282,19 @@ async function subidas() {
 }
 function estado(el, texto, err) { el.textContent = texto; el.classList.toggle('err', !!err); }
 
-function dibujarSupervisor(del) {
+// servs: los recuadros que van (en el panel Operador, solo Generales)
+function dibujarSupervisor(del, servs = SERVICIOS) {
   const paginas = nombre => del.filter(s => s.grupo === nombre);
-  const otros = del.filter(s => !SERVICIOS.some(x => x.nombre === s.grupo));
+  const otros = del.filter(s => !servs.some(x => x.nombre === s.grupo));
   const otrosGrupos = {};
   otros.forEach(s => (otrosGrupos[s.grupo] ||= []).push(s));
   $('menu').innerHTML = `<div class="sup">
-    <div class="servicios">${SERVICIOS.map(s => {
+    <div class="servicios">${servs.map(s => {
       const ps = paginas(s.nombre);
       return `<section class="serv" data-id="${s.id}" style="--c:${s.c};--cb:${s.cb}">
         <div class="serv-h">
           <div class="serv-t"><span class="serv-dot"></span><h2 class="serv-n">${esc(s.nombre)}</h2></div>
-          <div class="serv-a"><button type="button" class="btn-act">${ICONO_ACT}Actualizar</button><span class="estado">…</span></div>
+          ${s.sinBase ? '' : `<div class="serv-a"><button type="button" class="btn-act">${ICONO_ACT}Actualizar</button><span class="estado">…</span></div>`}
         </div>
         <div class="list">${ps.length ? ps.map(p => `<a class="item" href="${esc(p.archivo)}">
           <div class="item-icon">${COM2.icono(p.icono)}</div><div class="item-name">${esc(p.nombre)}</div><div class="item-arrow">›</div></a>`).join('')
@@ -300,15 +305,16 @@ function dibujarSupervisor(del) {
       `<a class="tile acc-${esc(s.color)}" href="${esc(s.archivo)}"><div class="tile-icon">${COM2.icono(s.icono)}</div><div class="tile-name">${esc(s.nombre)}</div></a>`).join('')}</div></div>`).join('')}
   </div>`;
   $('menu').querySelectorAll('.serv').forEach(sec => {
-    const s = SERVICIOS.find(x => x.id === sec.dataset.id);
-    sec.querySelector('.btn-act').onclick = () => actualizar(s, sec);
+    const s = SERVICIOS.find(x => x.id === sec.dataset.id), b = sec.querySelector('.btn-act');
+    if (b) b.onclick = () => actualizar(s, sec);
   });
-  mostrarHoras();
+  if (servs.some(s => !s.sinBase)) mostrarHoras();
 }
 async function mostrarHoras() {
   const h = await subidas().catch(() => null);
   $('menu').querySelectorAll('.serv').forEach(sec => {
     const est = sec.querySelector('.estado');
+    if (!est) return;   // Generales no tiene base
     if (!h) return estado(est, 'No se pudo leer la base', true);
     estado(est, h[sec.dataset.id] ? 'Actualizado ' + horaLocal(h[sec.dataset.id]) : 'Sin datos');
   });
@@ -341,6 +347,8 @@ function dibujarMenu() {
   $('okClave').hidden = true;
   const del = secciones ? secciones.filter(s => s.panel === panel) : [];
   if (panel === 'supervisor') return dibujarSupervisor(del);
+  // Panel Operador (17/11): el recuadro Generales igual que en Supervisor (sin Actualizar) y debajo las demás tarjetas
+  if (panel === 'operador') return dibujarSupervisor(del, SERVICIOS.filter(s => s.sinBase));
   if (!del.length) { $('menu').innerHTML = '<p class="vacio">Todavía no hay nada en este panel.</p>'; return; }
   // Todas las tarjetas juntas, sin títulos de grupo (pedido del usuario, 13/11): hasta 3 por renglón,
   // en el orden de secciones (grupo y orden)
