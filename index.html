@@ -70,8 +70,10 @@ label.l:first-of-type{margin-top:0}
 @keyframes gira{to{transform:rotate(360deg)}}
 .sup .estado{font-size:10px;color:var(--text3);white-space:nowrap;font-variant-numeric:tabular-nums}
 .sup .estado.err{color:#B02020}
-.servicios{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:14px;align-items:start;text-align:left}   /* 5 desde que está Generales (17/11) */
-@media (max-width:1200px){.servicios{grid-template-columns:repeat(3,minmax(0,1fr))}}
+/* Una columna por recuadro (o por recuadro con el de abajo); --cols lo pone dibujarSupervisor (17/11) */
+.servicios{display:grid;grid-template-columns:repeat(var(--cols,4),minmax(0,1fr));gap:14px;align-items:start;text-align:left}
+.col-serv{display:flex;flex-direction:column;gap:14px;min-width:0}
+@media (max-width:1200px){.servicios{grid-template-columns:repeat(min(var(--cols,4),3),minmax(0,1fr))}}
 @media (max-width:960px){.servicios{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media (max-width:480px){.servicios{grid-template-columns:1fr}}
 .serv{background:rgba(255,255,255,.55);border:1px solid var(--border);border-radius:18px;padding:1rem .85rem;box-shadow:0 4px 20px rgba(26,23,20,.06),0 1px 3px rgba(26,23,20,.05)}
@@ -90,6 +92,8 @@ label.l:first-of-type{margin-top:0}
 .sin{font-size:13px;color:var(--text3);padding:.4rem .2rem}
 .sup .grupo{margin-top:2.4rem}
 .cover:has(.sup){max-width:none}
+/* Panel Supervisor (17/11, a pedido): a los costados el mismo espacio que hay entre la barra azul y los recuadros (14 px) */
+.wrap:has(.sup){max-width:none;padding-left:14px;padding-right:14px}
 .portada:has(.sup){align-items:flex-start;padding-bottom:0}
 </style>
 </head>
@@ -146,7 +150,7 @@ label.l:first-of-type{margin-top:0}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script src="assets/comun.js?v=202611132310"></script>
+<script src="assets/comun.js?v=202611171900"></script>
 <script>
 const { sb, esc } = COM2;
 const DOMINIO = '@com.local';   // el usuario es la cédula; por dentro, cédula@com.local
@@ -261,11 +265,15 @@ const N8N = 'https://blatancy-scouting-virtuous.ngrok-free.dev/webhook/';
 const SERVICIOS = [   // colores de la portada de com: c = punto e ícono, cb = fondo del ícono
   // Generales (17/11): páginas que no son de un servicio del Grafana (Reclamos Coordinación). Sin base: no lleva Actualizar.
   // Es el único recuadro que sale también en el panel Operador (con sus páginas de panel 'operador').
+  // Un recuadro sinBase sin páginas en el panel no se muestra (17/11: Generales quedó solo en el panel Operador).
   { id: 'generales', nombre: 'Generales', c: '#6C5790', cb: '#E5DDF0', sinBase: true },
   { id: 'bolsones', nombre: 'Bolsones', c: '#D2691E', cb: '#FCE3CD' },
   { id: 'agenda', nombre: 'Agenda', c: '#346A92', cb: '#DDECF4' },
   { id: 'zona-limpia', nombre: 'Zona Limpia', c: '#39745E', cb: '#DCEDE4' },
-  { id: 'reclamos', nombre: 'Reclamos', c: '#39745E', cb: '#DCEDE4' },
+  // debajo: va en la misma columna, abajo de ese recuadro (17/11: Reclamos abajo de Zona Limpia)
+  { id: 'reclamos', nombre: 'Reclamos', c: '#39745E', cb: '#DCEDE4', debajo: 'zona-limpia' },
+  // Intradomiciliarios (17/11): Trazador de recorridos y Monitoreo Intradomiciliarios. Verde; sin base, sin Actualizar
+  { id: 'intradomiciliarios', nombre: 'Intradomiciliarios', c: '#1F8A4C', cb: '#DCF2E3', sinBase: true },
 ];
 const ICONO_ACT = '<svg viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-2.6-6.4"/><path d="M21 4v5h-5"/></svg>';
 
@@ -288,8 +296,11 @@ function dibujarSupervisor(del, servs = SERVICIOS) {
   const otros = del.filter(s => !servs.some(x => x.nombre === s.grupo));
   const otrosGrupos = {};
   otros.forEach(s => (otrosGrupos[s.grupo] ||= []).push(s));
-  $('menu').innerHTML = `<div class="sup">
-    <div class="servicios">${servs.map(s => {
+  // Los recuadros sin base y sin páginas en este panel no van; los que tienen "debajo" van en la columna de ese recuadro
+  servs = servs.filter(s => !s.sinBase || paginas(s.nombre).length);
+  const columnas = servs.filter(s => !s.debajo || !servs.some(x => x.id === s.debajo))
+    .map(s => [s, ...servs.filter(x => x.debajo === s.id)]);
+  const recuadro = s => {
       const ps = paginas(s.nombre);
       return `<section class="serv" data-id="${s.id}" style="--c:${s.c};--cb:${s.cb}">
         <div class="serv-h">
@@ -300,7 +311,9 @@ function dibujarSupervisor(del, servs = SERVICIOS) {
           <div class="item-icon">${COM2.icono(p.icono)}</div><div class="item-name">${esc(p.nombre)}</div><div class="item-arrow">›</div></a>`).join('')
           : '<div class="sin">Todavía no hay páginas.</div>'}</div>
       </section>`;
-    }).join('')}</div>
+  };
+  $('menu').innerHTML = `<div class="sup">
+    <div class="servicios" style="--cols:${columnas.length}">${columnas.map(c => `<div class="col-serv">${c.map(recuadro).join('')}</div>`).join('')}</div>
     ${Object.entries(otrosGrupos).map(([g, ss]) => `<div class="grupo"><h3>${esc(g)}</h3><div class="grid">${ss.map(s =>
       `<a class="tile acc-${esc(s.color)}" href="${esc(s.archivo)}"><div class="tile-icon">${COM2.icono(s.icono)}</div><div class="tile-name">${esc(s.nombre)}</div></a>`).join('')}</div></div>`).join('')}
   </div>`;

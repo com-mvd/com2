@@ -257,6 +257,17 @@
     }
   }
 
+  // Botón "‹ Volver" de la barra de las páginas (17/11, a pedido): vuelve a la página anterior si se llegó desde COM 2;
+  // si se entró directo por el link (o desde otro sitio), va al menú.
+  document.addEventListener('click', e => {
+    const a = e.target.closest && e.target.closest('a.com2-volver');
+    if (!a || e.ctrlKey || e.metaKey || e.shiftKey || e.button) return;
+    e.preventDefault();
+    let mismo = false;
+    try { mismo = !!document.referrer && new URL(document.referrer).origin === location.origin; } catch (err) {}
+    if (mismo && history.length > 1) history.back(); else location.href = a.getAttribute('href') || './';
+  });
+
   window.COM2 = { URL, KEY, sb, ROL_NOMBRE, PANEL_NOMBRE, PANELES, ROLES_SUPERVISION, esc, perfil, perfilGuardado, panelInicial, barra, guardar, leer, icono,
     usuarioEnBarra, tema, ponerTema, carga };
 })();

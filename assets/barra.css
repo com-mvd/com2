@@ -20,6 +20,12 @@ html::-webkit-scrollbar{display:none}
    a veces dibuja la letra 1 px más abajo y "COM 2" parecía bajar al entrar a una página) */
 .barra > .com2-marca{position:absolute;left:var(--com2-borde);top:env(safe-area-inset-top);height:62px;display:flex;align-items:center;z-index:2;font-family:'Segoe UI',Arial,sans-serif;font-size:30px;font-weight:600;letter-spacing:-.01em;line-height:normal;color:#fff;text-decoration:none;white-space:nowrap}
 .barra > .com2-marca:hover{color:#fff;text-decoration:none;opacity:.9}
+/* Botón para volver (17/11, a pedido): en las páginas, en lugar de "COM 2" va "‹ Volver", que vuelve a la página
+   anterior (o al menú si se entró directo por el link). Lo maneja comun.js. El menú (index) sigue con "COM 2". */
+.barra > .com2-marca.com2-volver{top:calc(env(safe-area-inset-top) + 13px);height:36px;gap:4px;padding:0 14px 0 8px;border-radius:10px;
+  background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22);font-family:'DM Sans','Segoe UI',Arial,sans-serif;font-size:15px;font-weight:600;letter-spacing:0}
+.barra > .com2-marca.com2-volver:hover{background:rgba(255,255,255,.2);opacity:1}
+.barra > .com2-marca.com2-volver svg{width:20px;height:20px;stroke:currentColor;fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
 /* El título deja a los dos lados el lugar de lo más ancho ("COM 2" o el usuario), así sigue centrado */
 .barra > .barra-in{box-sizing:border-box;height:62px;min-height:0;max-width:none;margin:0;padding:0 max(calc(var(--com2-borde) + 108px),var(--com2-lado,64px));display:flex;align-items:center;justify-content:center;position:relative}
 .barra .titulo{display:flex;align-items:center;justify-content:center;gap:10px;min-width:0;margin:0}
@@ -29,6 +35,8 @@ html::-webkit-scrollbar{display:none}
 @media (max-width:720px){
   /* En el celular el título queda entre "COM 2" y el usuario (no centrado en la pantalla: no entraría) */
   .barra > .com2-marca{font-size:22px}
+  .barra > .com2-marca.com2-volver{font-size:14px;padding:0 10px 0 4px}
+  .barra > .com2-marca.com2-volver span{display:none}
   .barra > .barra-in{padding:0 var(--com2-lado,84px) 0 calc(var(--com2-borde) + 74px)}
   /* Sin el ícono del título: así entran los títulos largos ("Carga Barrios Sustentables Cerro") */
   .barra .titulo .ico{display:none}
