@@ -313,7 +313,7 @@ function dibujarSupervisor(del, servs = SERVICIOS) {
       </section>`;
   };
   $('menu').innerHTML = `<div class="sup">
-    <div class="servicios" style="--cols:${columnas.length}">${columnas.map(c => `<div class="col-serv">${c.map(recuadro).join('')}</div>`).join('')}</div>
+    <div class="servicios" style="--cols:${Math.max(4, columnas.length)}">${columnas.map(c => `<div class="col-serv">${c.map(recuadro).join('')}</div>`).join('')}</div>
     ${Object.entries(otrosGrupos).map(([g, ss]) => `<div class="grupo"><h3>${esc(g)}</h3><div class="grid">${ss.map(s =>
       `<a class="tile acc-${esc(s.color)}" href="${esc(s.archivo)}"><div class="tile-icon">${COM2.icono(s.icono)}</div><div class="tile-name">${esc(s.nombre)}</div></a>`).join('')}</div></div>`).join('')}
   </div>`;
