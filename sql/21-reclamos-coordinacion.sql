@@ -44,6 +44,8 @@ create table if not exists public.reclamos_coordinacion (
 create index if not exists reclamos_coordinacion_pedido on public.reclamos_coordinacion (pedido desc);
 create index if not exists reclamos_coordinacion_abiertos on public.reclamos_coordinacion (estado) where estado <> 'resuelto';
 
+-- OJO (18/11): sql/26 suma la columna direccion y rehace este trigger con ella. Si se vuelve a correr este archivo,
+-- correr después sql/26, o el operador podría cambiar la dirección.
 -- Nombre de quien hace el cambio (cajas_mi_nombre es de sql/16: lee perfiles con security definer)
 create or replace function public.reclamos_coordinacion_antes()
 returns trigger language plpgsql security definer set search_path = public as $$

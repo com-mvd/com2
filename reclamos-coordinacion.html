@@ -16,7 +16,7 @@
    Sin asignar → Asignado → Resuelto. Viene del "Mapa operativo (activos + pendientes)" de un compañero, que guardaba
    en el navegador o en la planilla "CASOS VIP". Acá: tabla reclamos_coordinacion y bucket privado reclamos-fotos de Supabase
    (sql/21-reclamos-coordinacion.sql). 17/11, a pedido: sin tipo, dirección ni detalle; con grupo; ubicación solo con el
-   enlace largo de Google Maps (o eligiendo en el mapa); mapa sin botones de zoom. Solo supervisor o más arriba. Mapa liso: sin camiones ni bases.
+   enlace de VIPS (la dirección que copia Google Maps; desde el 18/11); mapa sin botones de zoom. Solo supervisor o más arriba. Mapa liso: sin camiones ni bases.
    Pestañas: Mapa (lo abierto, en el mapa y en la lista) e Historial (lo resuelto). */
 :root{
   --bg:#F7F6F3; --card:#FFFFFF; --border:#E6E2DA; --linea:#EFECE6; --campo:#FFFFFF;
@@ -61,7 +61,6 @@ h2{font-size:15px;font-weight:700}
 [data-theme="dark"] .btn-nuevo:hover{background:#15171b}
 .sobre-mapa{position:absolute;top:12px;right:12px;z-index:500;display:flex;justify-content:flex-end;pointer-events:none}
 .sobre-mapa>*{pointer-events:auto}
-body.eligiendo .sobre-mapa{display:none}
 
 /* Barra lateral fina a la izquierda del mapa (17/11, a pedido): filtros de estado y, abajo, los municipios con
    reclamos en curso en dos columnas (municipio | cuántos sin asignar + asignados; los resueltos no cuentan) */
@@ -121,13 +120,26 @@ body.eligiendo .sobre-mapa{display:none}
 /* Sin asignar hace más de MIN_DEMORA: late */
 .pin-w.viejo .pin{animation:late 1.6s ease-out infinite}
 @keyframes late{0%{box-shadow:0 0 0 0 rgba(208,59,59,.55),0 2px 6px rgba(0,0,0,.35)}100%{box-shadow:0 0 0 14px rgba(208,59,59,0),0 2px 6px rgba(0,0,0,.35)}}
-.elegir{position:absolute;left:50%;top:12px;transform:translateX(-50%);z-index:600;display:flex;align-items:center;gap:10px;background:#1A1714;color:#fff;border-radius:12px;padding:9px 10px 9px 14px;font-size:14px;font-weight:600;box-shadow:0 8px 24px rgba(0,0,0,.25);white-space:nowrap}
-.elegir button{border:0;background:rgba(255,255,255,.16);color:#fff;border-radius:8px;padding:6px 10px;font-size:13px;font-weight:600}
-body.eligiendo #mapa{cursor:crosshair}
-body.eligiendo .leaflet-interactive{cursor:crosshair}
 
 @media (max-width:600px){
   .btn-nuevo .largo{display:none}
+}
+/* Nuevo reclamo al costado del mapa (18/11, a pedido): el mapa queda a la vista con el punto y los recursos */
+.panel-nuevo{padding:16px 16px 14px;overflow-y:auto;scrollbar-width:thin}
+.panel-nuevo .top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:6px}
+.panel-nuevo .top h2{font-size:17px}
+.panel-nuevo .opc{font-weight:500;text-transform:none;letter-spacing:0;color:var(--text3)}
+.panel-nuevo .foto-zona{min-height:96px}
+.panel-nuevo .ubic{flex-direction:column}
+.panel-nuevo .foto-zona img{max-height:150px}
+body.con-nuevo .mapa-cont{grid-template-columns:200px minmax(0,1fr) 390px}
+body.con-nuevo .sobre-mapa{display:none}
+.pin-w.nuevo .pin{--c:#1A1714}
+[data-theme="dark"] .pin-w.nuevo .pin{--c:#ECEAE6;border-color:#1e2126}
+.pin-w.nuevo{z-index:2000 !important}
+@media (max-width:1250px){
+  body.con-nuevo .mapa-cont{grid-template-columns:minmax(0,1fr) 380px}
+  body.con-nuevo .lateral{display:none}
 }
 /* Celular: la barra pasa arriba del mapa, con estados y municipios en dos columnas */
 @media (max-width:700px){
@@ -136,6 +148,9 @@ body.eligiendo .leaflet-interactive{cursor:crosshair}
   .lista-lat{display:grid;grid-template-columns:1fr 1fr;gap:2px 10px}
   .fila-lat.zl{grid-column:1/-1}
   .ref-lat{flex-direction:row;gap:14px;margin-top:8px;padding-top:8px}
+  /* Nuevo reclamo en el celular: el mapa arriba (más chico) y el formulario abajo; se desplaza la página */
+  body.con-nuevo .mapa-cont{grid-template-columns:1fr;grid-template-rows:44vh auto;height:auto;min-height:0}
+  body.con-nuevo .panel-nuevo{overflow:visible}
 }
 
 /* ── Historial ── */
@@ -146,7 +161,7 @@ body.eligiendo .leaflet-interactive{cursor:crosshair}
 .tabla{width:100%;overflow-x:auto;border:1px solid var(--border);border-radius:12px;background:var(--card)}
 table{width:100%;border-collapse:collapse;font-size:13.5px}
 th{position:sticky;top:0;background:var(--f-gris);text-align:left;font-size:12px;font-weight:700;color:var(--text2);padding:9px 10px;white-space:nowrap;border-bottom:1px solid var(--border)}
-td{padding:8px 10px;border-top:1px solid var(--linea);vertical-align:top}
+td{padding:8px 10px;border-top:1px solid var(--linea);vertical-align:middle}   /* centrado en el alto (18/11, a pedido): con la dirección debajo del municipio, lo demás quedaba arriba */
 tbody tr[data-id]{cursor:pointer}
 tbody tr[data-id]:hover td{background:#F3F6FB}
 td.obs{min-width:160px;max-width:300px;color:var(--text2)}
@@ -181,6 +196,11 @@ textarea.in{resize:vertical;min-height:70px}
 .bt.si{border:0;color:#fff;background:linear-gradient(135deg,#162a4d 0%,#193563 55%,#1b3f74 100%)}
 .bt.ok{border:0;color:#fff;background:var(--verde)}
 .bt.no{color:var(--rojo)}
+.bt.rojo{border:0;color:#fff;background:var(--rojo)}
+.bt.rojo:hover{color:#fff;filter:brightness(.92)}
+.acciones{display:flex;gap:8px}
+.ficha .acciones{margin-top:8px}
+.acciones .bt{flex:1}
 .bt:disabled{opacity:.5;cursor:default}
 .ayuda{font-size:12.5px;color:var(--text3);margin-top:6px;line-height:1.4}
 .ayuda.ok{color:var(--verde);font-weight:600}
@@ -209,6 +229,8 @@ textarea.in{resize:vertical;min-height:70px}
 .foto-ficha img{display:block;width:100%;height:200px;object-fit:cover}
 .link-ficha{font-size:12.5px;color:var(--azul);overflow-wrap:anywhere;padding:8px 10px;border:1px solid var(--border);border-radius:10px;background:var(--f-gris);text-decoration:none;margin-top:4px}
 .link-ficha:hover{text-decoration:underline}
+/* Dirección de Google Maps (18/11): en la ficha arriba del enlace y en el historial debajo del municipio */
+.dir-h{display:block;font-size:12px;color:var(--text3);max-width:240px;white-space:normal;line-height:1.3;margin-top:2px}
 .ficha .foto-zona{min-height:96px;padding:10px;font-size:13px}
 .ficha .foto-zona img{max-height:130px}
 .ficha .botones{margin-top:14px}
@@ -249,6 +271,12 @@ textarea.in{resize:vertical;min-height:70px}
 .fx-op{display:block;width:100%;text-align:left;border:0;background:none;border-radius:9px;padding:9px 11px;font-size:14px;font-weight:500;white-space:nowrap}
 .fx-op:hover{background:var(--f-gris)}
 .fx-op.on{background:var(--azul);color:#fff;font-weight:700}
+.fx-op[hidden],.fx-tit[hidden]{display:none}
+.fx-menu.fx-largo{max-height:none;overflow:visible;display:flex;flex-direction:column;gap:6px;max-width:min(420px,calc(100vw - 16px))}
+.fx-largo .fx-lista{max-height:300px;overflow-y:auto}
+.fx-largo .fx-op{white-space:normal}
+.fx-buscar{height:36px;border:1px solid var(--border);border-radius:9px;background:var(--campo);padding:0 10px;font-size:14px;color:var(--text)}
+.fx-tit{padding:8px 11px 4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text2)}
 .fx-cal{width:292px}
 .fx-mes{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
 .fx-mes b{font-size:14.5px;text-transform:capitalize}
@@ -338,8 +366,8 @@ textarea.in{resize:vertical;min-height:70px}
       <div class="sobre-mapa">
         <button type="button" class="btn-nuevo" id="bNuevo">+ Nuevo<span class="largo"> reclamo</span></button>
       </div>
-      <div class="elegir" id="elegir" hidden><span>Tocá en el mapa dónde es</span><button type="button" id="elegirNo">Cancelar</button></div>
     </div>
+    <aside class="card panel-nuevo" id="panelNuevo" hidden></aside>
     </div>
   </section>
 
@@ -348,6 +376,7 @@ textarea.in{resize:vertical;min-height:70px}
       <label>Desde<input type="date" id="fDesde"></label>
       <label>Hasta<input type="date" id="fHasta"></label>
       <label>Servicio<select id="fServ"></select></label>
+      <label>Solicitante<select id="fSol"></select></label>
       <label>Grupo<select id="fGrupo"></select></label>
       <label>Municipio<select id="fMuni"></select></label>
       <div class="der"><span class="sub" id="hCuenta"></span></div>
@@ -383,7 +412,7 @@ const CENTRO = [-34.865, -56.17], ZOOM = 12;   // Montevideo
 const FOTO_LADO = 1280, FOTO_CALIDAD = 0.78;   // la foto se achica a 1280 px de lado (jpg ~150 KB) antes de subirla
 const BUCKET = 'reclamos-fotos';
 const POR_PAGINA = 60;
-const CAMPOS = 'id,lat,lng,municipio,servicio,grupo,solicitante,pedido,foto,estado,respondido,asignado_a,asignado,resuelto,foto_resuelto,obs_resuelto,creado,creado_nombre,asignado_nombre,resuelto_nombre,modificado,modificado_nombre';
+const CAMPOS = 'id,lat,lng,municipio,direccion,servicio,grupo,solicitante,pedido,foto,estado,respondido,asignado_a,asignado,resuelto,foto_resuelto,obs_resuelto,creado,creado_nombre,asignado_nombre,resuelto_nombre,modificado,modificado_nombre';
 
 const sb = COM2.sb, esc = COM2.esc;
 const esSup = () => !!yo && yo.rol !== 'operador';   // supervisor o más arriba
@@ -547,7 +576,7 @@ function zonaFoto(el, alCambiar, inicial) {
 }
 $('archivo').onchange = e => { const f = e.target.files[0]; if (f && zonaActiva) zonaActiva.poner(f); e.target.value = ''; };
 document.addEventListener('paste', e => {
-  if ($('fondo').hidden || !zonaActiva) return;
+  if (($('fondo').hidden && !nuevoR) || !zonaActiva) return;   // en una ventana o en el panel de nuevo reclamo
   const it = [...(e.clipboardData && e.clipboardData.items || [])].find(x => x.type.startsWith('image/'));
   if (it) { e.preventDefault(); zonaActiva.poner(it.getAsFile()); }
 });
@@ -598,7 +627,7 @@ function encuadrarFiltro() {
 let recursosVista = null;   // recursos del municipio elegido (los que se ven en el mapa y en el panel)
 function dibujarMapa() {
   const ab = abiertos(), ya = ahora();
-  recursosVista = filtro && filtro.servicio === 'Municipio' && filtro.municipio ? recursosDe(filtro.municipio) : null;
+  recursosVista = nuevoR ? recursosNuevo() : recursosFiltro();   // con el panel de nuevo reclamo abierto, los del panel
   dibujarRecursos(recursosVista);
   const opciones = [{ servicio: 'Zona Limpia', txt: 'Zona Limpia' }, ...Municipios.orden.map(m => ({ servicio: 'Municipio', municipio: m, txt: 'Municipio ' + m }))];
   if (ab.some(r => r.servicio === 'Municipio' && r.municipio === '')) opciones.push({ servicio: 'Municipio', municipio: '', txt: 'Fuera de Mvd.' });
@@ -627,7 +656,7 @@ function dibujarMapa() {
       icon: L.divIcon({ className: 'pin-w' + (viejo ? ' viejo' : '') + (elegido === r.id ? ' on' : ''), html: `<div class="pin" style="--c:${colorEst(r.estado)}"></div>`, iconSize: [28, 28], iconAnchor: [14, 30] }),
       keyboard: false, zIndexOffset: r.estado === 'sin_asignar' ? 1000 : 0
     });   // sin cartel al pasar el mouse (17/11, a pedido): la información está en la ficha, al tocar el pin
-    pin.on('click', () => { if (!eligiendo) abrirFicha(r); });
+    pin.on('click', () => { if (!nuevoR) abrirFicha(r); });   // cargando uno nuevo, los demás solo se ven
     pin.addTo(capa); pines.set(r.id, pin);
   }
   // La primera vez, encuadra lo abierto
@@ -639,7 +668,8 @@ function dibujarMapa() {
 // ── Recursos del municipio elegido (17/11, a pedido) ───────────────────────
 // Misma lógica y mismas fuentes que el Mapa de monitoreo (assets/monitoreo.js, generado de centro-operativo/index.html):
 // planilla de transportistas, tareas especiales, asistencia de ZL y el archivo de n8n centro-operativo.json.gz.
-// Se ven solo en el mapa (no en el panel lateral) al elegir un municipio: los planificados de Reclamos y Zona Limpia (no
+// Se ven solo en el mapa (no en el panel lateral), siempre (17/11 noche): sin filtro todos; con Zona Limpia, los de ZL; con un
+// municipio, los de Reclamos de ese municipio. Son los planificados de Reclamos y Zona Limpia (no
 // agenda ni bolsones) de ese municipio que están en turno ahora y ya resolvieron algo hoy, todos en verde, en la ubicación
 // de su último punto resuelto (17/11, a pedido).
 const COLOR_REC = { con: '#1baf7a', pocas: '#b7791f', parado: '#6250d6', sin_tarea: '#d03b3b' };
@@ -655,17 +685,24 @@ function iniciarRecursos() {
 }
 const esRecZl = p => p.zl || !!(p.per.rec || p.per.zl) || !(p.per.age || p.per.bol || /bols|agend|volumin/i.test((p.grupo || '') + ' ' + p.nombre));
 const munRec = p => Monitoreo.munDe(p) || (p.pos ? Municipios.de(p.pos[0], p.pos[1]) : '');
-// Recursos de un municipio (null si todavía no se leyó la planilla)
-function recursosDe(mun) {
+// De qué servicio es cada recurso (17/11 noche): Zona Limpia si es una unidad de la asistencia de ZL o si resolvió más
+// de Zona Limpia que de Reclamos; si no, Reclamos (los del servicio Municipio).
+const hechos = (p, k) => (p.per[k] && p.per[k].done) || 0;
+const servicioRec = p => p.zl || hechos(p, 'zl') > hechos(p, 'rec') ? 'Zona Limpia' : 'Municipio';
+// Todos los recursos en la calle (null si todavía no se leyó la planilla).
+// Solo los planificados que están en turno ahora (dentro de su horario) y que ya resolvieron algo hoy (17/11, a pedido).
+// Afuera los que no salieron o se retiraron. Van en el lugar de su último punto resuelto.
+function recursosTodos() {
   if (!window.Monitoreo || !Monitoreo.DATA.plan) return null;
   if (!modeloRec || Date.now() - modeloAt > 30000) { modeloRec = Monitoreo.armar(); modeloAt = Date.now(); }
   const M = modeloRec;
-  // Solo los planificados que están en turno ahora (dentro de su horario) y que ya resolvieron algo hoy (17/11, a pedido).
-  // Afuera los que no salieron o se retiraron. Van en el lugar de su último punto resuelto.
-  return M.P.filter(p => M.W >= p.S && M.W <= p.E && p.done.length && !p.approx && p.pos && !['no_salio', 'retirado'].includes(p.st)
-      && esRecZl(p) && munRec(p) === mun)
+  return M.P.filter(p => M.W >= p.S && M.W <= p.E && p.done.length && !p.approx && p.pos && !['no_salio', 'retirado'].includes(p.st) && esRecZl(p))
     .sort((a, b) => b.lastF - a.lastF);
 }
+// Los de un servicio y, en Municipio, de un municipio
+const recursosDe = (servicio, mun) => (recursosTodos() || []).filter(p => servicioRec(p) === servicio && (servicio !== 'Municipio' || munRec(p) === mun));
+// Los que se ven en el mapa (17/11 noche, a pedido): sin filtro, todos; Zona Limpia, solo los de ZL; un municipio, solo los de Reclamos de ese municipio
+const recursosFiltro = () => !filtro ? recursosTodos() : recursosDe(filtro.servicio, filtro.municipio);
 const colorRec = () => COLOR_REC.con;   // todos en verde (17/11, a pedido)
 function popupRec(p) {
   // Solo el nombre y la hora del último punto resuelto (17/11, a pedido)
@@ -684,16 +721,29 @@ function dibujarRecursos(recs) {
     if (recSel === p.id) setTimeout(() => mk.openPopup(), 0);
   }
 }
-// Transportista en la ficha: primero los recursos del municipio del reclamo, del más cercano al más lejano; después los ya usados
+// Lista de transportistas (18/11, a pedido): personas y unidades, en la tabla reclamos_transportistas (sql/25) y no en la
+// página, porque son nombres de personas y el repo es público. Se lee al entrar; sin ella, el desplegable queda con lo cercano.
+let TRANSPORTISTAS = [];
+async function leerTransportistas() {
+  const q = await sb.from('reclamos_transportistas').select('nombre');
+  if (q.error) return console.warn('Transportistas: ' + q.error.message);
+  TRANSPORTISTAS = [...new Set(q.data.map(x => x.nombre))].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+}
+// Transportista en la ficha (18/11, a pedido: desplegable). Arriba, si hay, los recursos de su servicio (y municipio) en la
+// calle, del más cercano al más lejano; debajo, la lista entera en orden alfabético. El que ya tenía, si no está, también.
 function opcionesTransportista(r) {
   const dist = p => { const R = 6371, rad = Math.PI / 180, dLa = (p.pos[0] - r.lat) * rad, dLn = (p.pos[1] - r.lng) * rad;
     const a = Math.sin(dLa / 2) ** 2 + Math.cos(r.lat * rad) * Math.cos(p.pos[0] * rad) * Math.sin(dLn / 2) ** 2; return 2 * R * Math.asin(Math.sqrt(a)); };
   const km = d => d < 1 ? Math.round(d * 1000) + ' m' : d.toFixed(1).replace('.', ',') + ' km';
-  const rs = (r.servicio === 'Municipio' && r.municipio ? recursosDe(r.municipio) : null) || [];
+  const rs = r.servicio === 'Zona Limpia' || r.municipio ? recursosDe(r.servicio, r.municipio) : [];   // los de su servicio (y su municipio)
   const cerca = rs.map(p => ({ p, d: dist(p) })).sort((a, b) => a.d - b.d);
-  const ya = new Set(cerca.map(x => x.p.nombre));
-  return `<datalist id="lTra">${cerca.map(({ p, d }) => `<option value="${esc(p.nombre)}">a ${km(d)} · último punto ${Monitoreo.hhmm(p.lastF)}</option>`).join('')}`
-    + nombresUsados('asignado_a').filter(n => !ya.has(n)).map(n => `<option value="${esc(n)}">`).join('') + '</datalist>';
+  const v = r.asignado_a || '';
+  const todos = v && !TRANSPORTISTAS.includes(v) && !cerca.some(x => x.p.nombre === v) ? [...TRANSPORTISTAS, v].sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' })) : TRANSPORTISTAS;
+  const op = (n, txt) => `<option value="${esc(n)}"${n === v ? ' selected' : ''}>${esc(txt || n)}</option>`;
+  return `<option value="" hidden></option>`
+    + (cerca.length ? `<option disabled>Cerca del reclamo</option>${cerca.map(({ p, d }) => op(p.nombre, `${p.nombre} · a ${km(d)} · ${Monitoreo.hhmm(p.lastF)}`)).join('')}`
+      + (todos.length ? '<option disabled>Todos</option>' : '') : '')
+    + todos.map(n => op(n)).join('');
 }
 
 function centrar(r) {
@@ -703,21 +753,6 @@ function centrar(r) {
 }
 document.addEventListener('com2:tema', () => { if (vista === 'mapa') dibujarMapa(); });
 
-// Elegir un punto en el mapa (desde el formulario): se cierra la ventana, se toca el mapa y vuelve con la ubicación
-let eligiendo = null;   // función que recibe {lat,lng} o null
-function elegirEnMapa(volver) {
-  eligiendo = volver; cerrarVentana();
-  if (vista !== 'mapa') { vista = 'mapa'; dibujar(); }
-  document.body.classList.add('eligiendo'); $('elegir').hidden = false;
-}
-function terminarElegir(c) {
-  const f = eligiendo; eligiendo = null;
-  document.body.classList.remove('eligiendo'); $('elegir').hidden = true;
-  if (f) f(c);
-}
-mapa.on('click', e => { if (eligiendo) terminarElegir({ lat: e.latlng.lat, lng: e.latlng.lng }); });
-$('elegirNo').onclick = () => terminarElegir(null);
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && eligiendo) terminarElegir(null); });
 
 // ── Controles propios de fecha/hora y desplegables (15/11) ─────────────────
 // Los del navegador (calendario y lista) desentonaban. Se tapa cada <input type=date|datetime-local> y cada
@@ -750,16 +785,33 @@ function fxSelect(sel) {
   const pintar = () => { const o = sel.options[sel.selectedIndex]; btn.innerHTML = `<span>${esc(o ? o.text : '')}</span>${FX_CHEV}`; };
   new MutationObserver(pintar).observe(sel, { childList: true });   // llenarFiltros() cambia las opciones
   sel.addEventListener('change', pintar); pintar();
+  btn.disabled = sel.disabled;
   btn.onclick = () => {
     if (fxAbierto && fxAbierto.btn === btn) return fxCerrar();
     const pop = document.createElement('div');
-    pop.className = 'fx-pop fx-menu'; pop.style.minWidth = btn.offsetWidth + 'px';
-    pop.innerHTML = [...sel.options].map((o, i) => `<button type="button" class="fx-op${i === sel.selectedIndex ? ' on' : ''}" data-i="${i}">${esc(o.text)}</button>`).join('');
+    // Listas largas (18/11, transportistas): buscador arriba. Una opción deshabilitada es un título de sección.
+    const largo = sel.options.length > 15;
+    pop.className = 'fx-pop fx-menu' + (largo ? ' fx-largo' : ''); pop.style.minWidth = btn.offsetWidth + 'px';
+    // Las opciones ocultas no se listan (18/11, a pedido: sin "Elegí …"; el campo arranca vacío y muestra solo las opciones)
+    const ops = [...sel.options].map((o, i) => o.hidden ? '' : o.disabled ? `<div class="fx-tit">${esc(o.text)}</div>`
+      : `<button type="button" class="fx-op${i === sel.selectedIndex ? ' on' : ''}" data-i="${i}" data-t="${esc(sinTildes(o.text))}">${esc(o.text)}</button>`).join('');
+    pop.innerHTML = largo ? `<input class="fx-buscar" placeholder="Buscar…" aria-label="Buscar"><div class="fx-lista">${ops}</div>` : ops;
     pop.onclick = e => {
       const b = e.target.closest('.fx-op'); if (!b) return;
       sel.selectedIndex = +b.dataset.i; fxCerrar(); fxAvisar(sel);
     };
     fxAbrir(btn, pop);
+    if (largo) {
+      const bus = pop.querySelector('.fx-buscar');
+      bus.oninput = () => {
+        const t = sinTildes(bus.value.trim());
+        pop.querySelectorAll('.fx-op').forEach(b => { b.hidden = !!t && !b.dataset.t.includes(t); });
+        pop.querySelectorAll('.fx-tit').forEach(x => { x.hidden = !!t; });
+      };
+      bus.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); const b = pop.querySelector('.fx-op:not([hidden])'); if (b) b.click(); } };
+      if (matchMedia('(pointer:fine)').matches) bus.focus();   // en el celular no abre el teclado solo
+      const on = pop.querySelector('.fx-op.on'); if (on) on.scrollIntoView({ block: 'center' });
+    }
   };
 }
 
@@ -855,93 +907,277 @@ const cabeza = t => `<div class="top"><h2>${t}</h2><button type="button" class="
 const nombresUsados = campo => [...new Set(recs.map(r => r[campo]).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
 const datalist = (id, items) => `<datalist id="${id}">${items.map(n => `<option value="${esc(n)}">`).join('')}</datalist>`;
 
-// ── Nuevo reclamo / editar ─────────────────────────────────────────────────
-// b = borrador: se conserva al ir a elegir en el mapa y volver.
-// 17/11, a pedido: sin tipo, dirección ni detalle; con grupo; la ubicación solo con el enlace largo de Google Maps.
-const MAL_UBIC = 'Ingresar con enlace largo de google maps';
+// ── Ubicación: solo el "enlace de VIPS" (18/11, a pedido) ──────────────────
+// El campo Ubicación acepta solo la dirección que copia Google Maps al tocar la línea del 📍 (p. ej.
+// "Av.Gral Rivera 2251-2201, 11200 Montevideo, Departamento de Montevideo"), que en el COM llaman "enlace de VIPS" y se
+// usa para otras cosas: es obligatoria y se guarda tal cual en `direccion` (sql/26). El enlace largo ya no se acepta.
+// El punto del mapa se busca en OpenStreetMap (Nominatim: gratis, una consulta por segundo como máximo) y es aproximado:
+// no se mueve a mano (a pedido): si no ubica la puerta, se corrige el enlace.
+// Solo dos avisos (a pedido): "Usar enlace de VIPS" y "Ajustar enlace, no tiene número de puerta".
+const MAL_UBIC = 'Usar enlace de VIPS';
+const limpiarDir = t => String(t || '').replace(/\s+/g, ' ').trim();
+const esDirGoogle = t => /\b\d{5}\s+[^,]+,\s*Departamento de\s+\S/i.test(limpiarDir(t));
+const ABREV = { av: 'Avenida', avda: 'Avenida', gral: 'General', br: 'Bulevar', bv: 'Bulevar', bvar: 'Bulevar', bvr: 'Bulevar',
+  dr: 'Doctor', dra: 'Doctora', ing: 'Ingeniero', pte: 'Presidente', cno: 'Camino', pje: 'Pasaje', cnel: 'Coronel',
+  tte: 'Teniente', rbla: 'Rambla', mtro: 'Maestro', prof: 'Profesor', arq: 'Arquitecto', mcal: 'Mariscal', gdor: 'Gobernador',
+  sta: 'Santa', sto: 'Santo', cap: 'Capitán', alte: 'Almirante', cmte: 'Comandante', sgto: 'Sargento' };
+// "Av.Gral Rivera 2251-2201, 11200 Montevideo, …" → { nombre: "Av. Gral Rivera", largo: "Avenida General Rivera", nums: ["2251","2201"], ciudad: "Montevideo" }
+function partesDir(t) {
+  const ps = limpiarDir(t).split(',').map(x => x.trim());
+  const i = ps.findIndex(x => /^\d{5}\s+\S/.test(x));
+  if (i < 1) return null;   // sin calle (solo código postal y ciudad): no alcanza para ubicarla
+  const ciudad = ps[i].replace(/^\d{5}\s+/, ''), calle = ps[i - 1];
+  const m = calle.match(/^(.*?\D)\s*(\d+)(?:\s*-\s*(\d+))?\s*$/);
+  const nombre = (m ? m[1] : calle).replace(/\./g, '. ').replace(/\s+/g, ' ').trim();
+  const nums = m ? [m[2], m[3]].filter(Boolean) : [];
+  const largo = nombre.split(' ').map(w => ABREV[w.replace(/\.$/, '').toLowerCase()] || w).join(' ');
+  return { ciudad, nombre, largo, nums };
+}
+let geoUltima = 0;
+const geoCache = new Map();
+async function nominatim(q) {
+  if (geoCache.has(q)) return geoCache.get(q);
+  const espera = geoUltima + 1100 - Date.now(); if (espera > 0) await new Promise(r => setTimeout(r, espera));
+  geoUltima = Date.now();
+  const r = await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&addressdetails=1&limit=1&countrycodes=uy&accept-language=es&q=' + encodeURIComponent(q));
+  if (!r.ok) throw new Error('OpenStreetMap no respondió: ' + r.status);
+  const d = (await r.json())[0] || null;
+  geoCache.set(q, d); return d;
+}
+// { c, exacto } (exacto: encontró el número de puerta; si no, solo la calle) o null
+async function buscarDireccion(t) {
+  const p = partesDir(t); if (!p) return null;
+  const qs = [...p.nums.map(n => `${p.largo} ${n}, ${p.ciudad}, Uruguay`),
+    ...(p.nums.length && p.nombre !== p.largo ? [`${p.nombre} ${p.nums[0]}, ${p.ciudad}, Uruguay`] : []), `${p.largo}, ${p.ciudad}, Uruguay`];
+  let calle = null;
+  for (const q of [...new Set(qs)]) {
+    const d = await nominatim(q); if (!d || !d.address || !d.address.road) continue;
+    const c = { lat: +d.lat, lng: +d.lon };
+    if (d.address.house_number) return { c, exacto: true };
+    if (!calle) calle = { c, exacto: false };
+  }
+  return calle;
+}
+// Estado de la ubicación de un formulario: u = { texto, c, dir, puerta }. dir = la dirección válida ('' si lo escrito no
+// sirve); c = el punto del mapa (solo de la búsqueda); puerta = false si no se ubicó el número de puerta (el enlace no lo trae u OpenStreetMap
+// encontró solo la calle o nada). leerUbic interpreta lo escrito y, con una dirección nueva, la busca; listo(moverMapa) al
+// cambiar. Gana lo último escrito.
+const SIN_PUERTA = 'Ajustar enlace, no tiene número de puerta';
+function leerUbic(u, texto, listo) {
+  u.texto = texto; const t = texto.trim(), vez = u.vez = (u.vez || 0) + 1;
+  clearTimeout(u.timer);
+  if (!esDirGoogle(t)) { u.dir = ''; u.busca = null; return listo(false); }
+  if (u.dir === limpiarDir(t)) return listo(false);   // la misma dirección de antes (con su pin)
+  u.dir = limpiarDir(t); u.puerta = true; listo(false);
+  u.busca = new Promise(fin => { u.timer = setTimeout(async () => {
+    let res = null;
+    try { res = await buscarDireccion(t); } catch (e) { console.warn('OpenStreetMap: ' + e.message); }
+    if (u.vez === vez) { u.busca = null; u.c = res ? res.c : null; u.puerta = !!(res && res.exacto); listo(!!res); }
+    fin();
+  }, 700); });
+}
+// Avisos (a pedido, solo estos dos): "Usar enlace de VIPS" si lo escrito no es la dirección de Google Maps, y
+// "Ajustar enlace, no tiene número de puerta" si no se pudo ubicar la puerta (el pin queda en la calle, o no hay pin)
+function pintarAyudaUbic(u, a, forzar) {
+  if (!a) return;
+  const tx = !u.dir ? ((u.texto || '').trim() || forzar === true ? MAL_UBIC : '') : !u.busca && u.puerta === false ? SIN_PUERTA : '';
+  a.className = 'ayuda' + (tx ? ' mal' : ''); a.textContent = tx;
+}
+// Antes de guardar: hace falta la dirección y un punto en el mapa (espera la búsqueda si está en curso).
+// Si el pin quedó en la calle (sin puerta) deja guardar igual; sin pin, no.
+async function ubicListo(u, a) {
+  if (!u.dir) { pintarAyudaUbic(u, a, true); return false; }
+  if (u.busca) await u.busca;
+  pintarAyudaUbic(u, a);
+  if (!u.c) { aviso(SIN_PUERTA, true); return false; }
+  return true;
+}
+
+// ── Editar reclamo ─────────────────────────────────────────────────────────
+// b = borrador. b.u = estado de la ubicación (ver leerUbic).
+// 17/11, a pedido: sin tipo ni detalle; con grupo. Todo obligatorio: ubicación, foto, servicio, solicitante, grupo y fecha.
+// Revisa el borrador b y devuelve los datos para la tabla, o el texto del error
+function datosReclamo(b, exigeFoto) {
+  const c = b.u && b.u.c;
+  if (!b.u || !b.u.dir) return MAL_UBIC;
+  if (!c) return SIN_PUERTA;
+  if (!b._blob && exigeFoto) return 'Falta la foto';
+  if (!b.servicio) return 'Elegí el servicio a asignar';
+  if (!b.solicitante) return 'Elegí el solicitante';
+  if (!b.grupo) return 'Elegí el grupo';
+  if (!b.pedido) return 'Falta la fecha y hora';
+  if (ms(b.pedido) > ms(ahora()) + 5 * 60000) return 'La fecha y hora no puede ser futura';
+  return { lat: +c.lat.toFixed(6), lng: +c.lng.toFixed(6), municipio: Municipios.de(c.lat, c.lng), direccion: b.u.dir || '',
+    servicio: b.servicio, grupo: b.grupo, solicitante: b.solicitante.trim(), pedido: b.pedido };
+}
+// Desde el 18/11 la ventana es solo para Editar; el nuevo reclamo va en el panel al costado del mapa (abrirNuevo)
 function abrirFormulario(r, b) {
-  const nuevo = !r;
-  b = b || (r ? { ubic: linkDe(r), servicio: r.servicio, solicitante: r.solicitante, grupo: r.grupo, pedido: campo(r.pedido) }
-              : { ubic: '', servicio: '', solicitante: '', grupo: '', pedido: ahora() });
-  abrirVentana(cabeza(nuevo ? 'Nuevo reclamo' : 'Editar reclamo') + `
+  b = b || { u: { texto: r.direccion || '', c: { lat: r.lat, lng: r.lng }, dir: r.direccion || '' },   // los de antes sin dirección: hay que pegarla
+    servicio: r.servicio, solicitante: r.solicitante, grupo: r.grupo, pedido: campo(r.pedido) };
+  abrirVentana(cabeza('Editar reclamo') + `
     <form id="fr" autocomplete="off">
       <label class="l" for="iUbic">Ubicación</label>
       <div class="ubic">
-        <input class="in" id="iUbic" placeholder="Enlace largo de Google Maps" value="${esc(b.ubic)}">
-        <button type="button" class="bt" id="bElegir">📍 Elegir en el mapa</button>
+        <input class="in" id="iUbic" placeholder="Usar enlace de VIPS" value="${esc(b.u.texto)}">
       </div>
       <div class="ayuda" id="ayUbic"></div>
-      <label class="l">Foto${nuevo ? '' : ' (dejala vacía para mantener la que tiene)'}</label>
+      <label class="l">Foto (dejala vacía para mantener la que tiene)</label>
       <div class="foto-zona" id="zFoto" tabindex="0" role="button" aria-label="Foto del reclamo"></div>
       <label class="l" for="iServ">Servicio a asignar</label>
-      <select class="in" id="iServ"><option value="">Elegí el servicio</option>${SERVICIOS.map(x => `<option${x === b.servicio ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select>
+      <select class="in" id="iServ"><option value="" hidden></option>${SERVICIOS.map(x => `<option${x === b.servicio ? ' selected' : ''}>${esc(x)}</option>`).join('')}</select>
       <label class="l" for="iSol">Solicitante</label>
-      <select class="in" id="iSol"><option value="">Elegí quién lo pidió</option>${[...SOLICITANTES, ...(b.solicitante && !SOLICITANTES.includes(b.solicitante) ? [b.solicitante] : [])].map(n => `<option${n === b.solicitante ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select>
-      <div class="fila2">
-        <div><label class="l" for="iGrupo">Grupo</label><select class="in" id="iGrupo"><option value="">Elegí el grupo</option>${GRUPOS.map(g => `<option${g === b.grupo ? ' selected' : ''}>${esc(g)}</option>`).join('')}</select></div>
-        <div><label class="l" for="iPed">Fecha y hora</label><input class="in num" type="datetime-local" id="iPed" required value="${esc(b.pedido)}"></div>
-      </div>
+      <select class="in" id="iSol"><option value="" hidden></option>${[...SOLICITANTES, ...(b.solicitante && !SOLICITANTES.includes(b.solicitante) ? [b.solicitante] : [])].map(n => `<option${n === b.solicitante ? ' selected' : ''}>${esc(n)}</option>`).join('')}</select>
+      <label class="l" for="iGrupo">Grupo</label>
+      <select class="in" id="iGrupo"><option value="" hidden></option>${GRUPOS.map(g => `<option${g === b.grupo ? ' selected' : ''}>${esc(g)}</option>`).join('')}</select>
+      <label class="l" for="iPed">Fecha y hora</label>
+      <input class="in num" type="datetime-local" id="iPed" required value="${esc(b.pedido)}">
       <div class="botones">
-        ${!nuevo ? '<button type="button" class="bt sec no" id="bBorrar">Borrar</button>' : ''}
-        <button type="submit" class="bt si" id="bGuardar">${nuevo ? 'Cargar reclamo' : 'Guardar cambios'}</button>
+        <button type="submit" class="bt si" id="bGuardar">Guardar cambios</button>
       </div>
     </form>`);
 
   const zona = zonaFoto($('zFoto'));
-  // Al volver de elegir en el mapa, la foto que ya estaba
-  if (b._blob) zona.poner(new File([b._blob], 'foto.jpg', { type: 'image/jpeg' }));
   const leer = () => {
-    b.ubic = $('iUbic').value; b.servicio = $('iServ').value; b.solicitante = $('iSol').value; b.grupo = $('iGrupo').value; b.pedido = $('iPed').value;
+    b.servicio = $('iServ').value; b.solicitante = $('iSol').value; b.grupo = $('iGrupo').value; b.pedido = $('iPed').value;
     const fv = zona.valor(); b._blob = fv ? fv.blob : null;
   };
-  // Vacío: sin aviso (el campo ya dice que va el enlace largo). Algo que no es el enlace largo: en rojo y no deja cargar
-  const revisarUbic = (forzar) => {
-    const v = $('iUbic').value.trim(), c = coordsDe(v), a = $('ayUbic');
-    if (c) { a.className = 'ayuda'; a.textContent = ''; }   // bien: no muestra nada (17/11, a pedido); el municipio se calcula al guardar
-    else if (v || forzar === true) { a.className = 'ayuda mal'; a.textContent = MAL_UBIC; }
-    else { a.className = 'ayuda'; a.textContent = ''; }
-  };
-  $('iUbic').addEventListener('input', revisarUbic); revisarUbic();
-  $('bElegir').onclick = () => {
-    leer();
-    elegirEnMapa(c => { if (c) b.ubic = linkDe(c); abrirFormulario(r, b); });
-  };
-  if ($('bBorrar')) $('bBorrar').onclick = () => borrar(r);
+  pintarAyudaUbic(b.u, $('ayUbic'));
+  $('iUbic').addEventListener('input', () => leerUbic(b.u, $('iUbic').value, () => pintarAyudaUbic(b.u, $('ayUbic'))));
 
   $('fr').onsubmit = async e => {
     e.preventDefault(); leer();
-    const c = coordsDe(b.ubic);
-    if (!c) { revisarUbic(true); return $('iUbic').focus(); }
-    // Todo es obligatorio (17/11, a pedido): ubicación, foto, solicitante, grupo y fecha
-    if (!b._blob && (nuevo || !r.foto)) return aviso('Falta la foto', true);
-    if (!b.servicio) return aviso('Elegí el servicio a asignar', true);
-    if (!b.solicitante) return aviso('Elegí el solicitante', true);
-    if (!b.grupo) return aviso('Elegí el grupo', true);
-    if (!b.pedido) return aviso('Falta la fecha y hora', true);
-    if (ms(b.pedido) > ms(ahora()) + 5 * 60000) return aviso('La fecha y hora no puede ser futura', true);
-    const datos = { lat: +c.lat.toFixed(6), lng: +c.lng.toFixed(6), municipio: Municipios.de(c.lat, c.lng), servicio: b.servicio, grupo: b.grupo,
-      solicitante: b.solicitante.trim(), pedido: b.pedido };
+    if (!await ubicListo(b.u, $('ayUbic'))) return $('iUbic') && $('iUbic').focus();
+    const datos = datosReclamo(b, !r.foto);
+    if (typeof datos === 'string') return aviso(datos, true);
     $('bGuardar').disabled = true; $('bGuardar').textContent = b._blob ? 'Subiendo la foto…' : 'Guardando…';
     let nueva = '';
     try {
       if (b._blob) nueva = datos.foto = await subirFoto(b._blob);
-      let g;
-      if (nuevo) {
-        const q = await sb.from('reclamos_coordinacion').insert(datos).select(CAMPOS);
-        if (q.error) throw new Error(mensaje(q.error));
-        g = q.data[0]; poner(g);
-      } else g = await cambiar(r, datos);
-      if (!nuevo && r.foto && datos.foto !== undefined && datos.foto !== r.foto) borrarFotos([r.foto]);   // la foto vieja ya no se usa
-      cerrarVentana(); aviso(nuevo ? 'Reclamo cargado' : 'Cambios guardados');
-      if (nuevo) { vista = 'mapa'; dibujar(); centrar(g); } else dibujar();   // al editar desde el historial, se queda ahí
+      await cambiar(r, datos);
+      if (r.foto && datos.foto !== undefined && datos.foto !== r.foto) borrarFotos([r.foto]);   // la foto vieja ya no se usa
+      cerrarVentana(); aviso('Cambios guardados');
+      dibujar();   // al editar desde el historial, se queda ahí
     } catch (err) {
       if (nueva) borrarFotos([nueva]);
       aviso(err.message, true);
-      $('bGuardar').disabled = false; $('bGuardar').textContent = nuevo ? 'Cargar reclamo' : 'Guardar cambios';
+      $('bGuardar').disabled = false; $('bGuardar').textContent = 'Guardar cambios';
     }
   };
 }
-$('bNuevo').onclick = () => abrirFormulario(null);
+
+// ── Nuevo reclamo al costado del mapa (18/11, a pedido) ────────────────────
+// El mapa queda a la vista mientras se carga: apenas se encuentra el enlace de VIPS en OpenStreetMap aparece un
+// pin negro (no se mueve a mano, a pedido); al elegir el servicio se ven los recursos de
+// ese servicio (en Municipio, los del municipio del punto) y el mapa encuadra el punto con ellos, para decidir a
+// quién mandarlo. Se carga Sin asignar: el transportista se elige después en la ficha (18/11, a pedido). En el celular, el
+// mapa queda arriba y el formulario abajo.
+let nuevoR = null;   // { u } mientras el panel está abierto (u = estado de la ubicación, ver leerUbic)
+const capaNuevo = L.layerGroup().addTo(mapa);
+function recursosNuevo() {
+  const c = nuevoR && nuevoR.u.c, s = $('nServ') ? $('nServ').value : '';
+  if (s === 'Zona Limpia') return recursosDe(s);
+  if (s === 'Municipio') return c ? recursosDe(s, Municipios.de(c.lat, c.lng)) : (recursosTodos() || []).filter(p => servicioRec(p) === s);
+  return recursosTodos();   // sin servicio todavía: todos
+}
+function actualizarNuevo(encuadrar) {
+  if (!nuevoR) return;
+  const c = nuevoR.u.c;
+  capaNuevo.clearLayers();
+  if (c) {
+    const mk = L.marker([c.lat, c.lng], {
+      icon: L.divIcon({ className: 'pin-w nuevo', html: '<div class="pin"></div>', iconSize: [30, 30], iconAnchor: [15, 32] }),
+      keyboard: false, zIndexOffset: 3000
+    }).addTo(capaNuevo);
+  }
+  dibujarMapa();   // recursos según el panel (recursosVista = recursosNuevo())
+  if (encuadrar && c) {
+    const ps = [[c.lat, c.lng], ...($('nServ').value ? (recursosVista || []).map(p => p.pos) : [])];
+    if (ps.length > 1) mapa.flyToBounds(L.latLngBounds(ps).pad(0.15), { maxZoom: 16, duration: .6 });
+    else mapa.flyTo(ps[0], Math.max(mapa.getZoom(), 16), { duration: .6 });
+  }
+}
+function abrirNuevo() {
+  if (nuevoR) return $('nUbic').focus();
+  if (vista !== 'mapa') { vista = 'mapa'; dibujar(); }
+  elegido = null; recSel = null; mapa.closePopup();
+  nuevoR = { u: { texto: '', c: null, dir: '' } };
+  const p = $('panelNuevo');
+  p.innerHTML = cabeza('Nuevo reclamo') + `
+    <form id="fn" autocomplete="off">
+      <label class="l" for="nUbic">Ubicación</label>
+      <div class="ubic">
+        <input class="in" id="nUbic" placeholder="Usar enlace de VIPS">
+      </div>
+      <div class="ayuda" id="nAy"></div>
+      <label class="l">Foto</label>
+      <div class="foto-zona" id="nFoto" tabindex="0" role="button" aria-label="Foto del reclamo"></div>
+      <label class="l" for="nServ">Servicio a asignar</label>
+      <select class="in" id="nServ"><option value="" hidden></option>${SERVICIOS.map(x => `<option>${esc(x)}</option>`).join('')}</select>
+      <label class="l" for="nSol">Solicitante</label>
+      <select class="in" id="nSol"><option value="" hidden></option>${SOLICITANTES.map(n => `<option>${esc(n)}</option>`).join('')}</select>
+      <label class="l" for="nGrupo">Grupo</label>
+      <select class="in" id="nGrupo"><option value="" hidden></option>${GRUPOS.map(g => `<option>${esc(g)}</option>`).join('')}</select>
+      <label class="l" for="nPed">Fecha y hora</label>
+      <input class="in num" type="datetime-local" id="nPed" required value="${esc(ahora())}">
+      <div class="botones">
+        <button type="submit" class="bt si" id="nGuardar">Cargar reclamo</button>
+      </div>
+    </form>`;
+  p.hidden = false;
+  document.body.classList.add('con-nuevo');
+  fxMejorar(p);
+  const zona = zonaFoto($('nFoto'));
+  nuevoR.zona = zona;
+  p.querySelector('.cerrar').onclick = cerrarNuevo;
+  const u = nuevoR.u;
+  $('nUbic').addEventListener('input', () => leerUbic(u, $('nUbic').value, mover => {
+    if (nuevoR && nuevoR.u === u) { pintarAyudaUbic(u, $('nAy')); actualizarNuevo(mover); }
+  }));
+  $('nServ').addEventListener('change', () => actualizarNuevo(true));
+  dibujarMapa();
+  if (matchMedia('(pointer:fine)').matches) $('nUbic').focus();
+  else $('mapaCaja').scrollIntoView({ block: 'start', behavior: 'smooth' });
+
+  $('fn').onsubmit = async e => {
+    e.preventDefault();
+    const bt = $('nGuardar');
+    bt.disabled = true;
+    const ok = await ubicListo(u, $('nAy'));
+    if (!nuevoR || nuevoR.u !== u) return;   // se cerró mientras buscaba
+    bt.disabled = false;
+    if (!ok) return $('nUbic').focus();
+    const fv = zona.valor();
+    const b = { u, servicio: $('nServ').value, solicitante: $('nSol').value, grupo: $('nGrupo').value, pedido: $('nPed').value, _blob: fv ? fv.blob : null };
+    const datos = datosReclamo(b, true);
+    if (typeof datos === 'string') return aviso(datos, true);
+    bt.disabled = true; bt.textContent = 'Subiendo la foto…';
+    let nueva = '';
+    try {
+      nueva = datos.foto = await subirFoto(b._blob);
+      const q = await sb.from('reclamos_coordinacion').insert(datos).select(CAMPOS);
+      if (q.error) throw new Error(mensaje(q.error));
+      const g = q.data[0]; poner(g);
+      cerrarNuevo();
+      aviso('Reclamo cargado');
+      dibujar(); centrar(g);
+    } catch (err) {
+      if (nueva) borrarFotos([nueva]);
+      aviso(err.message, true);
+      bt.disabled = false; bt.textContent = 'Cargar reclamo';
+    }
+  };
+}
+function cerrarNuevo() {
+  if (!nuevoR) return;
+  clearTimeout(nuevoR.u.timer); nuevoR.u.vez++;   // si estaba buscando, el resultado ya no se usa
+  fxCerrar(); nuevoR = null; zonaActiva = null;
+  capaNuevo.clearLayers();
+  $('panelNuevo').hidden = true; $('panelNuevo').innerHTML = '';
+  document.body.classList.remove('con-nuevo');
+  recSel = null; mapa.closePopup();
+  dibujarMapa();
+}
+$('bNuevo').onclick = abrirNuevo;
 
 async function borrar(r) {
   if (!confirm(`¿Borrar el reclamo de ${muniTxt(r.municipio)} del ${fLinda(r.pedido)}? No se puede deshacer.`)) return;
@@ -974,18 +1210,18 @@ async function abrirFicha(r) {
     <div class="copiar">
       ${urlFoto(r.foto) ? `<a class="foto-ficha" href="${esc(urlFoto(r.foto))}" target="_blank" rel="noopener"><img src="${esc(urlFoto(r.foto))}" alt="Foto del reclamo"></a>
       <button type="button" class="bt si" id="bCopiarFoto">Copiar foto</button>` : '<div class="dato">Este reclamo no tiene foto</div>'}
-      <a class="link-ficha" href="${esc(linkMaps(r))}" target="_blank" rel="noopener">${esc(linkMaps(r))}</a>
+      <a class="link-ficha" href="${esc(linkMaps(r))}" target="_blank" rel="noopener">${esc(textoUbic(r))}</a>
       <button type="button" class="bt si" id="bCopiarUbic">Copiar ubicación</button>
-      ${esSup() ? '<button type="button" class="bt" id="bEditarR">Editar datos del reclamo</button>' : ''}
     </div>
     <form id="fa" autocomplete="off">
       <label class="l" for="iTra">Transportista</label>
-      <input class="in" id="iTra" maxlength="80" list="lTra" placeholder="A quién se manda" value="${esc(r.asignado_a)}"${puede ? '' : ' disabled'}>${opcionesTransportista(r)}
+      <select class="in" id="iTra"${puede ? '' : ' disabled'}>${opcionesTransportista(r)}</select>
       <label class="l" for="iRes">Fecha y hora de resuelto</label>
       <input class="in num" type="datetime-local" id="iRes" value="${esc(campo(r.resuelto))}"${puede ? '' : ' disabled'}>
       <label class="l">Foto final</label>
       <div class="foto-zona" id="zFin" tabindex="0" role="button" aria-label="Foto final"></div>
       ${puede ? `<div class="botones"><button type="submit" class="bt si" id="bGuardarF">Guardar</button></div>` : ''}
+      ${esSup() ? `<div class="acciones"><button type="button" class="bt" id="bEditarR">Editar</button><button type="button" class="bt rojo" id="bBorrarR">Borrar</button></div>` : ''}   <!-- 18/11, a pedido: debajo de Asignar; solo supervisión -->
     </form>
     </div>`, 'ficha');
   if (vista === 'mapa') dibujarMapa();
@@ -997,6 +1233,7 @@ async function abrirFicha(r) {
   // Foto y enlace, cada uno con su botón (17/11, a pedido), para pegarlos en WhatsApp o Telegram
   if ($('bCopiarFoto')) $('bCopiarFoto').onclick = () => copiarFoto(r);
   if ($('bEditarR')) $('bEditarR').onclick = () => abrirFormulario(r);
+  if ($('bBorrarR')) $('bBorrarR').onclick = () => borrar(r);   // 17/11, a pedido: Editar y Borrar (rojo) juntos, solo supervisión
   $('bCopiarUbic').onclick = () => copiarUbicacion(r);
 
   $('fa').onsubmit = async e => {
@@ -1047,8 +1284,11 @@ async function copiarFoto(r) {
   try { await navigator.clipboard.write([new ClipboardItem({ 'image/png': png })]); aviso('Foto copiada'); }
   catch (e) { aviso('No se pudo copiar la foto', true); }
 }
+// Lo que se ve en el recuadro azul de la ficha y lo que copia "Copiar ubicación" (18/11, a pedido): el enlace de VIPS
+// (la dirección de Google Maps) tal cual; los reclamos de antes, sin él, siguen con el enlace de Google Maps
+const textoUbic = r => r.direccion || linkMaps(r);
 async function copiarUbicacion(r) {
-  try { await navigator.clipboard.writeText(linkMaps(r)); aviso('Ubicación copiada'); }
+  try { await navigator.clipboard.writeText(textoUbic(r)); aviso('Ubicación copiada'); }
   catch (e) { aviso('No se pudo copiar la ubicación', true); }
 }
 
@@ -1056,14 +1296,16 @@ async function copiarUbicacion(r) {
 function llenarFiltros() {
   const opt = (v, t) => `<option value="${esc(v)}">${esc(t)}</option>`;
   $('fServ').innerHTML = opt('', 'Todos') + SERVICIOS.map(x => opt(x, x)).join('');
+  // Solicitante (18/11, a pedido): los de la lista y cualquier otro que ya figure en un reclamo
+  $('fSol').innerHTML = opt('', 'Todos') + [...new Set([...SOLICITANTES, ...nombresUsados('solicitante')])].map(n => opt(n, n)).join('');
   $('fGrupo').innerHTML = opt('', 'Todos') + GRUPOS.map(g => opt(g, g)).join('');
   $('fMuni').innerHTML = opt('', 'Todos') + Municipios.orden.map(m => opt(m, 'Municipio ' + m)).join('');
-  for (const id of ['fDesde', 'fHasta', 'fServ', 'fGrupo', 'fMuni']) $(id).oninput = () => { mostrar = POR_PAGINA; dibujarHistorial(); };
+  for (const id of ['fDesde', 'fHasta', 'fServ', 'fSol', 'fGrupo', 'fMuni']) $(id).oninput = () => { mostrar = POR_PAGINA; dibujarHistorial(); };
 }
 function filtrados() {
-  const d = $('fDesde').value, h = $('fHasta').value, t = $('fGrupo').value, mu = $('fMuni').value, sv = $('fServ').value;
+  const d = $('fDesde').value, h = $('fHasta').value, t = $('fGrupo').value, mu = $('fMuni').value, sv = $('fServ').value, so = $('fSol').value;
   return recs.filter(r => r.estado === 'resuelto' && (!d || r.pedido.slice(0, 10) >= d) && (!h || r.pedido.slice(0, 10) <= h)
-    && (!sv || r.servicio === sv) && (!t || r.grupo === t) && (!mu || r.municipio === mu))
+    && (!sv || r.servicio === sv) && (!so || r.solicitante === so) && (!t || r.grupo === t) && (!mu || r.municipio === mu))
     .sort((a, b) => ms(b.resuelto) - ms(a.resuelto) || b.id - a.id);
 }
 // Columnas (17/11, a pedido): solo lo que se carga en el mapa hasta cerrar (ubicación, foto, servicio, solicitante,
@@ -1077,7 +1319,7 @@ function dibujarHistorial() {
   const verFoto = (pth, t) => !pth ? '–' : urlFoto(pth) ? `<a class="ver" href="${esc(urlFoto(pth))}" target="_blank" rel="noopener">${t}</a>` : '…';
   $('hFilas').innerHTML = ver.length ? ver.map(r => `<tr data-id="${r.id}">
       <td class="num">${fLinda(r.pedido, true)}</td>
-      <td><a class="ver" href="${esc(linkMaps(r))}" target="_blank" rel="noopener">${esc(muniTxt(r.municipio))}</a></td>
+      <td><a class="ver" href="${esc(linkMaps(r))}" target="_blank" rel="noopener">${esc(muniTxt(r.municipio))}</a>${r.direccion ? `<small class="dir-h">${esc(r.direccion)}</small>` : ''}</td>
       <td>${verFoto(r.foto, 'Ver foto')}</td>
       <td>${esc(r.servicio)}</td><td>${esc(r.solicitante)}</td><td>${esc(r.grupo)}</td><td>${esc(r.asignado_a)}</td>
       <td class="num">${fLinda(r.resuelto, true)}</td>
@@ -1119,6 +1361,7 @@ async function iniciar() {
     COM2.carga.listo();
     escucharCambios();
     iniciarRecursos();
+    leerTransportistas();
   } catch (e) {
     COM2.carga.error('No se pudieron leer los reclamos (' + e.message + ')', iniciar);
   }
