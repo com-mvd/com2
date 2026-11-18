@@ -16,6 +16,7 @@ create policy "usuarios ven transportistas reclamos" on public.reclamos_transpor
 drop policy if exists "supervision cambia transportistas reclamos" on public.reclamos_transportistas;
 create policy "supervision cambia transportistas reclamos" on public.reclamos_transportistas for all to authenticated
   using (public.mi_rol() <= 'supervisor') with check (public.mi_rol() <= 'supervisor');
+grant select, insert, update, delete on public.reclamos_transportistas to authenticated;
 
 
 select count(*) as transportistas from public.reclamos_transportistas;
