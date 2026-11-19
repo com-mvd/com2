@@ -66,7 +66,9 @@
   let resultados = [];
   let vista = 'organizacion';   // siempre abre en Organización del servicio (pedido del usuario, 13/11)
   let modo = 'estado';
-  let grupoMapa = '';
+  // Filtros del mapa (Estado o Transportistas) que están apagados. Como en Bolsones (19/11): el primer toque deja
+  // solo ese; después cada toque suma o saca uno; si se apagan todos, vuelven todos
+  const ocultosMapa = new Set();
   // Pendientes: recuadro elegido en la tabla de cupos ({ municipio, fecha }) o solo el municipio ({ municipio }).
   let celda = null;
   // Días de cada municipio que muestra la tabla de cupos ("AAAA-MM-DD|municipio"); null si no se pudieron leer los cupos.
@@ -509,14 +511,15 @@
     )]));
     const nombre = grupo => porMuni ? coloresMuni[grupo] ? 'Municipio ' + grupo : grupo
       : porTransportista ? grupo : plurales[grupo];
-    if (!cuentas.has(grupoMapa)) grupoMapa = '';
+    [...ocultosMapa].forEach(grupo => { if (!cuentas.has(grupo)) ocultosMapa.delete(grupo); });
+    if (orden.length && orden.every(grupo => ocultosMapa.has(grupo))) ocultosMapa.clear();
     $('leyenda').innerHTML = orden.map(grupo => {
-      const activo = !grupoMapa || grupoMapa === grupo;
+      const activo = !ocultosMapa.has(grupo);
       return `<button type="button" class="${porMuni ? 'pen-fila' : 'tg'}${activo ? '' : ' off'}" data-grupo="${COM2.esc(grupo)}"
         style="--c:${colores.get(grupo)}" aria-pressed="${activo}">${porMuni ? '' : '<i></i>'}
         <span>${COM2.esc(nombre(grupo))}</span><b class="num">${numero.format(cuentas.get(grupo))}</b></button>`;
     }).join('');
-    const visibles = grupoMapa ? delMapa.filter(fila => clave(fila) === grupoMapa) : delMapa;
+    const visibles = ocultosMapa.size ? delMapa.filter(fila => !ocultosMapa.has(clave(fila))) : delMapa;
     const conUbicacion = visibles.filter(fila => fila.coordenadas);
     const faltantes = visibles.length - conUbicacion.length;
     $('sin-coordenadas').textContent = !window.L ? 'El mapa no está disponible.' : !visibles.length
@@ -723,7 +726,7 @@
 
   function elegirVista(nuevaVista) {
     vista = nuevaVista;
-    grupoMapa = '';
+    ocultosMapa.clear();
     celda = null;
     botones.forEach(boton => {
       boton.classList.toggle('on', boton.dataset.vista === vista);
@@ -808,7 +811,7 @@
     const boton = evento.target.closest('[data-modo]');
     if (!boton) return;
     modo = boton.dataset.modo;
-    grupoMapa = '';
+    ocultosMapa.clear();
     $('modo').querySelectorAll('button').forEach(opcion => {
       opcion.classList.toggle('on', opcion === boton);
       opcion.setAttribute('aria-pressed', opcion === boton);
@@ -818,7 +821,13 @@
   $('leyenda').addEventListener('click', evento => {
     const boton = evento.target.closest('[data-grupo]');
     if (!boton) return;
-    grupoMapa = grupoMapa === boton.dataset.grupo ? '' : boton.dataset.grupo;
+    const k = boton.dataset.grupo;
+    const claves = [...$('leyenda').querySelectorAll('[data-grupo]')].map(b => b.dataset.grupo);
+    if (claves.every(c => !ocultosMapa.has(c))) claves.forEach(c => { if (c !== k) ocultosMapa.add(c); });
+    else {
+      if (ocultosMapa.has(k)) ocultosMapa.delete(k); else ocultosMapa.add(k);
+      if (claves.every(c => ocultosMapa.has(c))) ocultosMapa.clear();
+    }
     mostrarMapa();
     [...$('leyenda').querySelectorAll('button')].find(b => b.dataset.grupo === boton.dataset.grupo)?.focus();
   });
