@@ -269,9 +269,10 @@ const SERVICIOS = [   // colores de la portada de com: c = punto e ícono, cb = 
   { id: 'generales', nombre: 'Generales', c: '#6C5790', cb: '#E5DDF0', sinBase: true },
   { id: 'bolsones', nombre: 'Bolsones', c: '#D2691E', cb: '#FCE3CD' },
   { id: 'agenda', nombre: 'Agenda', c: '#346A92', cb: '#DDECF4' },
-  { id: 'zona-limpia', nombre: 'Zona Limpia', c: '#39745E', cb: '#DCEDE4' },
+  // auto (19/11, a pedido): n8n la actualiza sola cada 30 min; sin botón, solo la hora de la última subida
+  { id: 'zona-limpia', nombre: 'Zona Limpia', c: '#39745E', cb: '#DCEDE4', auto: true },
   // debajo: va en la misma columna, abajo de ese recuadro (17/11: Reclamos abajo de Zona Limpia)
-  { id: 'reclamos', nombre: 'Reclamos', c: '#39745E', cb: '#DCEDE4', debajo: 'zona-limpia' },
+  { id: 'reclamos', nombre: 'Reclamos', c: '#39745E', cb: '#DCEDE4', debajo: 'zona-limpia', auto: true },
   // Intradomiciliarios (17/11): Trazador de recorridos y Monitoreo Intradomiciliarios. Verde; sin base, sin Actualizar
   { id: 'intradomiciliarios', nombre: 'Intradomiciliarios', c: '#1F8A4C', cb: '#DCF2E3', sinBase: true },
 ];
@@ -305,7 +306,7 @@ function dibujarSupervisor(del, servs = SERVICIOS) {
       return `<section class="serv" data-id="${s.id}" style="--c:${s.c};--cb:${s.cb}">
         <div class="serv-h">
           <div class="serv-t"><span class="serv-dot"></span><h2 class="serv-n">${esc(s.nombre)}</h2></div>
-          ${s.sinBase ? '' : `<div class="serv-a"><button type="button" class="btn-act">${ICONO_ACT}Actualizar</button><span class="estado">…</span></div>`}
+          ${s.sinBase ? '' : `<div class="serv-a">${s.auto ? '' : `<button type="button" class="btn-act">${ICONO_ACT}Actualizar</button>`}<span class="estado"${s.auto ? ' title="Se actualiza sola cada 30 minutos"' : ''}>…</span></div>`}
         </div>
         <div class="list">${ps.length ? ps.map(p => `<a class="item" href="${esc(p.archivo)}">
           <div class="item-icon">${COM2.icono(p.icono)}</div><div class="item-name">${esc(p.nombre)}</div><div class="item-arrow">›</div></a>`).join('')
@@ -321,13 +322,19 @@ function dibujarSupervisor(del, servs = SERVICIOS) {
     const s = SERVICIOS.find(x => x.id === sec.dataset.id), b = sec.querySelector('.btn-act');
     if (b) b.onclick = () => actualizar(s, sec);
   });
-  if (servs.some(s => !s.sinBase)) mostrarHoras();
+  if (servs.some(s => !s.sinBase)) {
+    mostrarHoras();
+    // Las que se actualizan solas: la hora se refresca cada minuto mientras la portada está abierta
+    clearInterval(dibujarSupervisor.reloj);
+    dibujarSupervisor.reloj = setInterval(mostrarHoras, 60000);
+  }
 }
 async function mostrarHoras() {
   const h = await subidas().catch(() => null);
   $('menu').querySelectorAll('.serv').forEach(sec => {
     const est = sec.querySelector('.estado');
     if (!est) return;   // Generales no tiene base
+    if (sec.querySelector('.btn-act:disabled')) return;   // ese botón está actualizando: no pisar su estado
     if (!h) return estado(est, 'No se pudo leer la base', true);
     estado(est, h[sec.dataset.id] ? 'Actualizado ' + horaLocal(h[sec.dataset.id]) : 'Sin datos');
   });
