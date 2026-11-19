@@ -740,7 +740,8 @@
     $('listado-solicitudes').hidden = vista === 'pendientes';
     $('situacion').hidden = vista !== 'pendientes';
     if (vista === 'organizacion') return;
-    $('filtro-fecha').hidden = !etiquetasFecha[vista];
+    // Operación del día es siempre hoy: sin selector de fecha (pedido del 19/11)
+    $('filtro-fecha').hidden = !etiquetasFecha[vista] || vista === 'operacion';
     $('etiqueta-fecha').textContent = vistasMapa.includes(vista) ? 'Fecha' : etiquetasFecha[vista] || '';
     $('fecha').setAttribute('aria-label', etiquetasFecha[vista] || 'Fecha');
     $('fecha').value = fechas[vista] || '';
