@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex,nofollow">
+<title>COM 2</title>
+<link rel="icon" type="image/png" href="assets/logo-ciemsa.png">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+<link rel="stylesheet" href="assets/barra.css?v=202611171930">
+<link rel="stylesheet" href="assets/carga.css?v=202611131600">
+<style>
+:root {
+  --bg:#f7f6f3; --card:#fff; --text:#1a1714; --muted:#5f5a54; --border:#e6e2da;
+  --focus:#1b3f74; --ok:#176544; --error:#aa3029;
+}
+:root[data-theme="dark"] {
+  color-scheme:dark;
+  --bg:#1e2126; --card:#272b31; --text:#eceae6; --muted:#b3ada5; --border:#3b4048;
+  --focus:#8fb3ed; --ok:#66d9af; --error:#ff8b7e;
+}
+* { box-sizing:border-box }
+[hidden] { display:none !important }
+body { margin:0; background:var(--bg); color:var(--text); font:15px 'DM Sans',system-ui,sans-serif }
+.barra { z-index:1200 }
+.wrap { max-width:var(--com2-ancho); margin:auto; padding:14px var(--com2-margen) 36px; display:grid; gap:14px }
+.card { min-width:0; background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px }
+h2 { margin:0 0 14px; font-size:16px }
+fieldset { min-width:0; padding:0; margin:0; border:0 }
+.campos { display:grid; grid-template-columns:1.2fr repeat(4,minmax(0,1fr)); gap:12px }
+label { display:grid; gap:6px; min-width:0; color:var(--muted); font-size:14px; font-weight:700 }
+input,button { font:inherit }
+input {
+  width:100%; min-width:0; min-height:44px; border:1px solid var(--border); border-radius:10px;
+  padding:8px 10px; background:var(--bg); color:var(--text); font-size:16px;
+}
+:focus-visible { outline:2px solid var(--focus); outline-offset:2px }
+.acciones { display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin-top:14px }
+.boton {
+  min-height:42px; padding:8px 16px; border:1px solid transparent; border-radius:10px;
+  background:linear-gradient(135deg,#162a4d,#193563 55%,#1b3f74); color:#fff; font-weight:700; cursor:pointer;
+}
+.boton.sec { background:var(--card); color:var(--text); border-color:var(--border) }
+.boton:disabled { opacity:.55; cursor:default }
+.estado { margin:0; color:var(--muted); font-size:14px }
+.estado.ok { color:var(--ok) }
+.estado.error { color:var(--error) }
+.tabla { overflow-x:auto }
+table { width:100%; border-collapse:collapse; text-align:left; font-variant-numeric:tabular-nums }
+th,td { padding:10px 12px; border-bottom:1px solid var(--border) }
+th { background:var(--bg); color:var(--muted); font-size:13px; white-space:nowrap }
+td:first-child { overflow-wrap:anywhere }
+td:not(:first-child) { white-space:nowrap }
+#mas { margin-top:12px }
+#estado-lista:not(:empty) { margin:12px 0 0 }
+@media (max-width:700px) {
+  .campos { grid-template-columns:repeat(2,minmax(0,1fr)) }
+  .campos label:first-child { grid-column:1 / -1 }
+  .card { padding:12px }
+}
+</style>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script src="assets/comun.js?v=202611171900"></script>
+<script src="assets/acceso.js?v=202611130130"></script>
+</head>
+<body>
+<header class="barra">
+  <a class="com2-marca com2-volver" href="./?panel=supervisor" aria-label="Volver">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg><span>Volver</span>
+  </a>
+  <div class="barra-in">
+    <div class="titulo"><h1>Carga Zona Limpia Municipal</h1></div>
+  </div>
+</header>
+
+<div class="com2-carga" id="com2-carga" role="status" aria-live="polite">
+  <div class="com2-rueda"></div>
+  <div class="com2-carga-t">Cargando información</div>
+</div>
+
+<main class="wrap" id="contenido" hidden>
+  <form class="card" id="formulario" aria-labelledby="titulo-formulario">
+    <h2 id="titulo-formulario">Nueva carga</h2>
+    <fieldset id="campos-carga">
+      <div class="campos">
+        <label>Circuito <input name="circuito" type="text" maxlength="80" autocomplete="off" autocapitalize="characters" required></label>
+        <label>Hora inicio <input name="hora_inicio" type="time" required></label>
+        <label>Hora fin <input name="hora_fin" type="time" required></label>
+        <label>Desde cont. <input name="desde_cont" type="number" inputmode="numeric" min="1" max="2147483647" step="1" required></label>
+        <label>Hasta cont. <input name="hasta_cont" type="number" inputmode="numeric" min="1" max="2147483647" step="1" required></label>
+      </div>
+      <div class="acciones">
+        <button class="boton" type="submit" id="guardar">Guardar</button>
+        <p class="estado" id="estado-formulario" role="status"></p>
+      </div>
+    </fieldset>
+  </form>
+
+  <section class="card" aria-labelledby="titulo-cargas">
+    <h2 id="titulo-cargas">Cargas ingresadas</h2>
+    <div class="tabla" id="tabla-cargas" role="region" aria-labelledby="titulo-cargas" tabindex="0" hidden>
+      <table>
+        <thead><tr>
+          <th scope="col">Circuito</th><th scope="col">Hora inicio</th><th scope="col">Hora fin</th>
+          <th scope="col">Desde cont.</th><th scope="col">Hasta cont.</th><th scope="col">Fecha de carga</th>
+        </tr></thead>
+        <tbody id="filas"></tbody>
+      </table>
+    </div>
+    <p class="estado" id="estado-lista" role="status"></p>
+    <button class="boton sec" type="button" id="mas" hidden>Cargar más</button>
+  </section>
+</main>
+
+<script>
+const tablaSupabase = 'zona_limpia_municipal_cargas';
+const columnas = 'id,circuito,hora_inicio,hora_fin,desde_cont,hasta_cont,creado';
+const porPagina = 50;
+const fechaLocal = new Intl.DateTimeFormat('es-UY', {
+  dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Montevideo'
+});
+const formulario = document.getElementById('formulario');
+const campos = document.getElementById('campos-carga');
+const guardar = document.getElementById('guardar');
+const estadoFormulario = document.getElementById('estado-formulario');
+const tabla = document.getElementById('tabla-cargas');
+const filas = document.getElementById('filas');
+const estadoLista = document.getElementById('estado-lista');
+const mas = document.getElementById('mas');
+const visibles = new Set();
+let cursor = null;
+let solicitud = null;
+let guardando = false;
+
+function aviso(elemento, mensaje, tipo = '') {
+  elemento.textContent = mensaje;
+  elemento.className = tipo ? 'estado ' + tipo : 'estado';
+}
+
+function mostrarFila(carga, alPrincipio = false) {
+  if (visibles.has(carga.id)) return;
+  visibles.add(carga.id);
+  const fila = document.createElement('tr');
+  const valores = [
+    carga.circuito, carga.hora_inicio.slice(0, 5), carga.hora_fin.slice(0, 5),
+    carga.desde_cont, carga.hasta_cont, fechaLocal.format(new Date(carga.creado))
+  ];
+  for (const valor of valores) {
+    const celda = fila.insertCell();
+    celda.textContent = valor;
+  }
+  if (alPrincipio) filas.prepend(fila);
+  else filas.append(fila);
+  tabla.hidden = false;
+}
+
+async function cargarPagina() {
+  mas.disabled = true;
+  aviso(estadoLista, 'Cargando registros…');
+  try {
+    let consulta = COM2.sb.from(tablaSupabase).select(columnas).order('id', { ascending: false }).limit(porPagina + 1);
+    if (cursor !== null) consulta = consulta.lt('id', cursor);
+    const { data, error } = await consulta;
+    if (error) throw error;
+    const pagina = data.slice(0, porPagina);
+    for (const carga of pagina) mostrarFila(carga);
+    if (pagina.length) cursor = pagina[pagina.length - 1].id;
+    mas.hidden = data.length <= porPagina;
+    mas.textContent = 'Cargar más';
+    aviso(estadoLista, visibles.size ? '' : 'Todavía no hay cargas.');
+  } catch (error) {
+    aviso(estadoLista, 'No se pudieron leer las cargas.', 'error');
+    mas.hidden = false;
+    mas.textContent = 'Reintentar';
+  } finally {
+    mas.disabled = false;
+  }
+}
+
+function validarCampos() {
+  const { circuito, desde_cont, hasta_cont } = formulario.elements;
+  circuito.setCustomValidity(circuito.value.trim() ? '' : 'Ingresá un circuito.');
+  hasta_cont.setCustomValidity(hasta_cont.valueAsNumber < desde_cont.valueAsNumber
+    ? 'Hasta cont. debe ser igual o mayor que Desde cont.' : '');
+}
+
+formulario.addEventListener('input', () => {
+  solicitud = null;
+  validarCampos();
+  aviso(estadoFormulario, '');
+});
+mas.addEventListener('click', cargarPagina);
+
+formulario.addEventListener('submit', async evento => {
+  evento.preventDefault();
+  if (guardando) return;
+  validarCampos();
+  if (!formulario.reportValidity()) return;
+
+  const datos = new FormData(formulario);
+  const registro = {
+    solicitud: solicitud ??= crypto.randomUUID(),
+    circuito: datos.get('circuito').trim().toUpperCase(),
+    hora_inicio: datos.get('hora_inicio'),
+    hora_fin: datos.get('hora_fin'),
+    desde_cont: Number(datos.get('desde_cont')),
+    hasta_cont: Number(datos.get('hasta_cont'))
+  };
+  guardando = true;
+  campos.disabled = true;
+  guardar.textContent = 'Guardando…';
+  aviso(estadoFormulario, '');
+  try {
+    let respuesta = await COM2.sb.from(tablaSupabase).insert(registro).select(columnas).single();
+    if (respuesta.error?.code === '23505') {
+      respuesta = await COM2.sb.from(tablaSupabase).select(columnas).eq('solicitud', solicitud).single();
+    }
+    if (respuesta.error) throw respuesta.error;
+    mostrarFila(respuesta.data, true);
+    if (estadoLista.textContent === 'Todavía no hay cargas.') aviso(estadoLista, '');
+    formulario.reset();
+    solicitud = null;
+    aviso(estadoFormulario, 'Carga guardada.', 'ok');
+    campos.disabled = false;
+    formulario.elements.circuito.focus();
+  } catch (error) {
+    aviso(estadoFormulario, 'No se pudo guardar la carga. Volvé a intentar.', 'error');
+  } finally {
+    campos.disabled = false;
+    guardar.textContent = 'Guardar';
+    guardando = false;
+  }
+});
+
+async function iniciar() {
+  try {
+    if (!await COM2.acceso()) return;
+    document.getElementById('contenido').hidden = false;
+    COM2.carga.listo();
+    await cargarPagina();
+  } catch (error) {
+    COM2.carga.error('No se pudo abrir la página.', () => location.reload());
+  }
+}
+iniciar();
+</script>
+</body>
+</html>
