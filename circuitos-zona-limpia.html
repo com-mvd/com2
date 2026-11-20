@@ -1,10 +1,15 @@
 <!doctype html>
-<html lang="es-UY">
+<html lang="es-UY" data-theme="dark">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
   <title>COM 2</title>
+  <script>
+    try {
+      if (localStorage.getItem('com2.tema') === 'light') document.documentElement.dataset.theme = 'light';
+    } catch {}
+  </script>
   <link rel="icon" href="assets/logo-ciemsa.png">
   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
   <link rel="stylesheet" href="assets/barra.css?v=202611171930">
@@ -23,11 +28,14 @@
       --muted: #526078;
       --line: #dbe3ed;
       --line-soft: #e8edf3;
+      --line-celda: #ccd6e3;
       --surface: #f4f7fb;
       --blue: #184a91;
       --pending: #83410b;
-      --pending-bg: #fff1dd;
-      --ok: #146346;
+      --edad-ayer: #7d6100;
+      --edad-anteayer: #a54b06;
+      --edad-tres-a-seis: #b5242c;
+      --borde-edad-siete-o-mas: #090b10;
     }
     [data-theme="dark"] {
       color-scheme: dark;
@@ -37,30 +45,38 @@
       --muted: #b0bfd3;
       --line: #404c60;
       --line-soft: #354051;
+      --line-celda: #4e5c70;
       --surface: #252e3c;
       --blue: #a5c9ff;
       --pending: #ffd098;
-      --pending-bg: #493323;
-      --ok: #9de4c6;
+      --edad-ayer: #ffe271;
+      --edad-anteayer: #ffab60;
+      --edad-tres-a-seis: #ff8c92;
+      --borde-edad-siete-o-mas: #aab6c8;
     }
     *, *::before, *::after { box-sizing: border-box; }
     [hidden] { display: none !important; }
     body { margin: 0; background: var(--bg); color: var(--text); font: 1rem/1.45 'DM Sans', system-ui, sans-serif; }
-    button, select { font: inherit; color: inherit; }
+    button, select, input, textarea { font: inherit; color: inherit; }
     :focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
     .wrap { width: 100%; max-width: var(--semaforo-ancho); margin: 0 auto; padding: 14px var(--semaforo-margen) 40px; }
     .dashboard { display: grid; gap: 14px; }
     .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; }
-    .toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 14px; }
-    .field { display: flex; align-items: center; gap: 8px; }
+    .toolbar { display: grid; grid-template-columns: minmax(34px, 1fr) minmax(0, max-content) minmax(34px, 1fr); align-items: center; column-gap: 14px; }
+    .filtros-atencion { grid-column: 2; display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 6px 14px; min-width: 0; }
+    .field { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; max-width: 100%; }
     .field label { font-size: .82rem; font-weight: 700; }
+    .filtros-atencion:has(.leyenda-atencion:not([hidden])) .field::after {
+      content: ''; flex: none; height: 16px; margin-inline-start: 6px;
+      border-inline-start: 1px solid var(--line-celda);
+    }
     #rango {
       appearance: none;
-      min-height: 34px;
+      min-height: 30px;
       border: 1px solid var(--line);
       border-radius: 8px;
       background-color: var(--panel);
-      padding: 4px 30px 4px 9px;
+      padding: 3px 30px 3px 9px;
       font-size: .82rem;
       font-weight: 600;
       cursor: pointer;
@@ -69,6 +85,16 @@
       background-position: right 8px center;
     }
     #rango:hover { border-color: var(--blue); }
+    #modo-edicion {
+      grid-column: 3; grid-row: 1; justify-self: end; display: grid; place-items: center;
+      width: 34px; height: 34px; padding: 0;
+      border: 1px solid var(--line); border-radius: 8px; background: var(--panel);
+      color: var(--blue); cursor: pointer;
+    }
+    #modo-edicion:hover { border-color: var(--blue); }
+    #modo-edicion[aria-pressed="true"] { background: #184a91; border-color: #184a91; color: white; }
+    #modo-edicion:disabled { cursor: default; }
+    #modo-edicion svg { width: 17px; height: 17px; }
     @supports (appearance: base-select) and selector(::picker(select)) {
       #rango, #rango::picker(select) { appearance: base-select; }
       #rango {
@@ -106,6 +132,9 @@
     }
     .muted, .source-status { color: var(--muted); }
     .source-status { margin: 0; font-size: .875rem; color: var(--pending); }
+    .leyenda-atencion { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 3px 12px; margin: 0; font-size: .8rem; font-weight: 700; }
+    .leyenda-atencion strong { font-weight: 800; }
+    #reintentar-planilla { justify-self: start; }
     .turnos {
       display: grid; grid-template-columns: var(--anchos-turnos, repeat(3, minmax(0, 1fr))); align-items: start;
       background: var(--bg); gap: 14px;
@@ -125,30 +154,78 @@
     col.pendientes { width: calc((100% - var(--ancho-detalle)) * .19); }
     col.detalle { width: var(--ancho-detalle); }
     thead { background: var(--surface); color: var(--muted); }
-    th, td { padding: 10px 14px; border-bottom: 1px solid var(--line-soft); text-align: center; vertical-align: middle; overflow-wrap: anywhere; }
+    th, td { padding: 10px 14px; border-bottom: 1px solid var(--line-celda); text-align: center; vertical-align: middle; overflow-wrap: anywhere; }
+    tr > :not(:last-child) { border-inline-end: 1px solid var(--line-celda); }
     thead th { vertical-align: middle; font-size: .83rem; font-weight: 700; overflow-wrap: normal; }
-    thead th + th { border-left: 1px solid var(--line); }
-    tbody:last-child tr:last-child > *, tbody:last-child .grupo-municipio, tbody:last-child .ultimo-camion { border-bottom: 0; }
-    tbody + tbody tr:first-child > * { border-top: 2px solid var(--line); }
-    tbody tr.nuevo-camion > * { border-top: 1px solid var(--line); }
+    tbody:last-child tr:last-child > *, tbody:last-child .grupo.grupo-municipio, tbody:last-child .ultimo-camion { border-bottom: 0; }
+    tbody + tbody tr:first-child > * { border-top: 2px solid var(--line-celda); }
+    tbody tr.nuevo-camion > * { border-top: 1px solid var(--line-celda); }
     .grupo { font-weight: 600; }
-    .grupo-municipio { border-right: 1px solid var(--line-soft); }
-    .grupo-camion { border-right: 1px solid var(--line-soft); }
     @media (hover: hover) {
       tbody tr:has(> :not(.grupo):hover) > :not(.grupo) { background: var(--surface); }
     }
-    tbody th[scope="row"] { color: var(--blue); }
-    .numeric { text-align: center; font-variant-numeric: tabular-nums; }
+    tbody th[scope="row"] { font-weight: inherit; }
+    .numeric, .result, .codigo-circuito, .tramo-asignado { font-variant-numeric: tabular-nums; }
     .codigo-circuito, .tramo-asignado { white-space: nowrap; }
-    .tramo-asignado { font-size: .85em; color: var(--muted); }
-    .result { font-variant-numeric: tabular-nums; }
-    .count {
-      display: inline-block; padding: 1px 7px; border-radius: 6px; background: var(--pending-bg);
-      color: var(--pending); font-size: .8rem; font-weight: 700; white-space: nowrap;
-    }
-    .ranges { font-weight: 600; line-height: 1.3; }
+    .tramo-asignado { display: block; }
+    .rangos-edad { display: block; font-weight: 700; }
     .range-piece { white-space: nowrap; }
-    .ok { color: var(--ok); font-weight: 700; }
+    .edad-ayer { color: var(--edad-ayer); }
+    .edad-anteayer { color: var(--edad-anteayer); }
+    .edad-tres-a-seis { color: var(--edad-tres-a-seis); }
+    .edad-siete-o-mas {
+      background: #090b10; color: #fff; padding-inline: .35em;
+      border: 1px solid var(--borde-edad-siete-o-mas); border-radius: 5px;
+    }
+    .rangos-edad.edad-siete-o-mas { width: fit-content; max-width: 100%; margin-inline: auto; }
+    .turno-acciones { display: flex; justify-content: flex-end; padding: 6px 10px; border-bottom: 1px solid var(--line-soft); }
+    .fila-accion, .editar-form button, .turno-acciones button, #reintentar-planilla {
+      background: var(--panel); border: 1px solid var(--line); border-radius: 7px;
+      padding: 5px 9px; color: var(--blue); font-size: .8rem; font-weight: 700; cursor: pointer;
+    }
+    .fila-accion { display: block; margin: 4px auto 0; padding: 2px 3px; font-size: .72rem; white-space: nowrap; }
+    .camion-editable {
+      display: block; width: 100%; min-width: 0; padding: 5px 3px; text-align: center;
+      border: 1px solid var(--blue); border-radius: 6px; background: var(--panel); font-size: inherit;
+      field-sizing: content; min-height: 30px; max-height: 6em; resize: none;
+    }
+    .camion-editable::placeholder { color: var(--muted); }
+    .circuito-acciones { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 3px; margin-top: 4px; }
+    .circuito-acciones .fila-accion { margin: 0; }
+    .mover-fila {
+      display: grid; place-items: center; width: 24px; height: 24px; padding: 0;
+      border: 1px solid var(--line); border-radius: 6px; background: var(--panel);
+      color: var(--blue); cursor: grab; touch-action: none;
+    }
+    .mover-fila:hover { border-color: var(--blue); }
+    .mover-fila:active { cursor: grabbing; }
+    .mover-fila svg { width: 15px; height: 15px; pointer-events: none; }
+    .fila-arrastrada { opacity: .45; }
+    .soltar-antes > * { box-shadow: inset 0 3px var(--blue); }
+    .soltar-despues > * { box-shadow: inset 0 -3px var(--blue); }
+    .turno.soltar-turno { outline: 2px solid var(--blue); outline-offset: -2px; }
+    button:disabled { opacity: .55; cursor: wait; }
+    .fila-accion:hover, .editar-form button:hover, .turno-acciones button:hover, #reintentar-planilla:hover {
+      border-color: var(--blue);
+    }
+    .editar-dialogo {
+      width: min(460px, calc(100% - 28px)); padding: 20px; border: 1px solid var(--line);
+      border-radius: 14px; background: var(--panel); color: var(--text);
+    }
+    .editar-dialogo::backdrop { background: #0f172a80; }
+    .editar-form { display: grid; gap: 12px; }
+    .editar-form h2 { margin: 0; font-size: 1.15rem; }
+    .editar-campos { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    .editar-campos label { display: grid; min-width: 0; gap: 4px; font-size: .85rem; font-weight: 700; }
+    .editar-campos input, .editar-campos select {
+      width: 100%; min-height: 36px; padding: 5px 8px; border: 1px solid var(--line);
+      border-radius: 7px; background: var(--panel);
+    }
+    .editar-campos label:last-child, #campo-circuito-nuevo { grid-column: 1 / -1; }
+    .editar-form p { margin: 0; font-size: .85rem; }
+    .editar-botones { display: flex; justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
+    .editar-botones #eliminar-fila { margin-right: auto; color: var(--pending); }
+    .editar-botones [type="submit"] { background: #184a91; border-color: #184a91; color: white; }
     @media (min-width: 1100px) {
       table { font-size: .82rem; }
       thead th { font-size: clamp(.66rem, .88vw, .75rem); padding-inline: 1px; }
@@ -158,11 +235,20 @@
       .turnos { grid-template-columns: minmax(0, 1fr); }
     }
     @media (max-width: 650px) {
+      .toolbar { column-gap: 8px; }
+      .field { flex-wrap: nowrap; }
+      .filtros-atencion:has(.leyenda-atencion:not([hidden])) .field::after { content: none; }
+      #rango { min-width: 0; max-width: 65%; }
+      #modo-edicion { align-self: start; }
       .turno { --ancho-detalle: clamp(23%, var(--ancho-puntos, 29%), 36%); }
       table { font-size: .82rem; }
       thead th { font-size: .67rem; padding-inline: 1px; }
       th, td { padding: 8px 3px; }
-      .count { font-size: .73rem; }
+      .tabla-editable col.municipio { width: 13%; }
+      .tabla-editable col.camion { width: 20%; }
+      .tabla-editable col.circuito { width: 15%; }
+      .tabla-editable col.cantidad, .tabla-editable col.pendientes { width: 13%; }
+      .tabla-editable col.detalle { width: 26%; }
     }
   </style>
 </head>
@@ -182,19 +268,62 @@
   <main class="wrap">
     <div class="dashboard" id="dashboard" hidden>
       <div class="toolbar">
-        <div class="field">
-          <label for="rango">Días de atención</label>
-          <select id="rango">
-            <option value="0">Hoy</option>
-            <option value="1">Hoy y ayer</option>
-            <option value="2">Hoy, ayer y antes de ayer</option>
-          </select>
+        <div class="filtros-atencion">
+          <div class="field">
+            <label for="rango">Puntos sin atención en estos días</label>
+            <select id="rango">
+              <option value="0">Hoy</option>
+              <option value="1">Hoy y ayer</option>
+              <option value="2">Hoy, ayer y antes de ayer</option>
+            </select>
+          </div>
+          <p class="leyenda-atencion" id="leyenda-atencion" hidden></p>
         </div>
-        <p class="source-status" id="estado-base" role="status" hidden></p>
+        <button type="button" id="modo-edicion" aria-label="Editar planificación" aria-controls="tablas"
+          aria-pressed="false" title="Activar edición" hidden disabled>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+            stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="m14 6 4 4M4 20l4.5-1 11-11a2.8 2.8 0 0 0-4-4l-11 11L4 20Z"/>
+          </svg>
+        </button>
       </div>
+      <p class="source-status" id="estado-base" role="status" hidden></p>
+      <p class="source-status" id="estado-planilla" role="status" hidden></p>
+      <button type="button" id="reintentar-planilla" hidden>Reintentar carga de tablas</button>
       <div class="turnos" id="tablas"></div>
     </div>
   </main>
+  <dialog class="editar-dialogo" id="editar-fila" aria-labelledby="editar-titulo">
+    <form class="editar-form" id="editar-form">
+      <h2 id="editar-titulo">Editar fila</h2>
+      <div class="editar-campos">
+        <label>Circuito
+          <select name="circuito" aria-describedby="editar-info" required autofocus></select>
+        </label>
+        <label id="campo-circuito-nuevo" hidden>Código del circuito
+          <input name="circuito_nuevo" maxlength="80" autocomplete="off" aria-describedby="editar-info" disabled>
+        </label>
+        <label id="campo-camion-nuevo">Camión <input name="camion" maxlength="120" placeholder="Sin camión"></label>
+        <label>Tramo asignado
+          <input name="tramo" maxlength="30" placeholder="Circuito completo" aria-describedby="editar-info">
+        </label>
+      </div>
+      <p class="muted" id="editar-info" role="status"></p>
+      <p class="source-status" id="editar-error" role="alert" hidden></p>
+      <div class="editar-botones">
+        <button type="button" id="eliminar-fila">Eliminar fila</button>
+        <button type="button" id="cancelar-edicion">Cancelar</button>
+        <button type="submit">Guardar</button>
+      </div>
+    </form>
+  </dialog>
+  <dialog class="editar-dialogo" id="mover-fila" aria-labelledby="mover-titulo">
+    <form class="editar-form" method="dialog">
+      <h2 id="mover-titulo">Mover fila</h2>
+      <div class="editar-botones" id="mover-destinos"></div>
+      <div class="editar-botones"><button>Cerrar</button></div>
+    </form>
+  </dialog>
   <script src="assets/planilla-zona-limpia.js?v=20261120"></script>
   <script>
     (() => {
@@ -202,25 +331,86 @@
 
       const turnos = window.PlanillaZonaLimpia ?? [];
       const rango = document.getElementById('rango');
+      const botonEdicion = document.getElementById('modo-edicion');
       const estadoBase = document.getElementById('estado-base');
+      const leyendaAtencion = document.getElementById('leyenda-atencion');
+      const estadoPlanilla = document.getElementById('estado-planilla');
+      const reintentar = document.getElementById('reintentar-planilla');
       const tablas = document.getElementById('tablas');
+      const dialogo = document.getElementById('editar-fila');
+      const dialogoMover = document.getElementById('mover-fila');
+      const formulario = document.getElementById('editar-form');
+      const campos = formulario.elements;
+      const etiquetaCircuitoNuevo = document.getElementById('campo-circuito-nuevo');
+      const otroCircuito = '__otro__';
+      const infoEdicion = document.getElementById('editar-info');
+      const errorEdicion = document.getElementById('editar-error');
+      const eliminar = document.getElementById('eliminar-fila');
+      const cancelar = document.getElementById('cancelar-edicion');
+      const guardar = formulario.querySelector('[type="submit"]');
       const paneles = [];
-      const totalesCircuito = new Map();
+      const totalesReferencia = new Map();
       const totalesDeclarados = new Map();
+      const municipiosCircuito = new Map();
+      const filasIniciales = turnos.flatMap(({ filas }, turno) => {
+        const claveCamion = fila => fila.municipio + '/' + fila.camion;
+        const ordenCamiones = [...new Set(filas.map(claveCamion))];
+        return [...filas].sort((a, b) => a.municipio.localeCompare(b.municipio, 'es-UY')
+          || ordenCamiones.indexOf(claveCamion(a)) - ordenCamiones.indexOf(claveCamion(b))).map(fila => ({
+          turno, municipio: fila.municipio, camion: fila.camion, circuito: fila.circuito,
+          desde: fila.cantidad.includes('–') ? fila.desde : null,
+          hasta: fila.cantidad.includes('–') ? fila.hasta : null
+        }));
+      });
       for (const { filas } of turnos) {
-        for (const { circuito, cantidad, hasta } of filas) {
+        for (const { circuito, municipio, cantidad, hasta } of filas) {
+          municipiosCircuito.set(circuito, municipio);
           if (!cantidad.includes('–')) totalesDeclarados.set(circuito, hasta);
-          totalesCircuito.set(circuito, Math.max(totalesCircuito.get(circuito) ?? 0, hasta));
+          totalesReferencia.set(circuito, Math.max(totalesReferencia.get(circuito) ?? 0, hasta));
         }
       }
-      for (const [circuito, total] of totalesDeclarados) totalesCircuito.set(circuito, total);
+      for (const [circuito, total] of totalesDeclarados) totalesReferencia.set(circuito, total);
       const HORA = 60 * 60 * 1000;
       const DIA = 24 * HORA;
       // El formato 2 guarda los segundos del reloj local de Montevideo como si fueran UTC.
       const DESFASE_MONTEVIDEO = 3 * HORA;
       const fallido = /no visitado|omitido|no se encuentra|no se pudo|no realizado/;
+      const edades = [
+        { clase: 'edad-ayer', etiqueta: 'Ayer' },
+        { clase: 'edad-anteayer', etiqueta: 'Antes de ayer' },
+        { clase: 'edad-tres-a-seis', etiqueta: 'Hace 3 a 6 días' },
+        { clase: 'edad-siete-o-mas', etiqueta: 'Hace 7 días o más' }
+      ];
       let datos = null;
       let consultando = false;
+      let filasPlanilla = filasIniciales;
+      let revision = null;
+      let puedeEditar = false;
+      let modoEdicion = false;
+      let editando = null;
+      let turnoEdicion = null;
+      let guardando = false;
+      let conflicto = false;
+      let inventario = new Map();
+      const filasPorElemento = new WeakMap();
+      let arrastre = null;
+
+      function lector(base, campo) {
+        const columna = base.columnas.find(nombre => nombre.trim().toLowerCase() === campo);
+        if (columna == null) throw new Error('Falta la columna ' + campo + '.');
+        const i = base.columnas.indexOf(columna);
+        const diccionario = base.dicc?.[columna];
+        return diccionario ? fila => diccionario[fila[i]] : fila => fila[i];
+      }
+
+      function normalizarCodigo(valor) {
+        return String(valor ?? '').trim().toUpperCase();
+      }
+
+      function municipioCircuito(circuito) {
+        return municipiosCircuito.get(circuito) || inventario.get(circuito)?.municipio
+          || /^(CH|[A-G])(?=\d)/.exec(circuito)?.[1] || '';
+      }
 
       function leerFecha(valor, compacta) {
         if (valor == null || valor === '') return NaN;
@@ -235,23 +425,17 @@
         }
         const columnas = base.columnas.map(columna => columna.trim().toLowerCase());
         const requeridas = ['circuito', 'contenedor', 'fecha_resuelto', 'incidente', 'estado'];
-        const lectores = requeridas.map(campo => {
-          const i = columnas.indexOf(campo);
-          if (i < 0) throw new Error('Falta la columna ' + campo + ' en la base de Zona Limpia.');
-          const diccionario = base.dicc?.[base.columnas[i]];
-          return diccionario ? fila => diccionario[fila[i]] : fila => fila[i];
-        });
+        const lectores = requeridas.map(campo => lector(base, campo));
         const [circuitoDe, puntoDe, fechaDe, incidenteDe, estadoDe] = lectores;
         const fechaCompacta = base.fechas?.includes(base.columnas[columnas.indexOf('fecha_resuelto')]);
         const ultimasAtenciones = new Map();
         const hoy = inicioDia(ahora);
-        const desde = hoy - 2 * DIA;
         const hasta = hoy + DIA;
         for (const fila of base.registros) {
           const fecha = leerFecha(fechaDe(fila), fechaCompacta);
-          if (!(fecha >= desde && fecha < hasta)) continue;
-          const circuito = String(circuitoDe(fila) ?? '').trim().toUpperCase();
-          if (!totalesCircuito.has(circuito)) continue;
+          if (!Number.isFinite(fecha) || fecha >= hasta) continue;
+          const circuito = normalizarCodigo(circuitoDe(fila));
+          if (!circuito) continue;
           const punto = Number(puntoDe(fila));
           if (!Number.isSafeInteger(punto) || punto < 1) continue;
           const incidente = String(incidenteDe(fila) ?? '').trim().toLowerCase();
@@ -269,18 +453,30 @@
         return Math.floor(relojLocal / DIA) * DIA + DESFASE_MONTEVIDEO;
       }
 
-      function puntosPendientes(desde, hasta, atenciones, inicio, fin) {
-        const tramos = [];
+      function puntosCircuito(circuito) {
+        const puntosInventario = inventario.get(circuito)?.puntos;
+        if (puntosInventario) return puntosInventario;
+        const total = totalesReferencia.get(circuito) ?? 0;
+        return Array.from({ length: total }, (_, i) => i + 1);
+      }
+
+      function puntosPendientes(puntos, fila, atenciones, hoy, inicio) {
+        const grupos = edades.map(() => []);
+        const fin = hoy + DIA;
         let cantidad = 0;
-        for (let punto = desde; punto <= hasta; punto++) {
+        for (const punto of puntos) {
+          if (fila.desde != null && (punto < fila.desde || punto > fila.hasta)) continue;
           const fecha = atenciones?.get(punto);
           if (fecha >= inicio && fecha < fin) continue;
           cantidad++;
+          const dias = (hoy - inicioDia(fecha)) / DIA;
+          const edad = dias === 1 ? 0 : dias === 2 ? 1 : dias >= 3 && dias < 7 ? 2 : 3;
+          const tramos = grupos[edad];
           const ultimo = tramos.at(-1);
           if (ultimo && ultimo[1] === punto - 1) ultimo[1] = punto;
           else tramos.push([punto, punto]);
         }
-        return { cantidad, tramos: tramos.map(([a, b]) => a === b ? String(a) : a + '–' + b) };
+        return { cantidad, grupos };
       }
 
       function crear(tag, texto, clase) {
@@ -288,6 +484,67 @@
         if (texto != null) el.textContent = texto;
         if (clase) el.className = clase;
         return el;
+      }
+
+      function municipioDeFila(fila) {
+        return municipioCircuito(fila.circuito) || fila.municipio;
+      }
+
+      function gruposContiguos(filas, clave) {
+        const grupos = [];
+        for (const fila of filas) {
+          const ultimo = grupos.at(-1);
+          if (ultimo && clave(ultimo[0]) === clave(fila)) ultimo.push(fila);
+          else grupos.push([fila]);
+        }
+        return grupos;
+      }
+
+      function completarFila(tr, fila, celdas, editable) {
+        const circuito = crear('th');
+        circuito.scope = 'row';
+        circuito.append(crear('span', fila.circuito, 'codigo-circuito'));
+        if (fila.desde != null) {
+          circuito.append(' ', crear('span', '(' + fila.desde + '–' + fila.hasta + ')', 'tramo-asignado'));
+        }
+        const controles = {};
+        if (editable) {
+          const nombre = circuito.textContent;
+          const camion = crear('textarea', null, 'camion-editable');
+          camion.rows = 1;
+          camion.maxLength = 120;
+          camion.value = fila.camion;
+          camion.placeholder = '—';
+          camion.setAttribute('aria-label', 'Camión de ' + nombre);
+          camion.addEventListener('change', () => cambiarCamion(fila, camion));
+          camion.addEventListener('keydown', evento => {
+            if (!['Enter', 'Escape'].includes(evento.key) || evento.isComposing) return;
+            evento.preventDefault();
+            if (evento.key === 'Escape') camion.value = fila.camion;
+            camion.blur();
+          });
+          const celdaCamion = crear('td', null, 'grupo-camion');
+          celdaCamion.append(camion);
+          tr.append(crear('td', municipioDeFila(fila), 'grupo-municipio'), celdaCamion);
+          controles.camion = camion;
+
+          const acciones = crear('div', null, 'circuito-acciones');
+          const editar = crear('button', 'Editar', 'fila-accion');
+          editar.type = 'button';
+          editar.setAttribute('aria-label', 'Editar ' + nombre);
+          editar.addEventListener('click', () => abrirEdicion(fila.turno, fila));
+          const mover = crearTirador(tr, fila, nombre);
+          acciones.append(mover, editar);
+          circuito.append(acciones);
+          controles.editar = editar;
+          controles.mover = mover;
+          filasPorElemento.set(tr, fila);
+        }
+        const cantidad = crear('td', '—', 'numeric');
+        const pendientes = crear('td', '—', 'numeric');
+        const detalle = crear('td', '—', 'result');
+        tr.append(circuito, cantidad, pendientes, detalle);
+        celdas.push({ fila, cantidad, pendientes, detalle, controles });
       }
 
       function crearTabla(filas, celdas) {
@@ -304,45 +561,32 @@
           cabecera.append(th);
         }
 
-        const municipios = new Map();
-        for (const fila of filas) {
-          if (!municipios.has(fila.municipio)) municipios.set(fila.municipio, new Map());
-          const camiones = municipios.get(fila.municipio);
-          if (!camiones.has(fila.camion)) camiones.set(fila.camion, []);
-          camiones.get(fila.camion).push(fila);
+        if (modoEdicion && revision != null) {
+          tabla.classList.add('tabla-editable');
+          const cuerpo = tabla.createTBody();
+          for (const fila of filas) completarFila(cuerpo.insertRow(), fila, celdas, true);
+          return tabla;
         }
 
-        const municipiosOrdenados = [...municipios.keys()].sort((a, b) => a.localeCompare(b, 'es-UY'));
-        for (const municipio of municipiosOrdenados) {
-          const camiones = municipios.get(municipio);
+        for (const filasMunicipio of gruposContiguos(filas, municipioDeFila)) {
           const grupo = tabla.createTBody();
-          const municipioEl = crear('th', municipio, 'grupo grupo-municipio');
+          const municipioEl = crear('th', municipioDeFila(filasMunicipio[0]), 'grupo grupo-municipio');
           municipioEl.scope = 'rowgroup';
-          municipioEl.rowSpan = [...camiones.values()].reduce((total, filasCamion) => total + filasCamion.length, 0);
-          for (const [camion, grupoFilas] of camiones) {
+          municipioEl.rowSpan = filasMunicipio.length;
+          for (const grupoFilas of gruposContiguos(filasMunicipio, fila => fila.camion)) {
             for (const [i, fila] of grupoFilas.entries()) {
               const tr = grupo.insertRow();
               if (i === 0) {
                 if (grupo.rows.length === 1) tr.append(municipioEl);
                 else tr.className = 'nuevo-camion';
-                const camionEl = crear('td', camion || '—', 'grupo grupo-camion');
+                const camionEl = crear('td', fila.camion || '—', 'grupo grupo-camion');
                 camionEl.rowSpan = grupoFilas.length;
                 if (grupo.rows.length - 1 + grupoFilas.length === municipioEl.rowSpan) {
                   camionEl.classList.add('ultimo-camion');
                 }
                 tr.append(camionEl);
               }
-              const circuito = crear('th');
-              circuito.scope = 'row';
-              circuito.append(crear('span', fila.circuito, 'codigo-circuito'));
-              if (fila.cantidad.includes('–')) {
-                circuito.append(' ', crear('span', '(' + fila.cantidad + ')', 'tramo-asignado'));
-              }
-              const cantidad = crear('td', totalesCircuito.get(fila.circuito), 'numeric');
-              const pendientes = crear('td', '—', 'numeric');
-              const detalle = crear('td', '—', 'result');
-              tr.append(circuito, cantidad, pendientes, detalle);
-              celdas.push({ fila, pendientes, detalle });
+              completarFila(tr, fila, celdas, false);
             }
           }
         }
@@ -350,42 +594,213 @@
       }
 
       function armarTurnos() {
-        turnos.forEach(({ nombre, filas }, i) => {
+        tablas.replaceChildren();
+        paneles.length = 0;
+        turnos.forEach(({ nombre }, i) => {
           const seccion = crear('section', null, 'card turno');
+          seccion.dataset.turno = i;
           const titulo = crear('h2', nombre);
           titulo.id = 'turno-' + i;
           const contenido = crear('div', null, 'table-box');
           contenido.id = 'tabla-' + i;
           const celdas = [];
+          const filas = filasPlanilla.filter(fila => fila.turno === i);
           const tabla = crearTabla(filas, celdas);
           tabla.setAttribute('aria-labelledby', titulo.id);
           contenido.append(tabla);
           seccion.append(titulo, contenido);
+          if (!filas.length) {
+            const pie = tabla.createTBody().insertRow().insertCell();
+            pie.colSpan = 6;
+            pie.textContent = 'Sin filas en este turno';
+          }
+          if (modoEdicion && revision != null) {
+            const acciones = crear('div', null, 'turno-acciones');
+            const agregar = crear('button', 'Agregar fila');
+            agregar.type = 'button';
+            agregar.setAttribute('aria-label', 'Agregar fila a ' + nombre);
+            agregar.addEventListener('click', () => abrirEdicion(i));
+            acciones.append(agregar);
+            titulo.after(acciones);
+          }
           tablas.append(seccion);
           paneles.push({ seccion, celdas });
         });
+        mostrarPendientes();
+      }
+
+      function crearTirador(tr, fila, nombre) {
+        const tirador = crear('button', null, 'mover-fila');
+        tirador.type = 'button';
+        tirador.setAttribute('aria-label', 'Mover ' + nombre);
+        tirador.title = 'Arrastrá la fila o hacé clic para elegir dónde moverla';
+        tirador.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 4h10M3 8h10M3 12h10"/></svg>';
+        let suprimirClick = false;
+        tirador.addEventListener('pointerdown', evento => {
+          if (evento.button !== 0 || !evento.isPrimary || guardando || arrastre) return;
+          suprimirClick = false;
+          tirador.setPointerCapture(evento.pointerId);
+          arrastre = {
+            id: evento.pointerId, fila, tr, x: evento.clientX, y: evento.clientY,
+            inicioX: evento.clientX, inicioY: evento.clientY, activo: false, destino: null
+          };
+        });
+        tirador.addEventListener('pointermove', evento => {
+          if (arrastre?.id !== evento.pointerId || guardando) return;
+          arrastre.x = evento.clientX;
+          arrastre.y = evento.clientY;
+          if (!arrastre.activo && Math.hypot(arrastre.x - arrastre.inicioX, arrastre.y - arrastre.inicioY) >= 5) {
+            arrastre.activo = suprimirClick = true;
+            tr.classList.add('fila-arrastrada');
+            arrastre.frame = requestAnimationFrame(desplazarArrastre);
+          }
+          if (arrastre.activo) marcarDestino();
+        });
+        tirador.addEventListener('pointerup', evento => {
+          if (arrastre?.id !== evento.pointerId) return;
+          const destino = arrastre.activo ? arrastre.destino : null;
+          terminarArrastre();
+          if (destino) moverFila(fila, destino.turno, destino.referencia, destino.despues);
+        });
+        tirador.addEventListener('lostpointercapture', evento => {
+          if (arrastre?.id === evento.pointerId) terminarArrastre();
+        });
+        tirador.addEventListener('click', evento => {
+          if (suprimirClick && evento.detail) {
+            suprimirClick = false;
+            return;
+          }
+          if (!guardando) abrirMover(fila);
+        });
+        return tirador;
+      }
+
+      function marcarDestino() {
+        const { x, y, fila } = arrastre;
+        const elemento = document.elementFromPoint(x, y);
+        const seccion = elemento?.closest('.turno');
+        const tr = elemento?.closest('tbody tr');
+        const referencia = filasPorElemento.get(tr);
+        const despues = tr ? y > tr.getBoundingClientRect().top + tr.offsetHeight / 2 : false;
+        const clase = referencia ? (despues ? 'soltar-despues' : 'soltar-antes') : 'soltar-turno';
+        const anterior = arrastre.destino;
+        const marcado = referencia ? tr : seccion;
+        if (anterior && anterior.marcado === marcado && anterior.clase === clase) return;
+        anterior?.marcado.classList.remove(anterior.clase);
+        arrastre.destino = null;
+        if (!seccion || referencia === fila) return;
+        marcado.classList.add(clase);
+        arrastre.destino = { marcado, clase, turno: Number(seccion.dataset.turno), referencia, despues };
+      }
+
+      function desplazarArrastre() {
+        if (!arrastre?.activo) return;
+        const borde = 56;
+        const paso = arrastre.y < borde ? -12 : arrastre.y > window.innerHeight - borde ? 12 : 0;
+        if (paso) {
+          window.scrollBy(0, paso);
+          marcarDestino();
+        }
+        arrastre.frame = requestAnimationFrame(desplazarArrastre);
+      }
+
+      function terminarArrastre() {
+        cancelAnimationFrame(arrastre.frame);
+        arrastre.tr.classList.remove('fila-arrastrada');
+        const destino = arrastre.destino;
+        destino?.marcado.classList.remove(destino.clase);
+        arrastre = null;
+      }
+
+      function abrirMover(fila) {
+        const filas = filasPlanilla.filter(otra => otra.turno === fila.turno);
+        const posicion = filas.indexOf(fila);
+        const acciones = document.getElementById('mover-destinos');
+        acciones.replaceChildren();
+        const agregar = (titulo, turno, referencia, despues) => {
+          const boton = crear('button', titulo);
+          boton.type = 'button';
+          boton.addEventListener('click', () => {
+            dialogoMover.close();
+            moverFila(fila, turno, referencia, despues);
+          });
+          acciones.append(boton);
+        };
+        if (posicion > 0) agregar('Subir una fila', fila.turno, filas[posicion - 1], false);
+        if (posicion < filas.length - 1) agregar('Bajar una fila', fila.turno, filas[posicion + 1], true);
+        turnos.forEach(({ nombre }, i) => {
+          if (i !== fila.turno) agregar('Pasar a ' + nombre, i);
+        });
+        dialogoMover.showModal();
+      }
+
+      function moverFila(fila, turno, referencia, despues) {
+        if (!modoEdicion || guardando || revision == null || !filasPlanilla.includes(fila)) return;
+        const movida = turno === fila.turno ? fila : { ...fila, turno };
+        const nuevas = filasPlanilla.filter(otra => otra !== fila);
+        const ultima = nuevas.findLastIndex(otra => otra.turno === turno);
+        const destino = referencia ? nuevas.indexOf(referencia) + Number(despues) : ultima + 1;
+        nuevas.splice(!referencia && ultima < 0 ? nuevas.length : destino, 0, movida);
+        if (nuevas.every((otra, i) => otra === filasPlanilla[i])) return;
+        guardarCambioDirecto(nuevas, movida, 'mover');
+      }
+
+      function cambiarCamion(fila, entrada) {
+        const camion = entrada.value.trim().replace(/\s*[\r\n]+\s*/g, ' ');
+        if (camion === fila.camion) {
+          entrada.value = camion;
+          return;
+        }
+        if (!modoEdicion || guardando || revision == null || !filasPlanilla.includes(fila)) {
+          entrada.value = fila.camion;
+          return;
+        }
+        const editada = { ...fila, camion };
+        const nuevas = filasPlanilla.map(otra => otra === fila ? editada : otra);
+        guardarCambioDirecto(nuevas, editada, null, () => { entrada.value = fila.camion; });
       }
 
       function mostrarPendientes() {
-        if (!datos) return;
-        const ahora = Date.now();
-        const hoy = inicioDia(ahora);
-        const inicio = hoy - Number(rango.value) * DIA;
-        const fin = hoy + DIA;
+        const hoy = inicioDia(Date.now());
+        const diasSeleccionados = Number(rango.value);
+        const inicio = hoy - diasSeleccionados * DIA;
+        leyendaAtencion.hidden = !datos;
+        const referencias = edades.slice(diasSeleccionados).map(({ clase, etiqueta }) => {
+          const texto = clase === 'edad-siete-o-mas' ? etiqueta : 'Atendidos ' + etiqueta.toLowerCase();
+          return crear('span', texto, clase);
+        });
+        leyendaAtencion.replaceChildren(crear('strong', 'Colores según la última atención'), ...referencias);
         const anchosTurnos = paneles.map(({ seccion, celdas }) => {
           const longitudes = [];
-          for (const { fila, pendientes, detalle } of celdas) {
+          for (const { fila, cantidad: total, pendientes, detalle } of celdas) {
+            const puntos = puntosCircuito(fila.circuito);
+            total.textContent = puntos.length || '—';
+            total.title = puntos.length && !inventario.has(fila.circuito)
+              ? 'Cantidad tomada de la planilla de referencia' : '';
+            if (!puntos.length || !datos) continue;
             const atenciones = datos.ultimasAtenciones.get(fila.circuito);
-            const { cantidad, tramos } = puntosPendientes(fila.desde, fila.hasta, atenciones, inicio, fin);
-            pendientes.replaceChildren(crear('span', String(cantidad), cantidad ? 'count' : 'ok'));
-            const rangos = crear('span', null, cantidad ? 'ranges' : 'muted');
-            if (!cantidad) rangos.textContent = '—';
-            tramos.forEach((tramo, i) => {
-              if (i) rangos.append(' ');
-              rangos.append(crear('span', tramo + (i < tramos.length - 1 ? ',' : ''), 'range-piece'));
+            const { cantidad, grupos } = puntosPendientes(puntos, fila, atenciones, hoy, inicio);
+            pendientes.textContent = cantidad;
+            detalle.textContent = cantidad ? '' : '—';
+            let anchoMaximo = 0;
+            grupos.forEach((tramos, edad) => {
+              if (!tramos.length) return;
+              const { clase, etiqueta } = edades[edad];
+              const renglon = crear('span', null, 'rangos-edad ' + clase);
+              renglon.title = clase === 'edad-siete-o-mas'
+                ? 'Última atención hace 7 días o más, o sin registro'
+                : 'Última atención ' + etiqueta.toLowerCase();
+              renglon.setAttribute('role', 'group');
+              renglon.setAttribute('aria-label', renglon.title);
+              tramos.forEach(([desde, hasta], i) => {
+                if (i) renglon.append(' ');
+                const tramo = desde === hasta ? String(desde) : desde + '-' + hasta;
+                renglon.append(crear('span', tramo + (i < tramos.length - 1 ? ',' : ''), 'range-piece'));
+              });
+              anchoMaximo = Math.max(anchoMaximo, renglon.textContent.length);
+              detalle.append(renglon);
             });
-            detalle.replaceChildren(rangos);
-            longitudes.push(rangos.textContent.length);
+            longitudes.push(anchoMaximo);
           }
           // Las listas más largas orientan el ancho, con límites para que se sigan leyendo las otras columnas.
           const [mayor = 0, segunda = mayor] = longitudes.sort((a, b) => b - a);
@@ -396,8 +811,20 @@
         tablas.style.setProperty('--anchos-turnos', anchosTurnos.join(' '));
       }
 
-      async function bajarBase() {
-        const url = COM2.URL + '/storage/v1/object/public/bases/zona-limpia.json.gz';
+      document.addEventListener('copy', evento => {
+        const seleccion = window.getSelection();
+        if (!evento.clipboardData || !seleccion?.rangeCount || seleccion.isCollapsed) return;
+        const nodo = seleccion.getRangeAt(0).commonAncestorContainer;
+        const elemento = nodo.nodeType === Node.ELEMENT_NODE ? nodo : nodo.parentElement;
+        if (!elemento?.closest('#tablas td.result')) return;
+        const texto = seleccion.toString().trim();
+        if (!/[\r\n]/.test(texto)) return;
+        evento.clipboardData.setData('text/plain', texto.replace(/\s*[\r\n]+\s*/g, ', '));
+        evento.preventDefault();
+      });
+
+      async function bajarBase(nombre) {
+        const url = COM2.URL + '/storage/v1/object/public/bases/' + nombre + '.json.gz';
         const respuesta = await fetch(url + '?_=' + Date.now(), {
           cache: 'no-store', signal: AbortSignal.timeout(45000)
         });
@@ -410,12 +837,266 @@
         return JSON.parse(new TextDecoder().decode(bytes));
       }
 
+      async function cargarInventario() {
+        try {
+          const base = await bajarBase('contenedores');
+          const circuitoDe = lector(base, 'circuito');
+          const puntoDe = lector(base, 'numero_contenedor');
+          const municipioDe = lector(base, 'municipio');
+          const catalogo = new Map();
+          for (const fila of base.registros) {
+            const circuito = normalizarCodigo(circuitoDe(fila));
+            const punto = Number(puntoDe(fila));
+            if (!circuito || !Number.isSafeInteger(punto) || punto < 1) continue;
+            if (!catalogo.has(circuito)) {
+              catalogo.set(circuito, { municipio: normalizarCodigo(municipioDe(fila)), puntos: new Set() });
+            }
+            catalogo.get(circuito).puntos.add(punto);
+          }
+          for (const entrada of catalogo.values()) entrada.puntos = [...entrada.puntos].sort((a, b) => a - b);
+          inventario = catalogo;
+          mostrarPendientes();
+          if (puedeEditar) {
+            cargarOpcionesCircuito();
+            if (dialogo.open) mostrarInfoEdicion();
+          }
+        } catch (error) {
+          console.warn('Error al cargar el inventario de circuitos', error);
+        }
+      }
+
+      function consultaPlanilla() {
+        return COM2.sb.from('zona_limpia_semaforo_planilla');
+      }
+
+      async function cargarPlanilla() {
+        revision = null;
+        botonEdicion.disabled = true;
+        reintentar.hidden = true;
+        try {
+          const { data, error } = await consultaPlanilla().select('filas,revision').eq('id', 1)
+            .abortSignal(AbortSignal.timeout(12000)).single();
+          if (error) throw error;
+          filasPlanilla = data.filas ?? filasIniciales;
+          revision = data.revision;
+          estadoPlanilla.hidden = true;
+        } catch (error) {
+          console.warn('Error al cargar la planilla del semáforo', error);
+          estadoPlanilla.textContent = 'No se pudo cargar la planilla guardada. Se muestran las tablas de referencia.';
+          filasPlanilla = filasIniciales;
+          estadoPlanilla.hidden = false;
+          reintentar.hidden = false;
+        } finally {
+          if (revision == null) modoEdicion = false;
+          actualizarBotonEdicion();
+          armarTurnos();
+        }
+      }
+
+      function actualizarBotonEdicion() {
+        botonEdicion.disabled = revision == null || guardando;
+        botonEdicion.setAttribute('aria-pressed', String(modoEdicion));
+        botonEdicion.title = modoEdicion ? 'Volver a la vista de consulta' : 'Activar edición';
+      }
+
+      function cargarOpcionesCircuito() {
+        const seleccion = campos.circuito.value;
+        const codigos = new Set(totalesReferencia.keys());
+        for (const codigo of inventario.keys()) {
+          if (municipioCircuito(codigo)) codigos.add(codigo);
+        }
+        const opcion = (texto, valor) => {
+          const el = crear('option', texto);
+          el.value = valor;
+          return el;
+        };
+        const sinCircuito = opcion('Elegí un circuito', '');
+        sinCircuito.disabled = true;
+        campos.circuito.replaceChildren(sinCircuito,
+          ...[...codigos].sort().map(codigo => opcion(codigo, codigo)),
+          opcion('Otro circuito…', otroCircuito));
+        campos.circuito.value = seleccion;
+      }
+
+      function codigoSeleccionado() {
+        return normalizarCodigo(campos.circuito.value === otroCircuito
+          ? campos.circuito_nuevo.value : campos.circuito.value);
+      }
+
+      function actualizarCircuitoNuevo() {
+        const manual = campos.circuito.value === otroCircuito;
+        etiquetaCircuitoNuevo.hidden = campos.circuito_nuevo.disabled = !manual;
+        campos.circuito_nuevo.required = manual;
+      }
+
+      function mostrarInfoEdicion() {
+        const codigo = codigoSeleccionado();
+        const puntos = puntosCircuito(codigo).length;
+        if (!codigo) {
+          infoEdicion.textContent = campos.circuito.value === otroCircuito
+            ? 'Ingresá el código del circuito.' : 'Elegí un circuito de la lista.';
+          return;
+        }
+        infoEdicion.textContent = puntos
+          ? puntos + ' puntos. Para asignar un tramo, ingresá un rango como 1–54.'
+          : 'Los puntos se mostrarán cuando haya datos.';
+      }
+
+      function abrirEdicion(turno, fila = null) {
+        if (!modoEdicion || guardando || revision == null || dialogo.open) return;
+        editando = fila;
+        turnoEdicion = turno;
+        conflicto = false;
+        formulario.reset();
+        const codigo = fila?.circuito ?? '';
+        campos.circuito.value = codigo;
+        if (codigo && campos.circuito.value !== codigo) {
+          campos.circuito.value = otroCircuito;
+          campos.circuito_nuevo.value = codigo;
+        }
+        actualizarCircuitoNuevo();
+        campos.camion.disabled = Boolean(fila);
+        document.getElementById('campo-camion-nuevo').hidden = Boolean(fila);
+        campos.tramo.value = fila?.desde == null ? '' : fila.desde + '–' + fila.hasta;
+        eliminar.hidden = !fila;
+        eliminar.disabled = guardar.disabled = false;
+        errorEdicion.hidden = true;
+        document.getElementById('editar-titulo').textContent = fila ? 'Editar fila' : 'Agregar fila';
+        mostrarInfoEdicion();
+        dialogo.showModal();
+      }
+
+      async function guardarPlanilla(nuevas) {
+        guardando = true;
+        actualizarBotonEdicion();
+        tablas.inert = true;
+        estadoPlanilla.hidden = true;
+        try {
+          const { data, error } = await consultaPlanilla().update({ filas: nuevas })
+            .eq('id', 1).eq('revision', revision).select('revision')
+            .abortSignal(AbortSignal.timeout(12000)).maybeSingle();
+          if (error) throw error;
+          if (!data) return false;
+          filasPlanilla = nuevas;
+          revision = data.revision;
+          return true;
+        } finally {
+          guardando = false;
+          tablas.inert = false;
+          actualizarBotonEdicion();
+        }
+      }
+
+      async function guardarCambioDirecto(nuevas, fila, control, deshacer) {
+        try {
+          if (await guardarPlanilla(nuevas)) {
+            armarTurnos();
+            paneles[fila.turno].celdas.find(celda => celda.fila === fila)?.controles[control]?.focus({ preventScroll: true });
+            return;
+          }
+          await cargarPlanilla();
+          if (revision == null) return;
+          estadoPlanilla.textContent = 'La planilla cambió. Se cargó la última versión. Volvé a intentar el cambio.';
+        } catch (error) {
+          console.warn('Error al guardar la planilla del semáforo', error);
+          deshacer?.();
+          estadoPlanilla.textContent = 'No se pudo confirmar el guardado. Volvé a intentar el cambio.';
+        }
+        estadoPlanilla.hidden = false;
+      }
+
+      async function guardarEdicion(fila) {
+        if (!modoEdicion || revision == null || guardando || conflicto) return;
+        const nuevas = [...filasPlanilla];
+        const indice = editando ? nuevas.indexOf(editando) : -1;
+        if (indice >= 0) nuevas.splice(indice, 1, ...(fila ? [fila] : []));
+        else nuevas.push(fila);
+
+        formulario.setAttribute('aria-busy', 'true');
+        cancelar.disabled = eliminar.disabled = guardar.disabled = true;
+        errorEdicion.hidden = true;
+        try {
+          if (!await guardarPlanilla(nuevas)) {
+            conflicto = true;
+            errorEdicion.textContent = 'La planilla cambió desde que la abriste o tu permiso cambió. Cerrá esta edición para cargar la última versión.';
+            errorEdicion.hidden = false;
+            return;
+          }
+          const turno = fila?.turno ?? editando.turno;
+          dialogo.close();
+          armarTurnos();
+          const panel = paneles[turno];
+          const volver = panel.celdas.find(celda => celda.fila === fila)?.controles.editar
+            ?? panel.seccion.querySelector('.turno-acciones button');
+          volver.focus({ preventScroll: true });
+        } catch (error) {
+          console.warn('Error al guardar la planilla del semáforo', error);
+          errorEdicion.textContent = 'No se pudo confirmar el guardado. Podés reintentar.';
+          errorEdicion.hidden = false;
+        } finally {
+          formulario.removeAttribute('aria-busy');
+          cancelar.disabled = false;
+          eliminar.disabled = guardar.disabled = conflicto;
+        }
+      }
+
+      function prepararEditor() {
+        botonEdicion.hidden = false;
+        cargarOpcionesCircuito();
+        botonEdicion.addEventListener('click', () => {
+          if (revision == null || guardando) return;
+          modoEdicion = !modoEdicion;
+          actualizarBotonEdicion();
+          armarTurnos();
+        });
+        const actualizarTramo = () => {
+          if (codigoSeleccionado() !== editando?.circuito) campos.tramo.value = '';
+          mostrarInfoEdicion();
+        };
+        campos.circuito.addEventListener('change', () => {
+          actualizarCircuitoNuevo();
+          actualizarTramo();
+        });
+        campos.circuito_nuevo.addEventListener('input', mostrarInfoEdicion);
+        campos.circuito_nuevo.addEventListener('change', actualizarTramo);
+        formulario.addEventListener('submit', evento => {
+          evento.preventDefault();
+          const circuito = codigoSeleccionado();
+          const municipio = municipioCircuito(circuito) || (circuito === editando?.circuito ? editando.municipio : '');
+          const tramo = campos.tramo.value.trim();
+          const limites = /^(\d+)\s*[-–]\s*(\d+)$/.exec(tramo);
+          const desde = limites ? Number(limites[1]) : null;
+          const hasta = limites ? Number(limites[2]) : null;
+          if (!municipio || (tramo && (!desde || hasta < desde || hasta > 2147483647))) {
+            errorEdicion.textContent = !municipio
+              ? 'Ingresá un circuito cuyo código permita identificar el municipio.'
+              : 'Si asignás un tramo, usá un rango válido como 1–54.';
+            errorEdicion.hidden = false;
+            return;
+          }
+          guardarEdicion({
+            circuito, municipio, desde, hasta,
+            turno: turnoEdicion, camion: editando?.camion ?? campos.camion.value.trim()
+          });
+        });
+        cancelar.addEventListener('click', () => dialogo.close());
+        eliminar.addEventListener('click', () => {
+          if (editando && confirm('¿Eliminar esta fila de la planilla?')) guardarEdicion(null);
+        });
+        dialogo.addEventListener('cancel', evento => {
+          if (guardando) evento.preventDefault();
+        });
+        dialogo.addEventListener('close', () => {
+          if (conflicto) cargarPlanilla();
+        });
+      }
+
       async function cargar() {
         if (consultando) return;
         consultando = true;
         tablas.setAttribute('aria-busy', 'true');
         try {
-          datos = preparar(await bajarBase());
+          datos = preparar(await bajarBase('zona-limpia'));
           mostrarPendientes();
           estadoBase.hidden = true;
           estadoBase.textContent = '';
@@ -445,12 +1126,15 @@
           COM2.carga.error('No se pudo cargar la planilla de circuitos.', () => location.reload());
           return;
         }
+        puedeEditar = ['auxiliar', 'sup_gral', 'admin'].includes(perfil.rol);
+        if (puedeEditar) prepararEditor();
+        reintentar.addEventListener('click', cargarPlanilla);
         armarTurnos();
         rango.addEventListener('change', () => {
           mostrarPendientes();
           cargar();
         });
-        await cargar();
+        await Promise.all([cargarPlanilla(), cargar(), cargarInventario()]);
       });
     })();
   </script>
