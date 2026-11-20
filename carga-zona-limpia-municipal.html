@@ -26,7 +26,7 @@ body { margin:0; background:var(--bg); color:var(--text); font:15px 'DM Sans',sy
 .wrap { max-width:var(--com2-ancho); margin:auto; padding:14px var(--com2-margen) 36px; display:grid; gap:14px }
 .card { min-width:0; background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px }
 fieldset { min-width:0; padding:0; margin:0; border:0 }
-.campos { display:grid; grid-template-columns:1.2fr repeat(4,minmax(0,1fr)); gap:12px }
+.campos { display:grid; grid-template-columns:minmax(0,1.2fr) repeat(3,minmax(0,1fr)); gap:12px }
 label { display:grid; gap:6px; min-width:0; color:var(--muted); font-size:14px; font-weight:700 }
 input,select,button { font:inherit }
 input,select {
@@ -41,6 +41,7 @@ input,select {
   background:linear-gradient(135deg,#162a4d,#193563 55%,#1b3f74); color:#fff; font-weight:700; cursor:pointer;
 }
 .boton.sec { background:var(--card); color:var(--text); border-color:var(--border) }
+.boton.borrar { min-height:34px; padding:5px 10px; color:var(--error) }
 .boton:disabled { opacity:.55; cursor:default }
 .estado { margin:0; color:var(--muted); font-size:14px }
 .estado.ok { color:var(--ok) }
@@ -80,14 +81,13 @@ td:not(:first-child) { white-space:nowrap }
 
 <main class="wrap" id="contenido" hidden>
   <form class="card" id="formulario" aria-label="Carga Zona Limpia Municipal">
-    <fieldset id="campos-carga">
+    <fieldset id="campos-carga" disabled>
       <div class="campos">
         <label>Circuito
           <select name="circuito" required>
-            <option value="" disabled selected>Elegí un circuito</option>
+            <option value="" disabled selected>Cargando circuitos…</option>
           </select>
         </label>
-        <label>Hora inicio <input name="hora_inicio" type="time" required></label>
         <label>Hora fin <input name="hora_fin" type="time" required></label>
         <label>Desde cont. <input name="desde_cont" type="number" inputmode="numeric" min="1" max="2147483647" step="1" required></label>
         <label>Hasta cont. <input name="hasta_cont" type="number" inputmode="numeric" min="1" max="2147483647" step="1" required></label>
@@ -103,22 +103,37 @@ td:not(:first-child) { white-space:nowrap }
     <div class="tabla" id="tabla-cargas" role="region" aria-label="Cargas ingresadas" tabindex="0" hidden>
       <table>
         <thead><tr>
-          <th scope="col">Circuito</th><th scope="col">Hora inicio</th><th scope="col">Hora fin</th>
+          <th scope="col">Circuito</th><th scope="col">Hora fin</th>
           <th scope="col">Desde cont.</th><th scope="col">Hasta cont.</th><th scope="col">Fecha de carga</th>
+          <th scope="col" id="columna-acciones" hidden>Acciones</th>
         </tr></thead>
         <tbody id="filas"></tbody>
       </table>
     </div>
     <p class="estado" id="estado-lista" role="status"></p>
+    <p class="estado" id="estado-borrado" role="status"></p>
     <button class="boton sec" type="button" id="mas" hidden>Cargar más</button>
   </section>
 </main>
 
-<script src="assets/planilla-zona-limpia.js?v=20261120"></script>
 <script>
 const tablaSupabase = 'zona_limpia_municipal_cargas';
-const columnas = 'id,circuito,hora_inicio,hora_fin,desde_cont,hasta_cont,creado';
+const columnas = 'id,circuito,hora_fin,desde_cont,hasta_cont,creado';
 const porPagina = 50;
+const ordenarCircuitos = new Intl.Collator('es-UY', { numeric:true }).compare;
+// Inventario público del 20/11/2026. Respaldo si Storage no responde.
+const circuitosRespaldo = `1 2 3 4 5 6 7 8 9 10 11 12
+  A105 A106 A107 A108 A109 A110 A111 A112 A113 A114 A116 A204
+  A205 B01 B02 B03 B04 B05 B06 B07 B101 B102 B103 C101
+  C102 C103 C104 C105 C106 C107 C108 C109 C110 C111 C112 C113
+  C114 C115 C116 CH101 CH102 CH103 CH104 CH105 CH106 CH107 CH108 CH109
+  CH110 CH111 CH112 CH113 CH114 CH115 CH116 CH117 CH118 CH119 CH120 CH121
+  CH122 CH123 D101 D102 D103 D104 D105 D106 D107 D108 D109 D110
+  D111 D112 D113 D114 D115 D116 D117 D118 D119 D120 E101 E102
+  E103 E104 E105 E106 E107 E108 E109 E110 E111 E112 E113 E114
+  E115 E136 F101 F102 F103 F104 F105 F106 F107 F108 F109 F110
+  F111 F112 F113 F114 F115 G101 G103 G104 G105 G106 G107 G108
+  G109 G110 G111 G112 G113 G114 G115 G116`.split(/\s+/);
 const fechaLocal = new Intl.DateTimeFormat('es-UY', {
   dateStyle: 'short', timeStyle: 'short', timeZone: 'America/Montevideo'
 });
@@ -129,11 +144,13 @@ const estadoFormulario = document.getElementById('estado-formulario');
 const tabla = document.getElementById('tabla-cargas');
 const filas = document.getElementById('filas');
 const estadoLista = document.getElementById('estado-lista');
+const estadoBorrado = document.getElementById('estado-borrado');
 const mas = document.getElementById('mas');
 const visibles = new Set();
 let cursor = null;
 let solicitud = null;
 let guardando = false;
+let esAdmin = false;
 
 function aviso(elemento, mensaje, tipo = '') {
   elemento.textContent = mensaje;
@@ -145,16 +162,72 @@ function mostrarFila(carga, alPrincipio = false) {
   visibles.add(carga.id);
   const fila = document.createElement('tr');
   const valores = [
-    carga.circuito, carga.hora_inicio.slice(0, 5), carga.hora_fin.slice(0, 5),
+    carga.circuito, carga.hora_fin.slice(0, 5),
     carga.desde_cont, carga.hasta_cont, fechaLocal.format(new Date(carga.creado))
   ];
   for (const valor of valores) {
     const celda = fila.insertCell();
     celda.textContent = valor;
   }
+  if (esAdmin) {
+    const borrar = document.createElement('button');
+    borrar.type = 'button';
+    borrar.className = 'boton sec borrar';
+    borrar.textContent = 'Borrar';
+    borrar.addEventListener('click', () => borrarCarga(carga, fila, borrar));
+    fila.insertCell().append(borrar);
+  }
   if (alPrincipio) filas.prepend(fila);
   else filas.append(fila);
   tabla.hidden = false;
+}
+
+async function borrarCarga(carga, fila, boton) {
+  if (!confirm(`¿Borrar la carga del circuito ${carga.circuito}, contenedores ${carga.desde_cont} a ${carga.hasta_cont}?`)) return;
+  boton.disabled = true;
+  aviso(estadoBorrado, 'Borrando carga…');
+  try {
+    const { data, error } = await COM2.sb.from(tablaSupabase).delete().eq('id', carga.id).select('id');
+    if (error || !data?.length) throw error ?? new Error('La fila no se borró.');
+    visibles.delete(carga.id);
+    fila.remove();
+    tabla.hidden = !visibles.size;
+    aviso(estadoBorrado, 'Carga borrada.', 'ok');
+    if (!visibles.size && mas.hidden) aviso(estadoLista, 'Todavía no hay cargas.');
+  } catch {
+    boton.disabled = false;
+    aviso(estadoBorrado, 'No se pudo borrar la carga. Volvé a intentar.', 'error');
+  }
+}
+
+async function cargarCircuitos() {
+  let codigos = circuitosRespaldo;
+  try {
+    const url = COM2.URL + '/storage/v1/object/public/bases/contenedores.json.gz';
+    const respuesta = await fetch(url, { signal:AbortSignal.timeout(8000) });
+    if (!respuesta.ok) throw new Error('No se pudo leer el inventario.');
+    const bytes = new Uint8Array(await respuesta.arrayBuffer());
+    const texto = bytes[0] === 0x1f && bytes[1] === 0x8b
+      ? await new Response(new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))).text()
+      : new TextDecoder().decode(bytes);
+    const base = JSON.parse(texto);
+    const indice = base.columnas.findIndex(columna => columna.trim().toLowerCase() === 'circuito');
+    if (indice < 0) throw new Error('Falta la columna de circuitos.');
+    const diccionario = base.dicc?.[base.columnas[indice]];
+    const unicos = new Set();
+    for (const fila of base.registros) {
+      const valor = diccionario ? diccionario[fila[indice]] : fila[indice];
+      const codigo = String(valor ?? '').trim().toUpperCase();
+      if (codigo && codigo.length <= 80) unicos.add(codigo);
+    }
+    if (unicos.size) codigos = [...unicos].sort(ordenarCircuitos);
+  } catch {
+    // El respaldo permite seguir cargando mientras el inventario está inaccesible.
+  }
+  const selector = formulario.elements.circuito;
+  selector.options[0].text = 'Elegí un circuito';
+  for (const codigo of codigos) selector.add(new Option(codigo, codigo));
+  campos.disabled = false;
 }
 
 async function cargarPagina() {
@@ -203,7 +276,6 @@ formulario.addEventListener('submit', async evento => {
   const registro = {
     solicitud: solicitud ??= crypto.randomUUID(),
     circuito: datos.get('circuito'),
-    hora_inicio: datos.get('hora_inicio'),
     hora_fin: datos.get('hora_fin'),
     desde_cont: Number(datos.get('desde_cont')),
     hasta_cont: Number(datos.get('hasta_cont'))
@@ -236,14 +308,13 @@ formulario.addEventListener('submit', async evento => {
 
 async function iniciar() {
   try {
-    if (!await COM2.acceso()) return;
-    const circuitos = new Set(window.PlanillaZonaLimpia.flatMap(turno => turno.filas.map(fila => fila.circuito)));
-    for (const circuito of [...circuitos].sort()) {
-      formulario.elements.circuito.add(new Option(circuito, circuito));
-    }
+    const perfil = await COM2.acceso();
+    if (!perfil) return;
+    esAdmin = perfil.rol === 'admin';
+    document.getElementById('columna-acciones').hidden = !esAdmin;
     document.getElementById('contenido').hidden = false;
     COM2.carga.listo();
-    await cargarPagina();
+    await Promise.all([cargarCircuitos(), cargarPagina()]);
   } catch (error) {
     COM2.carga.error('No se pudo abrir la página.', () => location.reload());
   }
