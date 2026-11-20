@@ -26,13 +26,15 @@ body { margin:0; background:var(--bg); color:var(--text); font:15px 'DM Sans',sy
 .wrap { max-width:var(--com2-ancho); margin:auto; padding:14px var(--com2-margen) 36px; display:grid; gap:14px }
 .card { min-width:0; background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px }
 fieldset { min-width:0; padding:0; margin:0; border:0 }
-.campos { display:grid; grid-template-columns:minmax(0,1.2fr) repeat(3,minmax(0,1fr)); gap:12px }
+.campos { display:grid; grid-template-columns:minmax(0,1.2fr) minmax(0,1.6fr) repeat(2,minmax(0,1fr)); gap:12px }
 label { display:grid; gap:6px; min-width:0; color:var(--muted); font-size:14px; font-weight:700 }
 input,select,button { font:inherit }
 input,select {
   width:100%; min-width:0; min-height:44px; border:1px solid var(--border); border-radius:10px;
   padding:8px 10px; background:var(--bg); color:var(--text); font-size:16px;
 }
+input[type="datetime-local"] { display:block; max-width:100% }
+input[type="datetime-local"]::-webkit-date-and-time-value { text-align:left }
 :focus-visible { outline:2px solid var(--focus); outline-offset:2px }
 .acciones { display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin-top:14px }
 #guardar { margin-left:auto }
@@ -56,7 +58,7 @@ td:not(:first-child) { white-space:nowrap }
 #estado-lista:not(:empty) { margin:12px 0 0 }
 @media (max-width:700px) {
   .campos { grid-template-columns:repeat(2,minmax(0,1fr)) }
-  .campos label:first-child { grid-column:1 / -1 }
+  .campos .campo-ancho { grid-column:1 / -1 }
   .card { padding:12px }
 }
 </style>
@@ -83,12 +85,14 @@ td:not(:first-child) { white-space:nowrap }
   <form class="card" id="formulario" aria-label="Carga Zona Limpia Municipal">
     <fieldset id="campos-carga" disabled>
       <div class="campos">
-        <label>Circuito
+        <label class="campo-ancho">Circuito
           <select name="circuito" required>
             <option value="" disabled selected>Cargando circuitos…</option>
           </select>
         </label>
-        <label>Hora fin <input name="hora_fin" type="time" required></label>
+        <label class="campo-ancho">Fecha y hora de fin
+          <input name="fecha_hora_fin" type="datetime-local" max="9999-12-31T23:59" required>
+        </label>
         <label>Desde cont. <input name="desde_cont" type="number" inputmode="numeric" min="1" max="2147483647" step="1" required></label>
         <label>Hasta cont. <input name="hasta_cont" type="number" inputmode="numeric" min="1" max="2147483647" step="1" required></label>
       </div>
@@ -103,7 +107,7 @@ td:not(:first-child) { white-space:nowrap }
     <div class="tabla" id="tabla-cargas" role="region" aria-label="Cargas ingresadas" tabindex="0" hidden>
       <table>
         <thead><tr>
-          <th scope="col">Circuito</th><th scope="col">Hora fin</th>
+          <th scope="col">Circuito</th><th scope="col">Fecha y hora de fin</th>
           <th scope="col">Desde cont.</th><th scope="col">Hasta cont.</th><th scope="col">Fecha de carga</th>
           <th scope="col" id="columna-acciones" hidden>Acciones</th>
         </tr></thead>
@@ -118,7 +122,7 @@ td:not(:first-child) { white-space:nowrap }
 
 <script>
 const tablaSupabase = 'zona_limpia_municipal_cargas';
-const columnas = 'id,circuito,hora_fin,desde_cont,hasta_cont,creado';
+const columnas = 'id,circuito,fecha_hora_fin,hora_fin,desde_cont,hasta_cont,creado';
 const porPagina = 50;
 const ordenarCircuitos = new Intl.Collator('es-UY', { numeric:true }).compare;
 // Inventario público del 20/11/2026. Respaldo si Storage no responde.
@@ -157,12 +161,19 @@ function aviso(elemento, mensaje, tipo = '') {
   elemento.className = tipo ? 'estado ' + tipo : 'estado';
 }
 
+function mostrarFechaFin(carga) {
+  if (!carga.fecha_hora_fin) return carga.hora_fin.slice(0, 5);
+  const fecha = carga.fecha_hora_fin;
+  const [anio, mes, dia] = fecha.slice(0, 10).split('-');
+  return `${dia}/${mes}/${anio} ${fecha.slice(11, 16)}`;
+}
+
 function mostrarFila(carga, alPrincipio = false) {
   if (visibles.has(carga.id)) return;
   visibles.add(carga.id);
   const fila = document.createElement('tr');
   const valores = [
-    carga.circuito, carga.hora_fin.slice(0, 5),
+    carga.circuito, mostrarFechaFin(carga),
     carga.desde_cont, carga.hasta_cont, fechaLocal.format(new Date(carga.creado))
   ];
   for (const valor of valores) {
@@ -273,10 +284,12 @@ formulario.addEventListener('submit', async evento => {
   if (!formulario.reportValidity()) return;
 
   const datos = new FormData(formulario);
+  const fechaHoraFin = datos.get('fecha_hora_fin');
   const registro = {
     solicitud: solicitud ??= crypto.randomUUID(),
     circuito: datos.get('circuito'),
-    hora_fin: datos.get('hora_fin'),
+    fecha_hora_fin: fechaHoraFin,
+    hora_fin: fechaHoraFin.split('T')[1],
     desde_cont: Number(datos.get('desde_cont')),
     hasta_cont: Number(datos.get('hasta_cont'))
   };
