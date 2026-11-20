@@ -1,0 +1,572 @@
+<!doctype html>
+<html lang="es-UY">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex">
+  <title>COM 2</title>
+  <link rel="icon" href="assets/logo-ciemsa.png">
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap">
+  <link rel="stylesheet" href="assets/barra.css?v=202611171930">
+  <link rel="stylesheet" href="assets/carga.css?v=202611131600">
+  <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+  <script defer src="assets/comun.js?v=202611171900"></script>
+  <script defer src="assets/acceso.js?v=202611130130"></script>
+  <style>
+    :root {
+      color-scheme: light;
+      --semaforo-ancho: 1920px;
+      --semaforo-margen: clamp(12px, 1.3vw, 24px);
+      --bg: #f7f6f3;
+      --panel: #fff;
+      --text: #16243a;
+      --muted: #526078;
+      --line: #dbe3ed;
+      --line-soft: #e8edf3;
+      --surface: #f4f7fb;
+      --blue: #184a91;
+      --pending: #83410b;
+      --pending-bg: #fff1dd;
+      --ok: #146346;
+    }
+    [data-theme="dark"] {
+      color-scheme: dark;
+      --bg: #16191f;
+      --panel: #202631;
+      --text: #edf2fa;
+      --muted: #b0bfd3;
+      --line: #404c60;
+      --line-soft: #354051;
+      --surface: #252e3c;
+      --blue: #a5c9ff;
+      --pending: #ffd098;
+      --pending-bg: #493323;
+      --ok: #9de4c6;
+    }
+    *, *::before, *::after { box-sizing: border-box; }
+    [hidden] { display: none !important; }
+    body { margin: 0; background: var(--bg); color: var(--text); font: 1rem/1.45 'DM Sans', system-ui, sans-serif; }
+    button, select { font: inherit; color: inherit; }
+    :focus-visible { outline: 2px solid var(--blue); outline-offset: 3px; }
+    .wrap { width: 100%; max-width: var(--semaforo-ancho); margin: 0 auto; padding: 14px var(--semaforo-margen) 40px; }
+    .dashboard { display: grid; gap: 14px; }
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; }
+    .toolbar { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 14px; }
+    .field { display: flex; align-items: center; gap: 8px; }
+    .field label { font-size: .82rem; font-weight: 700; }
+    #rango {
+      appearance: none;
+      min-height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background-color: var(--panel);
+      padding: 4px 30px 4px 9px;
+      font-size: .82rem;
+      font-weight: 600;
+      cursor: pointer;
+      background-image: url("data:image/svg+xml,%3Csvg width='14' height='14' viewBox='0 0 16 16' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='m4 6 4 4 4-4' fill='none' stroke='%23758fb3' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+    }
+    #rango:hover { border-color: var(--blue); }
+    @supports (appearance: base-select) and selector(::picker(select)) {
+      #rango, #rango::picker(select) { appearance: base-select; }
+      #rango {
+        align-items: center;
+        gap: 8px;
+        width: max-content;
+        min-width: 10.5rem;
+        justify-content: space-between;
+        background-image: none;
+        padding-inline: 9px;
+      }
+      #rango::picker-icon { color: var(--blue); font-size: .72rem; }
+      #rango::picker(select) {
+        margin-top: 5px;
+        padding: 4px;
+        border: 1px solid var(--line);
+        border-radius: 9px;
+        background: var(--panel);
+        color: var(--text);
+        box-shadow: 0 5px 16px #0f172a26;
+      }
+      #rango option {
+        min-height: 33px;
+        gap: 6px;
+        border-radius: 5px;
+        padding: 5px 7px;
+        font: 600 .82rem/1.4 'DM Sans', system-ui, sans-serif;
+        cursor: pointer;
+      }
+      #rango option:hover, #rango option:focus-visible, #rango option:checked {
+        background: var(--surface);
+        color: var(--blue);
+      }
+      #rango option::checkmark { order: 1; margin-left: auto; }
+    }
+    .muted, .source-status { color: var(--muted); }
+    .source-status { margin: 0; font-size: .875rem; color: var(--pending); }
+    .turnos {
+      display: grid; grid-template-columns: var(--anchos-turnos, repeat(3, minmax(0, 1fr))); align-items: start;
+      background: var(--bg); gap: 14px;
+    }
+    .turno { --ancho-detalle: var(--ancho-puntos, 29%); min-width: 0; overflow: hidden; }
+    .turno h2 {
+      margin: 0; padding: 10px 12px; text-align: center;
+      background: linear-gradient(135deg, #162a4d 0%, #193563 55%, #1b3f74 100%); color: #fff;
+      border-bottom: 1px solid var(--line); font-size: 1rem; font-weight: 700;
+    }
+    .table-box { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; font-size: .925rem; }
+    col.municipio { width: calc((100% - var(--ancho-detalle)) * .21); }
+    col.camion { width: calc((100% - var(--ancho-detalle)) * .23); }
+    col.circuito { width: calc((100% - var(--ancho-detalle)) * .18); }
+    col.cantidad { width: calc((100% - var(--ancho-detalle)) * .19); }
+    col.pendientes { width: calc((100% - var(--ancho-detalle)) * .19); }
+    col.detalle { width: var(--ancho-detalle); }
+    thead { background: var(--surface); color: var(--muted); }
+    th, td { padding: 10px 14px; border-bottom: 1px solid var(--line-soft); text-align: center; vertical-align: middle; overflow-wrap: anywhere; }
+    thead th { vertical-align: middle; font-size: .83rem; font-weight: 700; overflow-wrap: normal; }
+    thead th + th { border-left: 1px solid var(--line); }
+    tbody:last-child tr:last-child > *, tbody:last-child .grupo-municipio, tbody:last-child .ultimo-camion { border-bottom: 0; }
+    tbody + tbody tr:first-child > * { border-top: 2px solid var(--line); }
+    tbody tr.nuevo-camion > * { border-top: 1px solid var(--line); }
+    .grupo { font-weight: 600; }
+    .grupo-municipio { border-right: 1px solid var(--line-soft); }
+    .grupo-camion { border-right: 1px solid var(--line-soft); }
+    @media (hover: hover) {
+      tbody tr:has(> :not(.grupo):hover) > :not(.grupo) { background: var(--surface); }
+    }
+    tbody th[scope="row"] { color: var(--blue); }
+    .numeric { text-align: center; font-variant-numeric: tabular-nums; }
+    .codigo-circuito, .tramo-asignado { white-space: nowrap; }
+    .tramo-asignado { font-size: .85em; color: var(--muted); }
+    .result { font-variant-numeric: tabular-nums; }
+    .count {
+      display: inline-block; padding: 1px 7px; border-radius: 6px; background: var(--pending-bg);
+      color: var(--pending); font-size: .8rem; font-weight: 700; white-space: nowrap;
+    }
+    .ranges { font-weight: 600; line-height: 1.3; }
+    .range-piece { white-space: nowrap; }
+    .ok { color: var(--ok); font-weight: 700; }
+    @media (min-width: 1100px) {
+      table { font-size: .82rem; }
+      thead th { font-size: clamp(.66rem, .88vw, .75rem); padding-inline: 1px; }
+      th, td { padding: 8px 3px; }
+    }
+    @media (max-width: 1099px) {
+      .turnos { grid-template-columns: minmax(0, 1fr); }
+    }
+    @media (max-width: 650px) {
+      .turno { --ancho-detalle: clamp(23%, var(--ancho-puntos, 29%), 36%); }
+      table { font-size: .82rem; }
+      thead th { font-size: .67rem; padding-inline: 1px; }
+      th, td { padding: 8px 3px; }
+      .count { font-size: .73rem; }
+    }
+  </style>
+</head>
+<body>
+  <header class="barra">
+    <a class="com2-marca com2-volver" href="./" aria-label="Volver"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg><span>Volver</span></a>
+    <div class="barra-in">
+      <div class="titulo">
+        <h1>Semáforo de Zona Limpia</h1>
+      </div>
+    </div>
+  </header>
+  <div class="com2-carga" id="com2-carga" role="status" aria-live="polite">
+    <div class="com2-rueda" aria-hidden="true"></div>
+    <p class="com2-carga-t">Cargando información</p>
+  </div>
+  <main class="wrap">
+    <div class="dashboard" id="dashboard" hidden>
+      <div class="toolbar">
+        <div class="field">
+          <label for="rango">Días de atención</label>
+          <select id="rango">
+            <option value="0">Hoy</option>
+            <option value="1">Hoy y ayer</option>
+            <option value="2">Hoy, ayer y antes de ayer</option>
+          </select>
+        </div>
+        <p class="source-status" id="estado-base" role="status" hidden></p>
+      </div>
+      <div class="turnos" id="tablas"></div>
+    </div>
+  </main>
+  <script id="planilla" type="application/json">[
+  {"nombre": "Matutino", "filas": [
+    {"municipio": "CH", "camion": "VCV1", "circuito": "CH101", "cantidad": "69", "desde": 1, "hasta": 69},
+    {"municipio": "CH", "camion": "VCV1", "circuito": "CH102", "cantidad": "77", "desde": 1, "hasta": 77},
+    {"municipio": "CH", "camion": "VCV1", "circuito": "CH103", "cantidad": "56", "desde": 1, "hasta": 56},
+    {"municipio": "CH", "camion": "VCV2", "circuito": "CH121", "cantidad": "55", "desde": 1, "hasta": 55},
+    {"municipio": "CH", "camion": "VCV2", "circuito": "CH120", "cantidad": "53", "desde": 1, "hasta": 53},
+    {"municipio": "CH", "camion": "VCV3", "circuito": "CH119", "cantidad": "43", "desde": 1, "hasta": 43},
+    {"municipio": "CH", "camion": "VCV3", "circuito": "CH118", "cantidad": "47", "desde": 1, "hasta": 47},
+    {"municipio": "CH", "camion": "VCV4", "circuito": "CH117", "cantidad": "48", "desde": 1, "hasta": 48},
+    {"municipio": "CH", "camion": "VCV4", "circuito": "CH116", "cantidad": "42", "desde": 1, "hasta": 42},
+    {"municipio": "D", "camion": "ROSADO 1", "circuito": "D120", "cantidad": "98", "desde": 1, "hasta": 98},
+    {"municipio": "D", "camion": "ROSADO 2", "circuito": "D119", "cantidad": "82", "desde": 1, "hasta": 82},
+    {"municipio": "D", "camion": "ROSADO 3", "circuito": "D118", "cantidad": "82", "desde": 1, "hasta": 82},
+    {"municipio": "D", "camion": "POLTICOR 1", "circuito": "D117", "cantidad": "103", "desde": 1, "hasta": 103},
+    {"municipio": "D", "camion": "SALIR ADELANTE", "circuito": "D116", "cantidad": "96", "desde": 1, "hasta": 96},
+    {"municipio": "D", "camion": "ROSADO 4", "circuito": "D115", "cantidad": "80", "desde": 1, "hasta": 80},
+    {"municipio": "D", "camion": "CIEMSA 1", "circuito": "D111", "cantidad": "100", "desde": 1, "hasta": 100},
+    {"municipio": "D", "camion": "CIEMSA 2", "circuito": "D110", "cantidad": "51", "desde": 1, "hasta": 51},
+    {"municipio": "D", "camion": "ROSADO 5", "circuito": "D104", "cantidad": "49", "desde": 1, "hasta": 49},
+    {"municipio": "D", "camion": "ROSADO 5", "circuito": "D103", "cantidad": "52", "desde": 1, "hasta": 52},
+    {"municipio": "F", "camion": "DG 1", "circuito": "F115", "cantidad": "104", "desde": 1, "hasta": 104},
+    {"municipio": "F", "camion": "DG 2", "circuito": "F112", "cantidad": "96", "desde": 1, "hasta": 96},
+    {"municipio": "F", "camion": "SALIR ADELANTE", "circuito": "F114", "cantidad": "97", "desde": 1, "hasta": 97},
+    {"municipio": "F", "camion": "CIEMSA", "circuito": "F110", "cantidad": "32", "desde": 1, "hasta": 32},
+    {"municipio": "F", "camion": "SALIR ADELANTE", "circuito": "F108", "cantidad": "100", "desde": 1, "hasta": 100},
+    {"municipio": "F", "camion": "DG 3", "circuito": "F104", "cantidad": "90", "desde": 1, "hasta": 90},
+    {"municipio": "F", "camion": "CIEMSA", "circuito": "F106", "cantidad": "78", "desde": 1, "hasta": 78},
+    {"municipio": "F", "camion": "CIEMSA", "circuito": "F102", "cantidad": "100", "desde": 1, "hasta": 100},
+    {"municipio": "F", "camion": "DG 4", "circuito": "F101", "cantidad": "112", "desde": 1, "hasta": 112},
+    {"municipio": "E", "camion": "POLTICOR 1", "circuito": "E136", "cantidad": "22", "desde": 1, "hasta": 22},
+    {"municipio": "E", "camion": "POLTICOR 1", "circuito": "E106", "cantidad": "64", "desde": 1, "hasta": 64},
+    {"municipio": "E", "camion": "POLTICOR 1", "circuito": "E103", "cantidad": "63", "desde": 1, "hasta": 63},
+    {"municipio": "E", "camion": "POLTICOR 1", "circuito": "E102", "cantidad": "100", "desde": 1, "hasta": 100},
+    {"municipio": "E", "camion": "POLTICOR 1", "circuito": "E101", "cantidad": "107", "desde": 1, "hasta": 107},
+    {"municipio": "E", "camion": "POLTICOR 2", "circuito": "E107", "cantidad": "78", "desde": 1, "hasta": 78},
+    {"municipio": "E", "camion": "POLTICOR 2", "circuito": "E110", "cantidad": "52", "desde": 1, "hasta": 52},
+    {"municipio": "E", "camion": "POLTICOR 2", "circuito": "E115", "cantidad": "59", "desde": 1, "hasta": 59},
+    {"municipio": "E", "camion": "POLTICOR 2", "circuito": "E111", "cantidad": "77", "desde": 1, "hasta": 77},
+    {"municipio": "C", "camion": "MC DINALI", "circuito": "C116", "cantidad": "41", "desde": 1, "hasta": 41},
+    {"municipio": "C", "camion": "MC DINALI", "circuito": "C115", "cantidad": "96", "desde": 1, "hasta": 96},
+    {"municipio": "C", "camion": "MC DINALI", "circuito": "C114", "cantidad": "1–54", "desde": 1, "hasta": 54},
+    {"municipio": "C", "camion": "MC DINALI", "circuito": "C114", "cantidad": "55–108", "desde": 55, "hasta": 108},
+    {"municipio": "C", "camion": "MC DINALI", "circuito": "C113", "cantidad": "101", "desde": 1, "hasta": 101},
+    {"municipio": "C", "camion": "MC DINALI", "circuito": "C112", "cantidad": "1–53", "desde": 1, "hasta": 53},
+    {"municipio": "C", "camion": "MC DINALI", "circuito": "C112", "cantidad": "54–108", "desde": 54, "hasta": 108},
+    {"municipio": "C", "camion": "MC DINALI", "circuito": "C111", "cantidad": "95", "desde": 1, "hasta": 95},
+    {"municipio": "C", "camion": "MC DINALI", "circuito": "C110", "cantidad": "96", "desde": 1, "hasta": 96},
+    {"municipio": "C", "camion": "MC DINALI", "circuito": "C109", "cantidad": "1–51", "desde": 1, "hasta": 51},
+    {"municipio": "C", "camion": "MC DINALI", "circuito": "C109", "cantidad": "52–102", "desde": 52, "hasta": 102},
+    {"municipio": "C", "camion": "MC COM", "circuito": "C108", "cantidad": "103", "desde": 1, "hasta": 103},
+    {"municipio": "C", "camion": "MC COM", "circuito": "C107", "cantidad": "100", "desde": 1, "hasta": 100},
+    {"municipio": "C", "camion": "MC COM", "circuito": "C106", "cantidad": "101", "desde": 1, "hasta": 101},
+    {"municipio": "C", "camion": "MC COM", "circuito": "C105", "cantidad": "1–52", "desde": 1, "hasta": 52},
+    {"municipio": "C", "camion": "MC COM", "circuito": "C105", "cantidad": "53–112", "desde": 53, "hasta": 112},
+    {"municipio": "C", "camion": "MC COM", "circuito": "C104", "cantidad": "106", "desde": 1, "hasta": 106},
+    {"municipio": "C", "camion": "MC COM", "circuito": "C103", "cantidad": "1–57", "desde": 1, "hasta": 57},
+    {"municipio": "C", "camion": "MC COM", "circuito": "C103", "cantidad": "58–115", "desde": 58, "hasta": 115},
+    {"municipio": "C", "camion": "MC COM", "circuito": "C102", "cantidad": "100", "desde": 1, "hasta": 100},
+    {"municipio": "C", "camion": "MC COM", "circuito": "C101", "cantidad": "102", "desde": 1, "hasta": 102}
+  ]},
+  {"nombre": "Vespertino", "filas": [
+    {"municipio": "C", "camion": "MC DINALI", "circuito": "C116", "cantidad": "41", "desde": 1, "hasta": 41},
+    {"municipio": "C", "camion": "MC DINALI", "circuito": "C115", "cantidad": "96", "desde": 1, "hasta": 96},
+    {"municipio": "C", "camion": "MC DINALI", "circuito": "C114", "cantidad": "108", "desde": 1, "hasta": 108},
+    {"municipio": "C", "camion": "MC DINALI", "circuito": "C113", "cantidad": "101", "desde": 1, "hasta": 101},
+    {"municipio": "C", "camion": "MC DINALI", "circuito": "C112", "cantidad": "106", "desde": 1, "hasta": 106},
+    {"municipio": "C", "camion": "MC DINALI", "circuito": "C111", "cantidad": "95", "desde": 1, "hasta": 95},
+    {"municipio": "C", "camion": "MC DINALI", "circuito": "C110", "cantidad": "96", "desde": 1, "hasta": 96},
+    {"municipio": "C", "camion": "MC DINALI", "circuito": "C109", "cantidad": "102", "desde": 1, "hasta": 102},
+    {"municipio": "C", "camion": "MC COM", "circuito": "C108", "cantidad": "103", "desde": 1, "hasta": 103},
+    {"municipio": "C", "camion": "MC COM", "circuito": "C107", "cantidad": "100", "desde": 1, "hasta": 100},
+    {"municipio": "C", "camion": "MC COM", "circuito": "C106", "cantidad": "101", "desde": 1, "hasta": 101},
+    {"municipio": "C", "camion": "MC COM", "circuito": "C105", "cantidad": "112", "desde": 1, "hasta": 112},
+    {"municipio": "C", "camion": "MC COM", "circuito": "C104", "cantidad": "106", "desde": 1, "hasta": 106},
+    {"municipio": "C", "camion": "MC COM", "circuito": "C103", "cantidad": "115", "desde": 1, "hasta": 115},
+    {"municipio": "C", "camion": "MC COM", "circuito": "C102", "cantidad": "1–50", "desde": 1, "hasta": 50},
+    {"municipio": "C", "camion": "MC COM", "circuito": "C102", "cantidad": "51–100", "desde": 51, "hasta": 100},
+    {"municipio": "C", "camion": "MC COM", "circuito": "C101", "cantidad": "1–51", "desde": 1, "hasta": 51},
+    {"municipio": "C", "camion": "MC COM", "circuito": "C101", "cantidad": "52–102", "desde": 52, "hasta": 102},
+    {"municipio": "D", "camion": "ROSADO 1", "circuito": "D114", "cantidad": "87", "desde": 1, "hasta": 87},
+    {"municipio": "D", "camion": "ROSADO 2", "circuito": "D113", "cantidad": "91", "desde": 1, "hasta": 91},
+    {"municipio": "D", "camion": "ROSADO 3", "circuito": "D112", "cantidad": "106", "desde": 1, "hasta": 106},
+    {"municipio": "D", "camion": "SALIR ADELANTE", "circuito": "D109", "cantidad": "51", "desde": 1, "hasta": 51},
+    {"municipio": "D", "camion": "CIEMSA", "circuito": "D108", "cantidad": "38", "desde": 1, "hasta": 38},
+    {"municipio": "D", "camion": "CIEMSA", "circuito": "D107", "cantidad": "33", "desde": 1, "hasta": 33},
+    {"municipio": "D", "camion": "DG 1", "circuito": "D106", "cantidad": "53", "desde": 1, "hasta": 53},
+    {"municipio": "D", "camion": "POLTICOR", "circuito": "D105", "cantidad": "52", "desde": 1, "hasta": 52},
+    {"municipio": "D", "camion": "ROSADO 5", "circuito": "D102", "cantidad": "60", "desde": 1, "hasta": 60},
+    {"municipio": "D", "camion": "ROSADO 5", "circuito": "D101", "cantidad": "47", "desde": 1, "hasta": 47},
+    {"municipio": "D", "camion": "ROSADO 4", "circuito": "D117", "cantidad": "103", "desde": 1, "hasta": 103},
+    {"municipio": "D", "camion": "ROSADO 4", "circuito": "D116", "cantidad": "96", "desde": 1, "hasta": 96},
+    {"municipio": "F", "camion": "DG 2", "circuito": "F111", "cantidad": "103", "desde": 1, "hasta": 103},
+    {"municipio": "F", "camion": "DG 3", "circuito": "F113", "cantidad": "88", "desde": 1, "hasta": 88},
+    {"municipio": "F", "camion": "DG 4", "circuito": "F115", "cantidad": "104", "desde": 1, "hasta": 104},
+    {"municipio": "F", "camion": "DG 5", "circuito": "F101", "cantidad": "112", "desde": 1, "hasta": 112},
+    {"municipio": "F", "camion": "DG 6", "circuito": "F114", "cantidad": "97", "desde": 1, "hasta": 97},
+    {"municipio": "F", "camion": "SALIR ADELANTE", "circuito": "F103", "cantidad": "95", "desde": 1, "hasta": 95},
+    {"municipio": "F", "camion": "POLTICOR 1", "circuito": "F109", "cantidad": "116", "desde": 1, "hasta": 116},
+    {"municipio": "F", "camion": "POLTICOR 2", "circuito": "F105", "cantidad": "104", "desde": 1, "hasta": 104},
+    {"municipio": "F", "camion": "CIEMSA 1", "circuito": "F107", "cantidad": "89", "desde": 1, "hasta": 89},
+    {"municipio": "F", "camion": "CIEMSA 2", "circuito": "F108", "cantidad": "100", "desde": 1, "hasta": 100},
+    {"municipio": "F", "camion": "CIEMSA 3", "circuito": "F112", "cantidad": "96", "desde": 1, "hasta": 96}
+  ]},
+  {"nombre": "Nocturno", "filas": [
+    {"municipio": "CH", "camion": "DG 1", "circuito": "CH104", "cantidad": "53", "desde": 1, "hasta": 53},
+    {"municipio": "CH", "camion": "DG 1", "circuito": "CH105", "cantidad": "69", "desde": 1, "hasta": 69},
+    {"municipio": "CH", "camion": "DG 1", "circuito": "CH106", "cantidad": "63", "desde": 1, "hasta": 63},
+    {"municipio": "CH", "camion": "DG 2", "circuito": "CH107", "cantidad": "69", "desde": 1, "hasta": 69},
+    {"municipio": "CH", "camion": "DG 2", "circuito": "CH108", "cantidad": "58", "desde": 1, "hasta": 58},
+    {"municipio": "CH", "camion": "DG 2", "circuito": "CH109", "cantidad": "56", "desde": 1, "hasta": 56},
+    {"municipio": "CH", "camion": "DG 3", "circuito": "CH110", "cantidad": "36", "desde": 1, "hasta": 36},
+    {"municipio": "CH", "camion": "DG 3", "circuito": "CH111", "cantidad": "44", "desde": 1, "hasta": 44},
+    {"municipio": "CH", "camion": "DG 3", "circuito": "CH112", "cantidad": "45", "desde": 1, "hasta": 45},
+    {"municipio": "CH", "camion": "DG 4", "circuito": "CH113", "cantidad": "36", "desde": 1, "hasta": 36},
+    {"municipio": "CH", "camion": "DG 4", "circuito": "CH114", "cantidad": "42", "desde": 1, "hasta": 42},
+    {"municipio": "CH", "camion": "DG 4", "circuito": "CH115", "cantidad": "50", "desde": 1, "hasta": 50}
+  ]}
+]</script>
+  <script>
+    (() => {
+      'use strict';
+
+      const turnos = JSON.parse(document.getElementById('planilla').textContent);
+      const rango = document.getElementById('rango');
+      const estadoBase = document.getElementById('estado-base');
+      const tablas = document.getElementById('tablas');
+      const paneles = [];
+      const totalesCircuito = new Map();
+      const totalesDeclarados = new Map();
+      for (const { filas } of turnos) {
+        for (const { circuito, cantidad, hasta } of filas) {
+          if (!cantidad.includes('–')) totalesDeclarados.set(circuito, hasta);
+          totalesCircuito.set(circuito, Math.max(totalesCircuito.get(circuito) ?? 0, hasta));
+        }
+      }
+      for (const [circuito, total] of totalesDeclarados) totalesCircuito.set(circuito, total);
+      const HORA = 60 * 60 * 1000;
+      const DIA = 24 * HORA;
+      // El formato 2 guarda los segundos del reloj local de Montevideo como si fueran UTC.
+      const DESFASE_MONTEVIDEO = 3 * HORA;
+      const fallido = /no visitado|omitido|no se encuentra|no se pudo|no realizado/;
+      let datos = null;
+      let consultando = false;
+
+      function leerFecha(valor, compacta) {
+        if (valor == null || valor === '') return NaN;
+        if (compacta) return Number(valor) * 1000 + DESFASE_MONTEVIDEO;
+        const fecha = String(valor).trim().replace(' ', 'T');
+        return Date.parse(/(?:z|[+-]\d{2}:?\d{2})$/i.test(fecha) ? fecha : fecha + '-03:00');
+      }
+
+      function preparar(base, ahora = Date.now()) {
+        if (!Array.isArray(base.columnas) || !Array.isArray(base.registros) || !base.registros.length) {
+          throw new Error('La base de Zona Limpia no trae registros.');
+        }
+        const columnas = base.columnas.map(columna => columna.trim().toLowerCase());
+        const requeridas = ['circuito', 'contenedor', 'fecha_resuelto', 'incidente', 'estado'];
+        const lectores = requeridas.map(campo => {
+          const i = columnas.indexOf(campo);
+          if (i < 0) throw new Error('Falta la columna ' + campo + ' en la base de Zona Limpia.');
+          const diccionario = base.dicc?.[base.columnas[i]];
+          return diccionario ? fila => diccionario[fila[i]] : fila => fila[i];
+        });
+        const [circuitoDe, puntoDe, fechaDe, incidenteDe, estadoDe] = lectores;
+        const fechaCompacta = base.fechas?.includes(base.columnas[columnas.indexOf('fecha_resuelto')]);
+        const ultimasAtenciones = new Map();
+        const hoy = inicioDia(ahora);
+        const desde = hoy - 2 * DIA;
+        const hasta = hoy + DIA;
+        for (const fila of base.registros) {
+          const fecha = leerFecha(fechaDe(fila), fechaCompacta);
+          if (!(fecha >= desde && fecha < hasta)) continue;
+          const circuito = String(circuitoDe(fila) ?? '').trim().toUpperCase();
+          if (!totalesCircuito.has(circuito)) continue;
+          const punto = Number(puntoDe(fila));
+          if (!Number.isSafeInteger(punto) || punto < 1) continue;
+          const incidente = String(incidenteDe(fila) ?? '').trim().toLowerCase();
+          const estado = String(estadoDe(fila) ?? '').trim().toLowerCase();
+          if (!incidente || fallido.test(incidente) || !['cerrado', 'resuelto'].includes(estado)) continue;
+          if (!ultimasAtenciones.has(circuito)) ultimasAtenciones.set(circuito, new Map());
+          const puntos = ultimasAtenciones.get(circuito);
+          if ((puntos.get(punto) ?? -Infinity) < fecha) puntos.set(punto, fecha);
+        }
+        return { ultimasAtenciones, generado: leerFecha(base.generado, false) };
+      }
+
+      function inicioDia(ahora) {
+        const relojLocal = ahora - DESFASE_MONTEVIDEO;
+        return Math.floor(relojLocal / DIA) * DIA + DESFASE_MONTEVIDEO;
+      }
+
+      function puntosPendientes(desde, hasta, atenciones, inicio, fin) {
+        const tramos = [];
+        let cantidad = 0;
+        for (let punto = desde; punto <= hasta; punto++) {
+          const fecha = atenciones?.get(punto);
+          if (fecha >= inicio && fecha < fin) continue;
+          cantidad++;
+          const ultimo = tramos.at(-1);
+          if (ultimo && ultimo[1] === punto - 1) ultimo[1] = punto;
+          else tramos.push([punto, punto]);
+        }
+        return { cantidad, tramos: tramos.map(([a, b]) => a === b ? String(a) : a + '–' + b) };
+      }
+
+      function crear(tag, texto, clase) {
+        const el = document.createElement(tag);
+        if (texto != null) el.textContent = texto;
+        if (clase) el.className = clase;
+        return el;
+      }
+
+      function crearTabla(filas, celdas) {
+        const tabla = crear('table');
+        const grupoColumnas = crear('colgroup');
+        for (const clase of ['municipio', 'camion', 'circuito', 'cantidad', 'pendientes', 'detalle']) {
+          grupoColumnas.append(crear('col', null, clase));
+        }
+        tabla.append(grupoColumnas);
+        const cabecera = tabla.createTHead().insertRow();
+        for (const titulo of ['Municipio', 'Camión', 'Circuito', 'Cantidad de puntos', 'Cantidad sin atender', 'Puntos sin atender']) {
+          const th = crear('th', titulo);
+          th.scope = 'col';
+          cabecera.append(th);
+        }
+
+        const municipios = new Map();
+        for (const fila of filas) {
+          if (!municipios.has(fila.municipio)) municipios.set(fila.municipio, new Map());
+          const camiones = municipios.get(fila.municipio);
+          if (!camiones.has(fila.camion)) camiones.set(fila.camion, []);
+          camiones.get(fila.camion).push(fila);
+        }
+
+        const municipiosOrdenados = [...municipios.keys()].sort((a, b) => a.localeCompare(b, 'es-UY'));
+        for (const municipio of municipiosOrdenados) {
+          const camiones = municipios.get(municipio);
+          const grupo = tabla.createTBody();
+          const municipioEl = crear('th', municipio, 'grupo grupo-municipio');
+          municipioEl.scope = 'rowgroup';
+          municipioEl.rowSpan = [...camiones.values()].reduce((total, filasCamion) => total + filasCamion.length, 0);
+          for (const [camion, grupoFilas] of camiones) {
+            for (const [i, fila] of grupoFilas.entries()) {
+              const tr = grupo.insertRow();
+              if (i === 0) {
+                if (grupo.rows.length === 1) tr.append(municipioEl);
+                else tr.className = 'nuevo-camion';
+                const camionEl = crear('td', camion || '—', 'grupo grupo-camion');
+                camionEl.rowSpan = grupoFilas.length;
+                if (grupo.rows.length - 1 + grupoFilas.length === municipioEl.rowSpan) {
+                  camionEl.classList.add('ultimo-camion');
+                }
+                tr.append(camionEl);
+              }
+              const circuito = crear('th');
+              circuito.scope = 'row';
+              circuito.append(crear('span', fila.circuito, 'codigo-circuito'));
+              if (fila.cantidad.includes('–')) {
+                circuito.append(' ', crear('span', '(' + fila.cantidad + ')', 'tramo-asignado'));
+              }
+              const cantidad = crear('td', totalesCircuito.get(fila.circuito), 'numeric');
+              const pendientes = crear('td', '—', 'numeric');
+              const detalle = crear('td', '—', 'result');
+              tr.append(circuito, cantidad, pendientes, detalle);
+              celdas.push({ fila, pendientes, detalle });
+            }
+          }
+        }
+        return tabla;
+      }
+
+      function armarTurnos() {
+        turnos.forEach(({ nombre, filas }, i) => {
+          const seccion = crear('section', null, 'card turno');
+          const titulo = crear('h2', nombre);
+          titulo.id = 'turno-' + i;
+          const contenido = crear('div', null, 'table-box');
+          contenido.id = 'tabla-' + i;
+          const celdas = [];
+          const tabla = crearTabla(filas, celdas);
+          tabla.setAttribute('aria-labelledby', titulo.id);
+          contenido.append(tabla);
+          seccion.append(titulo, contenido);
+          tablas.append(seccion);
+          paneles.push({ seccion, celdas });
+        });
+      }
+
+      function mostrarPendientes() {
+        if (!datos) return;
+        const ahora = Date.now();
+        const hoy = inicioDia(ahora);
+        const inicio = hoy - Number(rango.value) * DIA;
+        const fin = hoy + DIA;
+        const anchosTurnos = paneles.map(({ seccion, celdas }) => {
+          const longitudes = [];
+          for (const { fila, pendientes, detalle } of celdas) {
+            const atenciones = datos.ultimasAtenciones.get(fila.circuito);
+            const { cantidad, tramos } = puntosPendientes(fila.desde, fila.hasta, atenciones, inicio, fin);
+            pendientes.replaceChildren(crear('span', String(cantidad), cantidad ? 'count' : 'ok'));
+            const rangos = crear('span', null, cantidad ? 'ranges' : 'muted');
+            if (!cantidad) rangos.textContent = '—';
+            tramos.forEach((tramo, i) => {
+              if (i) rangos.append(' ');
+              rangos.append(crear('span', tramo + (i < tramos.length - 1 ? ',' : ''), 'range-piece'));
+            });
+            detalle.replaceChildren(rangos);
+            longitudes.push(rangos.textContent.length);
+          }
+          // Las listas más largas orientan el ancho, con límites para que se sigan leyendo las otras columnas.
+          const [mayor = 0, segunda = mayor] = longitudes.sort((a, b) => b - a);
+          const ancho = Math.min(40, Math.max(22, 18 + (mayor + segunda) / 4));
+          seccion.style.setProperty('--ancho-puntos', ancho + '%');
+          return 'minmax(0, ' + (0.55 + ancho / 60).toFixed(3) + 'fr)';
+        });
+        tablas.style.setProperty('--anchos-turnos', anchosTurnos.join(' '));
+      }
+
+      async function bajarBase() {
+        const url = COM2.URL + '/storage/v1/object/public/bases/zona-limpia.json.gz';
+        const respuesta = await fetch(url + '?_=' + Date.now(), {
+          cache: 'no-store', signal: AbortSignal.timeout(45000)
+        });
+        if (!respuesta.ok) throw new Error('Zona Limpia: HTTP ' + respuesta.status);
+        const bytes = new Uint8Array(await respuesta.arrayBuffer());
+        if (bytes[0] === 0x1f && bytes[1] === 0x8b) {
+          const flujo = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'));
+          return new Response(flujo).json();
+        }
+        return JSON.parse(new TextDecoder().decode(bytes));
+      }
+
+      async function cargar() {
+        if (consultando) return;
+        consultando = true;
+        tablas.setAttribute('aria-busy', 'true');
+        try {
+          datos = preparar(await bajarBase());
+          mostrarPendientes();
+          estadoBase.hidden = true;
+          estadoBase.textContent = '';
+        } catch (error) {
+          console.warn('Error al cargar Zona Limpia', error);
+          estadoBase.textContent = datos
+            ? 'No se pudo consultar Zona Limpia. Se muestran los últimos datos cargados.'
+            : 'No se pudo consultar Zona Limpia. Recargá la página o cambiá el rango para reintentar.';
+          estadoBase.hidden = false;
+        } finally {
+          tablas.removeAttribute('aria-busy');
+          consultando = false;
+          document.getElementById('dashboard').hidden = false;
+          COM2.carga.listo();
+        }
+      }
+
+      document.addEventListener('DOMContentLoaded', async () => {
+        if (typeof window.COM2?.acceso !== 'function') {
+          document.querySelector('.com2-rueda').hidden = true;
+          document.querySelector('.com2-carga-t').textContent = 'Abrí esta página desde COM 2 para consultar los circuitos.';
+          return;
+        }
+        const perfil = await COM2.acceso();
+        if (!perfil) return;
+        armarTurnos();
+        rango.addEventListener('change', () => {
+          mostrarPendientes();
+          cargar();
+        });
+        await cargar();
+      });
+    })();
+  </script>
+</body>
+</html>
