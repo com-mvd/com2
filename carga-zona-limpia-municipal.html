@@ -25,17 +25,17 @@ body { margin:0; background:var(--bg); color:var(--text); font:15px 'DM Sans',sy
 .barra { z-index:1200 }
 .wrap { max-width:var(--com2-ancho); margin:auto; padding:14px var(--com2-margen) 36px; display:grid; gap:14px }
 .card { min-width:0; background:var(--card); border:1px solid var(--border); border-radius:16px; padding:16px }
-h2 { margin:0 0 14px; font-size:16px }
 fieldset { min-width:0; padding:0; margin:0; border:0 }
 .campos { display:grid; grid-template-columns:1.2fr repeat(4,minmax(0,1fr)); gap:12px }
 label { display:grid; gap:6px; min-width:0; color:var(--muted); font-size:14px; font-weight:700 }
-input,button { font:inherit }
-input {
+input,select,button { font:inherit }
+input,select {
   width:100%; min-width:0; min-height:44px; border:1px solid var(--border); border-radius:10px;
   padding:8px 10px; background:var(--bg); color:var(--text); font-size:16px;
 }
 :focus-visible { outline:2px solid var(--focus); outline-offset:2px }
 .acciones { display:flex; flex-wrap:wrap; align-items:center; gap:12px; margin-top:14px }
+#guardar { margin-left:auto }
 .boton {
   min-height:42px; padding:8px 16px; border:1px solid transparent; border-radius:10px;
   background:linear-gradient(135deg,#162a4d,#193563 55%,#1b3f74); color:#fff; font-weight:700; cursor:pointer;
@@ -79,26 +79,28 @@ td:not(:first-child) { white-space:nowrap }
 </div>
 
 <main class="wrap" id="contenido" hidden>
-  <form class="card" id="formulario" aria-labelledby="titulo-formulario">
-    <h2 id="titulo-formulario">Nueva carga</h2>
+  <form class="card" id="formulario" aria-label="Carga Zona Limpia Municipal">
     <fieldset id="campos-carga">
       <div class="campos">
-        <label>Circuito <input name="circuito" type="text" maxlength="80" autocomplete="off" autocapitalize="characters" required></label>
+        <label>Circuito
+          <select name="circuito" required>
+            <option value="" disabled selected>Elegí un circuito</option>
+          </select>
+        </label>
         <label>Hora inicio <input name="hora_inicio" type="time" required></label>
         <label>Hora fin <input name="hora_fin" type="time" required></label>
         <label>Desde cont. <input name="desde_cont" type="number" inputmode="numeric" min="1" max="2147483647" step="1" required></label>
         <label>Hasta cont. <input name="hasta_cont" type="number" inputmode="numeric" min="1" max="2147483647" step="1" required></label>
       </div>
       <div class="acciones">
-        <button class="boton" type="submit" id="guardar">Guardar</button>
         <p class="estado" id="estado-formulario" role="status"></p>
+        <button class="boton" type="submit" id="guardar">Guardar</button>
       </div>
     </fieldset>
   </form>
 
-  <section class="card" aria-labelledby="titulo-cargas">
-    <h2 id="titulo-cargas">Cargas ingresadas</h2>
-    <div class="tabla" id="tabla-cargas" role="region" aria-labelledby="titulo-cargas" tabindex="0" hidden>
+  <section class="card">
+    <div class="tabla" id="tabla-cargas" role="region" aria-label="Cargas ingresadas" tabindex="0" hidden>
       <table>
         <thead><tr>
           <th scope="col">Circuito</th><th scope="col">Hora inicio</th><th scope="col">Hora fin</th>
@@ -112,6 +114,7 @@ td:not(:first-child) { white-space:nowrap }
   </section>
 </main>
 
+<script src="assets/planilla-zona-limpia.js?v=20261120"></script>
 <script>
 const tablaSupabase = 'zona_limpia_municipal_cargas';
 const columnas = 'id,circuito,hora_inicio,hora_fin,desde_cont,hasta_cont,creado';
@@ -178,8 +181,7 @@ async function cargarPagina() {
 }
 
 function validarCampos() {
-  const { circuito, desde_cont, hasta_cont } = formulario.elements;
-  circuito.setCustomValidity(circuito.value.trim() ? '' : 'Ingresá un circuito.');
+  const { desde_cont, hasta_cont } = formulario.elements;
   hasta_cont.setCustomValidity(hasta_cont.valueAsNumber < desde_cont.valueAsNumber
     ? 'Hasta cont. debe ser igual o mayor que Desde cont.' : '');
 }
@@ -200,7 +202,7 @@ formulario.addEventListener('submit', async evento => {
   const datos = new FormData(formulario);
   const registro = {
     solicitud: solicitud ??= crypto.randomUUID(),
-    circuito: datos.get('circuito').trim().toUpperCase(),
+    circuito: datos.get('circuito'),
     hora_inicio: datos.get('hora_inicio'),
     hora_fin: datos.get('hora_fin'),
     desde_cont: Number(datos.get('desde_cont')),
@@ -235,6 +237,10 @@ formulario.addEventListener('submit', async evento => {
 async function iniciar() {
   try {
     if (!await COM2.acceso()) return;
+    const circuitos = new Set(window.PlanillaZonaLimpia.flatMap(turno => turno.filas.map(fila => fila.circuito)));
+    for (const circuito of [...circuitos].sort()) {
+      formulario.elements.circuito.add(new Option(circuito, circuito));
+    }
     document.getElementById('contenido').hidden = false;
     COM2.carga.listo();
     await cargarPagina();
