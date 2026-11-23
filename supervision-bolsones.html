@@ -1169,9 +1169,8 @@ async function cargar() {
     // Solo supervisores y admin con sesión de COM 2 (y con la contraseña inicial ya cambiada)
     const yo = await COM2.perfil().catch(() => null);
     if (!yo || yo.debe_cambiar_clave || !COM2.ROLES_SUPERVISION.includes(yo.rol)) { location.replace('./'); return; } COM2.usuarioEnBarra(yo);
-    const sep = CONFIG.fuente.includes('?') ? '&' : '?';
     const [res, priv] = await Promise.all([
-      fetch(CONFIG.fuente + sep + 't=' + Date.now(), { cache: 'no-store' }),
+      fetch(CONFIG.fuente, { cache: 'no-cache' }),   // si no cambió, Supabase contesta 304 y se usa la guardada
       privados(),
     ]);
     if (!res.ok) throw new Error('HTTP ' + res.status);

@@ -709,8 +709,7 @@ const dd=n=>String(n).padStart(2,'0');
 const fechaBase=s=>{const d=new Date(s*1000);return`${d.getUTCFullYear()}-${dd(d.getUTCMonth()+1)}-${dd(d.getUTCDate())} ${dd(d.getUTCHours())}:${dd(d.getUTCMinutes())}:${dd(d.getUTCSeconds())}`;};
 
 async function bajarBase(){
-  const q='?_='+Date.now();
-  const res=await fetch(BASES+'agenda.json.gz'+q,{cache:'no-store'});
+  const res=await fetch(BASES+'agenda.json.gz',{cache:'no-cache'});   // si no cambió, Supabase contesta 304 y se usa la guardada
   if(!res.ok)throw new Error('No se pudo bajar la base de Agenda (HTTP '+res.status+')');
   const bytes=new Uint8Array(await res.arrayBuffer());
   // Por si el navegador ya la descomprimió solo: gzip empieza con 1f 8b

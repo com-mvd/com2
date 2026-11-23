@@ -825,8 +825,8 @@
 
       async function bajarBase(nombre) {
         const url = COM2.URL + '/storage/v1/object/public/bases/' + nombre + '.json.gz';
-        const respuesta = await fetch(url + '?_=' + Date.now(), {
-          cache: 'no-store', signal: AbortSignal.timeout(45000)
+        const respuesta = await fetch(url, {   // si no cambió, Supabase contesta 304 y se usa la guardada
+          cache: 'no-cache', signal: AbortSignal.timeout(45000)
         });
         if (!respuesta.ok) throw new Error('Zona Limpia: HTTP ' + respuesta.status);
         const bytes = new Uint8Array(await respuesta.arrayBuffer());

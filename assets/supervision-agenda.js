@@ -109,7 +109,7 @@
   }
 
   async function bajarBase() {
-    const respuesta = await fetch(COM2.URL + '/storage/v1/object/public/bases/agenda.json.gz', { cache: 'no-store' });
+    const respuesta = await fetch(COM2.URL + '/storage/v1/object/public/bases/agenda.json.gz', { cache: 'no-cache' });   // si no cambió, Supabase contesta 304 y se usa la guardada
     if (!respuesta.ok) throw new Error('No se pudo descargar la base de Agenda (HTTP ' + respuesta.status + ').');
     return leerJSON(respuesta);
   }
