@@ -11,10 +11,7 @@
 <link rel="stylesheet" href="assets/barra.css?v=202611171930">
 <link rel="stylesheet" href="assets/carga.css?v=202611131600">
 <style>
-/* Página de carga de Barrios Sustentables: Cerro. En el panel Admin de COM 2 (solo admin).
-   Desde el 10/11/2026 guarda en la tabla vaciados de Supabase (tablero 'cerro', assets/vaciados.js), con el
-   login de COM 2. Antes escribía en la planilla "Validación Barrios Sustentables" por un Apps Script, con clave de carga.
-   Mismo aspecto que barrios-sustentables-cerro.html (colores, fondo, barra, tarjetas, etiquetas, ruedita). */
+/* Carga de vaciados para un programa del panel Admin de COM 2. */
 :root{
   --bg:#F7F6F3; --card:#FFFFFF; --border:#E6E2DA;
   --text:#1A1714; --text2:#5F5A54; --text3:#9A948C;
@@ -122,15 +119,15 @@ input[type=datetime-local].in::-webkit-date-and-time-value{text-align:left}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="assets/comun.js?v=202611171900"></script>
 <script src="assets/acceso.js?v=202611130130"></script>
-<script src="assets/vaciados.js?v=202611241200"></script>
-<script>COM2.acceso({ roles: ['admin'] });   // solo admin (panel Admin)</script>
+<script src="assets/vaciados.js?v=20261124-programas"></script>
+<script src="assets/programas-carga.js?v=1"></script>
 </head>
 <body>
 
 <header class="barra">
-  <a class="com2-marca com2-volver" href="./" aria-label="Volver"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg><span>Volver</span></a>
+  <a class="com2-marca com2-volver" id="volver" href="./" aria-label="Volver"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg><span>Volver</span></a>
   <div class="barra-in">
-    <div class="titulo"><span class="ico" aria-hidden="true">♻</span><h1>Carga Barrios y Escuelas Sustentables</h1></div>
+    <div class="titulo"><span class="ico" aria-hidden="true">♻</span><h1 id="tituloCarga">Carga Barrios y Escuelas Sustentables</h1></div>
   </div>
 </header>
 
@@ -144,7 +141,7 @@ input[type=datetime-local].in::-webkit-date-and-time-value{text-align:left}
 
 <div class="wrap" id="pantallaCarga" hidden>
   <div class="cabeza">
-    <div class="pasado" id="pasado" hidden><label for="inPasado">Pasado hasta</label><input type="date" id="inPasado"></div>
+    <div class="pasado" id="pasado" hidden><label for="inPasado" id="etiquetaPasado">Pasado hasta</label><input type="date" id="inPasado"></div>
     <span class="estado" id="estadoPasado" aria-live="polite"></span>
   </div>
   <form class="card" id="form">
@@ -182,21 +179,13 @@ input[type=datetime-local].in::-webkit-date-and-time-value{text-align:left}
 <div class="aviso" id="aviso" hidden></div>
 
 <script>
-// Los mismos tres puntos que barrios-sustentables-cerro.html y el Apps Script
-const LUGARES = [
-  { nombre: 'Plaza Débora Céspedes', dir: 'EGIPTO esq. SUECIA', color: '#1baf7a' },
-  { nombre: 'Federación FOICA', dir: 'HOLANDA 1715', color: '#2a78d6' },
-  { nombre: 'Plaza de Deportes N11', dir: 'PORTUGAL esq. AUSTRIA', color: '#eb6834' },
-  { nombre: 'Seccional N24', dir: 'PRUSIA 1895', color: '#8b5cf6' },
-  { nombre: 'Escuela Luisa Casteran', dir: 'CHINA 1898', color: '#e0457b' },
-  { nombre: 'Formativas de Rampla', dir: 'TURQUIA 3335', color: '#d99a00' },
-  { nombre: 'Club de Pesca', dir: 'GRECIA 3152', color: '#14a3b8' },
-  { nombre: 'Escuela N29', dir: 'PORTUGAL 3325', color: '#a0663a' },
-  { nombre: 'Club Verdirrojo', dir: 'PRUSIA 1621', color: '#5b6b82' },
-  { nombre: 'TATA Grecia', dir: 'GRECIA 3396', color: '#65a30d' },   // 17/11; dirección aproximada (OpenStreetMap)
-];
-const TABLERO = 'cerro';   // tablero en la tabla vaciados
-const DESTINO_HABITUAL = 'La Paloma';   // destino final que viene elegido en cada carga nueva
+const idPrograma = new URLSearchParams(location.search).get('programa');
+const programa = ProgramasCarga.buscar(idPrograma);
+// La dirección original sin parámetro sigue abriendo la carga combinada de Cerro.
+const LUGARES = programa?.lugares ?? ProgramasCarga.cerro;
+const EDIFICIOS = LUGARES.map(l => l.nombre);
+const TABLERO = programa?.tablero ?? 'cerro';
+const DESTINO_HABITUAL = programa?.destino ?? 'La Paloma';
 const POR_PAGINA = 15;
 
 const $ = id => document.getElementById(id);
@@ -221,7 +210,7 @@ function aviso(texto, error = false) {
 
 // Lee y escribe en Supabase (assets/vaciados.js); devuelve lo mismo que devolvía el Apps Script
 async function pedir(datos) {
-  const r = await Vaciados.pedir(TABLERO, datos);
+  const r = await Vaciados.pedir(TABLERO, datos, EDIFICIOS);
   filas = r.filas;
   leida = true;
   // No se pisa la fecha mientras se la está cambiando
@@ -257,7 +246,7 @@ function dibujarLugares() {
 
 function limpiarForm() {
   editando = null;
-  lugarElegido = null;
+  lugarElegido = LUGARES.length === 1 ? LUGARES[0].nombre : null;
   $('inFecha').value = ahora();
   $('inCant').value = 1;
   destinoElegido = DESTINO_HABITUAL;
@@ -386,7 +375,20 @@ async function iniciar() {
   }
 }
 $('reintentar').onclick = iniciar;
-iniciar();
+COM2.acceso({ roles: ['admin'] }).then(yo => {
+  if (!yo) return;
+  if (idPrograma !== null && !programa) {
+    location.replace('programas-carga.html');
+    return;
+  }
+  if (programa) {
+    $('tituloCarga').textContent = `Carga · ${programa.titulo}`;
+    document.title = `${$('tituloCarga').textContent} · COM 2`;
+    $('volver').href = 'programas-carga.html';
+    if (TABLERO === 'cerro') $('etiquetaPasado').textContent = 'Pasado hasta (Municipio A)';
+  }
+  iniciar();
+});
 </script>
 </body>
 </html>

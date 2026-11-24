@@ -250,7 +250,7 @@ $('fClave').addEventListener('submit', async ev => {
 // ---- Menú ----
 async function mostrarMenu() {
   if (!secciones) {
-    const { data, error: e } = await sb.from('secciones').select('nombre,archivo,grupo,orden,panel,icono,color').order('grupo').order('orden').order('nombre');
+    const { data, error: e } = await sb.from('secciones').select('id,nombre,archivo,grupo,orden,panel,icono,color').order('grupo').order('orden').order('nombre');
     if (e) throw e;
     secciones = data;
   }
@@ -363,16 +363,27 @@ async function actualizar(s, sec) {
   } finally { b.disabled = false; b.classList.remove('girando'); }
 }
 
+// Las dos tarjetas anteriores comparten el menú de carga de Patricia.
+function tarjetasAdmin(secciones) {
+  const esCargaPatricia = s => s.id === 'carga-cerro' || s.id === 'carga-edificio-im';
+  const entrada = secciones.find(esCargaPatricia);
+  if (!entrada) return secciones;
+  return secciones.filter(s => s === entrada || !esCargaPatricia(s)).map(s => s === entrada
+    ? { ...s, nombre: 'Carga Patricia', archivo: 'programas-carga.html' }
+    : s);
+}
+
 function dibujarMenu() {
   $('okClave').hidden = true;
   const del = secciones ? secciones.filter(s => s.panel === panel) : [];
   if (panel === 'supervisor') return dibujarSupervisor(del);
   // Panel Operador (17/11): el recuadro Generales igual que en Supervisor (sin Actualizar) y debajo las demás tarjetas
   if (panel === 'operador') return dibujarSupervisor(del, SERVICIOS.filter(s => s.sinBase));
-  if (!del.length) { $('menu').innerHTML = '<p class="vacio">Todavía no hay nada en este panel.</p>'; return; }
+  const tarjetas = panel === 'admin' ? tarjetasAdmin(del) : del;
+  if (!tarjetas.length) { $('menu').innerHTML = '<p class="vacio">Todavía no hay nada en este panel.</p>'; return; }
   // Todas las tarjetas juntas, sin títulos de grupo (pedido del usuario, 13/11): hasta 3 por renglón,
   // en el orden de secciones (grupo y orden)
-  $('menu').innerHTML = `<div class="grupo"><div class="grid">${del.map(s =>
+  $('menu').innerHTML = `<div class="grupo"><div class="grid">${tarjetas.map(s =>
       `<a class="tile acc-${esc(s.color)}" href="${esc(s.archivo)}"><div class="tile-icon">${COM2.icono(s.icono)}</div><div class="tile-name">${esc(s.nombre)}</div></a>`).join('')}</div></div>`;
 }
 
