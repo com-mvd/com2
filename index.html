@@ -250,7 +250,7 @@ $('fClave').addEventListener('submit', async ev => {
 // ---- Menú ----
 async function mostrarMenu() {
   if (!secciones) {
-    const { data, error: e } = await sb.from('secciones').select('id,nombre,archivo,grupo,orden,panel,icono,color').order('grupo').order('orden').order('nombre');
+    const { data, error: e } = await sb.from('secciones').select('id,nombre,archivo,grupo,orden,panel,icono,color').eq('activa', true).order('grupo').order('orden').order('nombre');
     if (e) throw e;
     secciones = data;
   }
