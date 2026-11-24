@@ -6,20 +6,22 @@
 // Uso:  const r = await Vaciados.pedir('cerro', { accion: 'listar' });
 //   acciones (las mismas que tenía el Apps Script, para que las páginas no cambien):
 //     listar
-//     agregar  { fila: { edif, dir, fGes: 'AAAA-MM-DDTHH:MM', cant } }
+//     agregar  { fila: { edif, dir, fGes: 'AAAA-MM-DDTHH:MM', cant, destino } }
 //     editar   { n, antes: { edif, fGes, cant }, fila }
 //     borrar   { n, antes: { edif, fGes, cant } }
 //     marca    { valor: 'AAAA-MM-DD' o '' }   ("Pasado hasta")
-//   Siempre devuelve { ok: true, filas: [{ n, edif, dir, fGes, cant }], marca } (n = id de la carga), o tira un error.
+//   Siempre devuelve { ok: true, filas: [{ n, edif, dir, fGes, cant, destino }], marca } (n = id de la carga), o tira un error.
 //   "antes" se compara con lo que hay: si otro cambió esa carga mientras tanto, no se toca.
+//   Vaciados.DESTINOS: las opciones de "Destino final" (24/11; las mismas que el check de sql/32-vaciados-destino.sql).
 (function () {
   const sb = window.COM2.sb;
-  const aFila = v => ({ n: v.id, edif: v.edificio, dir: v.direccion, fGes: String(v.fecha).slice(0, 16), cant: v.bolsones });
+  const DESTINOS = ['La Paloma', 'Burgues', 'Durán', 'Géminis', 'Usina 5 bis'];
+  const aFila = v => ({ n: v.id, edif: v.edificio, dir: v.direccion, fGes: String(v.fecha).slice(0, 16), cant: v.bolsones, destino: v.destino || '' });
   const mensaje = e => e.code === '42501' ? 'Solo el administrador puede cargar' : (e.message || 'Error');
 
   async function listar(tablero) {
     const [a, b] = await Promise.all([
-      sb.from('vaciados').select('id,edificio,direccion,fecha,bolsones').eq('tablero', tablero).order('fecha', { ascending: false }),
+      sb.from('vaciados').select('id,edificio,direccion,fecha,bolsones,destino').eq('tablero', tablero).order('fecha', { ascending: false }),
       sb.from('vaciados_marca').select('pasado_hasta').eq('tablero', tablero).maybeSingle(),
     ]);
     if (a.error) throw new Error(mensaje(a.error));
@@ -27,7 +29,7 @@
     return { ok: true, filas: a.data.map(aFila), marca: (b.data && b.data.pasado_hasta) || '' };
   }
 
-  const datos = (tablero, f) => ({ tablero, edificio: f.edif, direccion: f.dir || '', fecha: f.fGes, bolsones: f.cant });
+  const datos = (tablero, f) => ({ tablero, edificio: f.edif, direccion: f.dir || '', fecha: f.fGes, bolsones: f.cant, destino: f.destino || null });
   const igual = (q, antes) => q.eq('edificio', antes.edif).eq('fecha', antes.fGes).eq('bolsones', antes.cant);
 
   async function pedir(tablero, d) {
@@ -44,5 +46,5 @@
     return listar(tablero);
   }
 
-  window.Vaciados = { pedir };
+  window.Vaciados = { pedir, DESTINOS };
 })();

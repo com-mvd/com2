@@ -112,11 +112,17 @@ input[type=datetime-local].in::-webkit-date-and-time-value{text-align:left}
 [data-theme="dark"] .fila{border-top-color:#363a41}
 [data-theme="dark"] .fila.editando{background:#2b3242}
 [data-theme="dark"] .aviso{background:#ECEAE6;color:#1A1714}
+/* Destino final (24/11): un botón por destino, el elegido en azul */
+.destinos{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.dest{padding:12px 13px;border:1.5px solid var(--border);border-radius:12px;background:#fff;font-size:15px;font-weight:600;cursor:pointer;text-align:left}
+.dest.on{border-color:var(--azul);background:color-mix(in srgb,var(--azul) 10%,#fff);color:var(--azul)}
+[data-theme="dark"] .dest{background:#2e3238;color:var(--text)}
+[data-theme="dark"] .dest.on{background:color-mix(in srgb,var(--azul) 22%,#272b31);color:var(--azul)}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script src="assets/comun.js?v=202611171900"></script>
 <script src="assets/acceso.js?v=202611130130"></script>
-<script src="assets/vaciados.js?v=202611101900"></script>
+<script src="assets/vaciados.js?v=202611241200"></script>
 <script>COM2.acceso({ roles: ['admin'] });   // solo admin (panel Admin)</script>
 </head>
 <body>
@@ -124,7 +130,7 @@ input[type=datetime-local].in::-webkit-date-and-time-value{text-align:left}
 <header class="barra">
   <a class="com2-marca com2-volver" href="./" aria-label="Volver"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg><span>Volver</span></a>
   <div class="barra-in">
-    <div class="titulo"><span class="ico" aria-hidden="true">♻</span><h1>Carga Barrios Sustentables Cerro</h1></div>
+    <div class="titulo"><span class="ico" aria-hidden="true">♻</span><h1>Carga Barrios y Escuelas Sustentables</h1></div>
   </div>
 </header>
 
@@ -157,6 +163,9 @@ input[type=datetime-local].in::-webkit-date-and-time-value{text-align:left}
       <button type="button" id="mas" aria-label="Uno más">+</button>
     </div>
 
+    <label class="l">Destino final</label>
+    <div class="destinos" id="destinos"></div>
+
     <div class="botones">
       <button class="btn sec" type="button" id="cancelar" hidden>Cancelar</button>
       <button class="btn" type="submit" id="guardar">Guardar</button>
@@ -187,6 +196,7 @@ const LUGARES = [
   { nombre: 'TATA Grecia', dir: 'GRECIA 3396', color: '#65a30d' },   // 17/11; dirección aproximada (OpenStreetMap)
 ];
 const TABLERO = 'cerro';   // tablero en la tabla vaciados
+const DESTINO_HABITUAL = 'La Paloma';   // destino final que viene elegido en cada carga nueva
 const POR_PAGINA = 15;
 
 const $ = id => document.getElementById(id);
@@ -228,6 +238,15 @@ function pantalla(cual) {
 }
 
 // ── Formulario ──────────────────────────────────────────────────────────────
+// ── Destino final (24/11): opciones en assets/vaciados.js; arranca en el habitual de este tablero ──
+let destinoElegido = DESTINO_HABITUAL;
+function dibujarDestinos() {
+  $('destinos').innerHTML = Vaciados.DESTINOS.map((d, i) => `<button type="button" class="dest${destinoElegido === d ? ' on' : ''}" data-i="${i}">${esc(d)}</button>`).join('');
+  $('destinos').querySelectorAll('button').forEach(b => b.onclick = () => {
+    destinoElegido = Vaciados.DESTINOS[+b.dataset.i];
+    dibujarDestinos();
+  });
+}
 function dibujarLugares() {
   $('lugares').innerHTML = LUGARES.map((l, i) => `<button type="button" class="lugar${lugarElegido === l.nombre ? ' on' : ''}" style="--c:${l.color}" data-i="${i}"><i></i>${esc(l.nombre)}</button>`).join('');
   $('lugares').querySelectorAll('button').forEach(b => b.onclick = () => {
@@ -241,9 +260,11 @@ function limpiarForm() {
   lugarElegido = null;
   $('inFecha').value = ahora();
   $('inCant').value = 1;
+  destinoElegido = DESTINO_HABITUAL;
   $('tituloForm').textContent = 'Nueva carga';
   $('guardar').textContent = 'Guardar';
   $('cancelar').hidden = true;
+  dibujarDestinos();
   dibujarLugares();
   dibujarLista();
 }
@@ -253,9 +274,11 @@ function editar(f) {
   lugarElegido = f.edif;
   $('inFecha').value = f.fGes;
   $('inCant').value = f.cant ?? 0;
+  destinoElegido = f.destino || '';
   $('tituloForm').textContent = 'Editar carga';
   $('guardar').textContent = 'Guardar cambios';
   $('cancelar').hidden = false;
+  dibujarDestinos();
   dibujarLugares();
   dibujarLista();
   $('form').scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -271,9 +294,10 @@ $('form').onsubmit = async e => {
   const cant = parseInt($('inCant').value, 10);
   if (!$('inFecha').value) return aviso('Falta la fecha y hora', true);
   if (!(cant >= 0)) return aviso('Falta la cantidad de bolsones', true);
+  if (!destinoElegido) return aviso('Elegí el destino final', true);
   // La dirección no se pide: va la del punto elegido
   const dir = (LUGARES.find(l => l.nombre === lugarElegido) || {}).dir || '';
-  const fila = { edif: lugarElegido, dir, fGes: $('inFecha').value.slice(0, 16), cant };
+  const fila = { edif: lugarElegido, dir, fGes: $('inFecha').value.slice(0, 16), cant, destino: destinoElegido };
   $('guardar').disabled = true;
   try {
     if (editando) {
@@ -298,7 +322,7 @@ function dibujarLista() {
   const ver = orden.slice(0, mostrar);
   $('lista').innerHTML = ver.length ? ver.map(f => `<div class="fila${editando && editando.n === f.n ? ' editando' : ''}" style="--c:${colorDe(f.edif)}">
       <i></i>
-      <div class="t"><b>${esc(f.edif || 'Sin edificio')}</b><span class="num">${fLinda(f.fGes)}</span></div>
+      <div class="t"><b>${esc(f.edif || 'Sin edificio')}</b><span class="num">${fLinda(f.fGes)}${f.destino ? ' · ' + esc(f.destino) : ''}</span></div>
       <div class="n num${f.cant ? '' : ' cero'}">${f.cant ?? '–'}</div>
       <div class="acc"><button type="button" data-n="${f.n}" data-a="e">Editar</button><button type="button" class="borrar" data-n="${f.n}" data-a="b">Borrar</button></div>
     </div>`).join('') : `<div class="vacio">${leida ? 'Todavía no hay cargas' : 'Cargando…'}</div>`;
