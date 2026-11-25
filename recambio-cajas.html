@@ -266,7 +266,7 @@ textarea.in{resize:vertical;min-height:70px}
       <div class="der"><span class="sub" id="hCuenta"></span></div>
     </div>
     <div class="tabla"><table>
-      <thead><tr><th>Lugar</th><th>Caja</th><th>Fecha pedido</th><th>Fecha realizado</th><th>Observaciones</th><th>Demora</th></tr></thead>
+      <thead><tr><th>Lugar</th><th>Caja</th><th>Fecha caja llena</th><th>Fecha pedido</th><th>Fecha realizado</th><th>Observaciones</th><th>Demora</th></tr></thead>
       <tbody id="hFilas"></tbody>
     </table></div>
     <button type="button" class="mas" id="hMas" hidden>Ver más</button>
@@ -366,6 +366,10 @@ function fLinda(s, conAnio) {
   if (!s) return '';
   const anio = s.slice(0, 4) !== hoy().slice(0, 4) || conAnio ? '/' + s.slice(2, 4) : '';
   return `${s.slice(8, 10)}/${s.slice(5, 7)}${anio} ${s.slice(11, 16)}`;
+}
+function fechaCajaLlena(r) {
+  const fecha = fLinda(r.llena, true) || 'Sin registro';
+  return fecha + (r.llena_regularizada ? ' <span class="sub">(hora asignada al migrar)</span>' : '');
 }
 function dur(m) {
   if (!(m >= 0)) return '';
@@ -731,6 +735,8 @@ function abrirPedido(r) {
         <div><label class="l">Lugar</label><div class="dato">${esc(r.lugar)}</div></div>
         <div><label class="l">Caja</label><div class="dato">${esc(r.caja)}</div></div>
       </div>
+      <label class="l">Fecha caja llena</label>
+      <div class="dato num">${fechaCajaLlena(r)}</div>
       <label class="l" for="iPed">Fecha pedido</label>
       <input class="in num" type="datetime-local" id="iPed" required value="${campo(r.pedido)}">
       <label class="l" for="iHec">Fecha realizado</label>
@@ -745,7 +751,7 @@ function abrirPedido(r) {
         <div><label class="l">Caja</label><div class="dato">${esc(nomCaja(r.caja))}</div></div>
       </div>
       <label class="l">Fecha y hora de caja llena</label>
-      <div class="dato num">${fLinda(r.llena, true) || 'Sin registro'}${r.llena_regularizada ? ' <span class="sub">(hora asignada al migrar)</span>' : ''}</div>
+      <div class="dato num">${fechaCajaLlena(r)}</div>
       <label class="l" for="iPed">Fecha y hora del pedido</label>
       <input class="in num" type="datetime-local" id="iPed" value="${campo(r.pedido)}">
       <label class="l" for="iRes">Fecha y hora de resuelto</label>
@@ -835,9 +841,10 @@ function dibujarHistorial() {
   $('hFilas').innerHTML = ver.length ? ver.map(r => {
     const m = min(r.pedido, r.realizado);
     return `<tr${admin ? ` data-id="${r.id}"` : ''}><td>${esc(r.lugar)}</td><td>${esc(r.caja)}</td>
+      <td class="num">${fechaCajaLlena(r)}</td>
       <td class="num">${fLinda(r.pedido, true)}</td><td class="num">${fLinda(r.realizado, true)}</td>
       <td class="obs">${esc(r.obs_realizado)}</td><td class="num${m >= HORAS_ROJO * 60 ? ' lenta' : ''}">${dur(m)}</td></tr>`;
-  }).join('') : '<tr><td colspan="6" class="vacio">No hay recambios con esos filtros</td></tr>';
+  }).join('') : '<tr><td colspan="7" class="vacio">No hay recambios con esos filtros</td></tr>';
   $('hMas').hidden = f.length <= mostrar;
   $('hFilas').querySelectorAll('tr[data-id]').forEach(tr => tr.onclick = () => {
     const r = recs.find(x => x.id === +tr.dataset.id);

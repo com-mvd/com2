@@ -269,7 +269,7 @@ const SERVICIOS = [   // colores de la portada de com: c = punto e ícono, cb = 
   { id: 'generales', nombre: 'Generales', c: '#6C5790', cb: '#E5DDF0', sinBase: true },
   { id: 'bolsones', nombre: 'Bolsones', c: '#D2691E', cb: '#FCE3CD' },
   { id: 'agenda', nombre: 'Agenda', c: '#346A92', cb: '#DDECF4' },
-  // auto (19/11, a pedido): n8n la actualiza sola cada 30 min; sin botón, solo la hora de la última subida
+  // auto: n8n actualiza la base cada 30 min; el botón también permite actualizarla a mano.
   { id: 'zona-limpia', nombre: 'Zona Limpia', c: '#39745E', cb: '#DCEDE4', auto: true },
   // debajo: va en la misma columna, abajo de ese recuadro (17/11: Reclamos abajo de Zona Limpia)
   { id: 'reclamos', nombre: 'Reclamos', c: '#39745E', cb: '#DCEDE4', debajo: 'zona-limpia', auto: true },
@@ -306,7 +306,7 @@ function dibujarSupervisor(del, servs = SERVICIOS) {
       return `<section class="serv" data-id="${s.id}" style="--c:${s.c};--cb:${s.cb}">
         <div class="serv-h">
           <div class="serv-t"><span class="serv-dot"></span><h2 class="serv-n">${esc(s.nombre)}</h2></div>
-          ${s.sinBase ? '' : `<div class="serv-a">${s.auto ? '' : `<button type="button" class="btn-act">${ICONO_ACT}Actualizar</button>`}<span class="estado"${s.auto ? ' title="Se actualiza sola cada 30 minutos"' : ''}>…</span></div>`}
+          ${s.sinBase ? '' : `<div class="serv-a"><button type="button" class="btn-act">${ICONO_ACT}Actualizar</button><span class="estado"${s.auto ? ' title="Se actualiza sola cada 30 minutos"' : ''}>…</span></div>`}
         </div>
         <div class="list">${ps.length ? ps.map(p => `<a class="item" href="${esc(p.archivo)}">
           <div class="item-icon">${COM2.icono(p.icono)}</div><div class="item-name">${esc(p.nombre)}</div><div class="item-arrow">›</div></a>`).join('')
