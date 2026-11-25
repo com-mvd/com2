@@ -41,6 +41,8 @@
 
     /* barra de herramientas */
     .toolbar { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px 22px; }
+    .toolbar.gol { justify-content: flex-start; }
+    .gol-ultima { color: var(--muted); font-size: .8rem; }
     .field { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
     .field > label { font-size: .82rem; font-weight: 700; }
     .toolbar select, .toolbar input[type=date], .toolbar input[type=number] {
@@ -1324,6 +1326,7 @@
 const T_PLANILLA = 'zona_limpia_semaforo_planilla';     // planilla del Semáforo (camión de cada circuito): solo se lee
 const T_REC = 'zona_limpia_asignador_recursos';          // diferencias de recursos de cada día
 const T_PLAN = 'zona_limpia_asignador_plan';             // asignaciones del día
+const T_GOL = 'zona_limpia_asignador_gol';               // última base que se cargó para el equipo
 const ROLES_EDITAN = ['auxiliar', 'sup_gral', 'admin'];  // mismos roles que editan la planilla del Semáforo
 const DIA = 24 * 3600e3, DESFASE = 3 * 3600e3;           // las fechas de las bases son segundos de reloj de Montevideo
 const TURNOS = ['Matutino', 'Vespertino', 'Nocturno'];
@@ -1401,11 +1404,12 @@ async function cargarPlanilla() {
 
 /* ---------- estado ---------- */
 const S = { fecha: fechaMontevideo(), vista: 'turno', turno: null, inv: null, zl: null, asig: null, gol: null, planillaOk: false, err: {},
+  golRevision: -1, golActualizada: null, golConsultando: false, golError: '',
   quitar: 1,            // lo ya realizado que se descuenta: -1 = nada, 0 = hoy, 1 = hoy y ayer
   completo: 80, porRecurso: 1, golRojo: 100, golNegro: 170, gap: 5, sinSug: new Set(), munSel: [],
   puedeEditar: false, diaOk: false };
 const edita = () => S.puedeEditar && S.diaOk && !pendientes && !leyendo;
-const puedeAsignar = () => edita() && S.planillaOk && S.zl && S.inv && S.golFecha === S.fecha && S.fecha === fechaMontevideo();
+const puedeAsignar = () => edita() && !S.importando && S.planillaOk && S.zl && S.inv && S.gol && S.fecha === fechaMontevideo();
 
 /* ---------- datos compartidos del día (Supabase) ---------- */
 let OV = { add: {}, del: {} };      // diferencias de recursos respecto de la planilla
@@ -1585,7 +1589,7 @@ async function cargarZL() {
   }
   S.zl = M; S.asig = A;
 }
-async function cargarGol(file) {
+async function leerArchivoGol(file) {
   if (!window.XLSX) throw new Error('No se pudo cargar el lector de planillas. Recargá la página.');
   const wb = /\.(csv|txt)$/i.test(file.name)
     ? XLSX.read((await file.text()).replace(/^\uFEFF/, ''), { type: 'string', raw: true })
@@ -1614,8 +1618,59 @@ async function cargarGol(file) {
     puntos.set(p, a);
   }
   if (!M.size) throw new Error('El archivo no tiene filas válidas de GOL');
-  S.gol = new Map([...M].map(([c, puntos]) => [c, [...puntos].map(([p, a]) => ({ p, a }))]));
-  S.golFecha = fechaMontevideo();
+  const filas = [...M].flatMap(([c, puntos]) => [...puntos].map(([p, a]) => [c, p, a]));
+  if (filas.length > 50000) throw new Error('La Base GOL admite hasta 50.000 puntos');
+  return filas;
+}
+function usarGol({ revision, actualizada, filas }) {
+  if (revision <= S.golRevision) return;
+  const porCircuito = new Map();
+  for (const [c, p, a] of filas || []) {
+    if (!porCircuito.has(c)) porCircuito.set(c, []);
+    porCircuito.get(c).push({ p, a });
+  }
+  S.gol = actualizada ? porCircuito : null;
+  S.golRevision = revision;
+  S.golActualizada = actualizada;
+  S.sinSug.clear();
+}
+async function cargarGol(file) {
+  const filas = await leerArchivoGol(file);
+  const { data, error } = await COM2.sb.from(T_GOL).update({ filas }).eq('id', 1)
+    .select('revision,actualizada').abortSignal(AbortSignal.timeout(20000)).single();
+  if (error) {
+    console.warn('Guardado Base GOL', error);
+    throw new Error('No se pudo confirmar la carga compartida. Volvé a intentar.');
+  }
+  usarGol({ ...data, filas });
+  S.golError = '';
+}
+async function consultarGol() {
+  if (S.golConsultando || S.importando) return false;
+  S.golConsultando = true;
+  const revision = S.golRevision, avisoAnterior = S.golError;
+  try {
+    const tabla = COM2.sb.from(T_GOL);
+    const { data, error } = await tabla.select('revision,actualizada').eq('id', 1)
+      .abortSignal(AbortSignal.timeout(12000)).single();
+    if (error) throw error;
+    if (data.revision > S.golRevision && !S.importando) {
+      if (!data.actualizada) usarGol(data);
+      else {
+        const base = await tabla.select('revision,actualizada,filas').eq('id', 1)
+          .abortSignal(AbortSignal.timeout(20000)).single();
+        if (base.error) throw base.error;
+        if (!S.importando) usarGol(base.data);
+      }
+    }
+    if (!S.importando) S.golError = '';
+  } catch (e) {
+    console.warn('Lectura Base GOL', e);
+    if (!S.importando) S.golError = 'No se pudo consultar la Base GOL compartida. Se volverá a intentar.';
+  } finally {
+    S.golConsultando = false;
+  }
+  return revision !== S.golRevision || avisoAnterior !== S.golError;
 }
 
 /* ---------- GOL del turno ---------- */
@@ -1713,8 +1768,9 @@ function vGol() {
   if (S.fecha !== fechaMontevideo()) return vacio('Las sugerencias GOL están disponibles para el plan de hoy. Para otras fechas, abrí el Plan del día.');
   if (S.cargandoBases) return vacio('Cargando la planilla de circuitos y las bases de Zona Limpia y Contenedores…');
   if (S.err.zl || S.err.inv) return vacio('Para calcular los pendientes se necesitan las bases de Zona Limpia y Contenedores.');
-  if (S.importando) return vacio('Leyendo Base GOL…');
-  if (!S.gol || S.golFecha !== S.fecha) return vacio('Todavía no hay Base GOL en la nube. Por ahora se carga el archivo a mano con “Cargar Base GOL”.');
+  if (S.importando) return vacio('Guardando Base GOL…');
+  if (S.golRevision < 0) return vacio(S.golError ? 'La Base GOL todavía no está disponible.' : 'Consultando Base GOL…');
+  if (!S.gol) return vacio('Todavía no hay una Base GOL cargada. Elegí un archivo con “Cargar Base GOL”.');
   if (!S.zl || !S.inv) return vacio('Cargando Zona Limpia y Contenedores…');
   const d = golDelTurno(), disp = MUNIS.filter(m => d.porMun.has(m));
   if (!disp.length) return vacio(`No quedan circuitos con puntos rojos o negros en el turno ${S.turno}.`);
@@ -1746,23 +1802,30 @@ function vPlan() {
 
 const TITULOS = { turno: 'Asignador de Zona Limpia', recursos: 'Recursos', gol: 'GOL', plan: 'Plan del día', semaforo: 'Semáforo de Zona Limpia' };
 function toolbar() {
-  const fecha = `<div class="field"><label for="fecha">Fecha del plan</label><input type="date" id="fecha" value="${S.fecha}" ${pendientes ? 'disabled' : ''}></div>`;
+  const esGol = S.vista === 'gol';
+  const fecha = `<div class="field"><label for="fecha">${esGol ? 'Fecha' : 'Fecha del plan'}</label><input type="date" id="fecha" value="${S.fecha}" ${pendientes || S.importando ? 'disabled' : ''}></div>`;
   const plan = `<button class="btn-m pri" data-ir="plan">Plan (${PLAN.length})</button>`;
-  if (S.vista === 'gol' && S.fecha !== fechaMontevideo()) return fecha + plan;
-  if (S.vista === 'gol') return fecha + `<button class="btn-m" id="elegirGol" ${pendientes || S.importando ? 'disabled' : ''}>Cargar Base GOL</button><input type="file" id="fGol" accept=".xlsx,.xls,.ods,.csv" hidden>
+  if (esGol) return `<button class="btn-m" id="elegirGol" ${pendientes || S.importando ? 'disabled' : ''}>Cargar Base GOL</button><input type="file" id="fGol" accept=".xlsx,.xls,.ods,.csv" hidden>` + fecha + `
     <div class="field"><label for="quitar">Quitar lo ya realizado</label><select id="quitar"><option value="-1" ${S.quitar === -1 ? 'selected' : ''}>Nada</option><option value="0" ${S.quitar === 0 ? 'selected' : ''}>Hoy</option><option value="1" ${S.quitar === 1 ? 'selected' : ''}>Hoy y ayer</option></select></div>
     <div class="field"><label for="completo">Plano completo desde (%)</label><input type="number" id="completo" min="1" max="100" value="${S.completo}"></div>
     <div class="field"><label for="porRecurso">Circuitos por recurso</label><input type="number" id="porRecurso" min="1" max="10" value="${S.porRecurso}"></div>
-    ${puedeAsignar() && S.gol ? '<button class="btn-m" id="aplicar">Asignar sugerencias</button>' : ''}` + plan;
+    ${puedeAsignar() ? '<button class="btn-m" id="aplicar">Asignar sugerencias</button>' : ''}
+    ${ultimaCargaGol()}`;
   if (S.vista === 'plan') return fecha + `<button class="btn-m pri" id="copiar" ${S.diaOk ? '' : 'disabled'}>Copiar plan</button>` +
     (edita() ? `<button class="btn-m" id="vaciar" ${PLAN.length ? '' : 'disabled'}>Vaciar</button>` : '');
   if (S.vista === 'recursos') return fecha;
   if (S.vista === 'bloques') return fecha + plan;
   return '';
 }
+const horaGol = new Intl.DateTimeFormat('es-UY', { dateStyle: 'short', timeStyle: 'short', hourCycle: 'h23', timeZone: 'America/Montevideo' });
+function ultimaCargaGol() {
+  if (!S.golActualizada) return '';
+  return `<span class="gol-ultima">Última carga <time datetime="${esc(S.golActualizada)}">${horaGol.format(new Date(S.golActualizada))}</time></span>`;
+}
 const NOMBRES = { inv: 'Contenedores', zl: 'Zona Limpia', gol: 'GOL', planilla: 'Circuitos' };
 function estado() {   // solo problemas: lo que anda bien no se muestra
   const avisos = Object.entries(S.err).map(([k, v]) => `<span class="err">${esc(NOMBRES[k])}: ${esc(v)}</span>`);
+  if (S.vista === 'gol' && S.golError) avisos.push(`<span class="err">${esc(S.golError)}</span>`);
   return avisos.join(' · ');
 }
 function render() {
@@ -1771,6 +1834,7 @@ function render() {
   const prefijo = v === 'gol' || v === 'plan' ? S.turno + ' · ' : '';
   $('titulo').textContent = v === 'bloques' ? S.turno : prefijo + TITULOS[v] + sufijo;
   $('volver').hidden = v === 'turno'; $('salir').hidden = v !== 'turno';
+  $('toolbar').classList.toggle('gol', v === 'gol');
   $('toolbar').innerHTML = toolbar();
   $('estado').innerHTML = v === 'semaforo' ? '' : estado();
   $('estado').hidden = !$('estado').textContent;
@@ -1796,6 +1860,7 @@ function ir(v) {
   const vieneDelSemaforo = S.vista === 'semaforo';
   S.vista = v;
   if (vieneDelSemaforo) cargarPlanilla().then(render);
+  if (v === 'gol') consultarGol().then(cambio => { if (cambio && S.vista === 'gol') render(); });
   render();
   scrollTo(0, 0);
 }
@@ -1855,7 +1920,7 @@ document.addEventListener('change', async e => {
     asignar(t.dataset.c, S.turno, t.value, t.dataset.tr, JSON.parse(t.dataset.ed || 'null')); render(); return;
   }
   if (id === 'fecha') {
-    if (!t.value || pendientes) return;
+    if (!t.value || pendientes || S.importando) return;
     S.fecha = t.value; avisar(''); S.diaOk = false; S.sinSug.clear();
     OV = { add: {}, del: {} }; revRec = null; PLAN = []; aplicarOV();
     render(); await cargarDia();
@@ -1864,10 +1929,11 @@ document.addEventListener('change', async e => {
   else if (id === 'completo') S.completo = Math.min(100, Math.max(1, +t.value || 80));
   else if (id === 'porRecurso') S.porRecurso = Math.min(10, Math.max(1, Math.trunc(+t.value) || 1));
   else if (id === 'fGol') {
-    if (!t.files[0] || pendientes || S.importando) return;
-    S.importando = true; S.gol = null; delete S.err.gol;
+    const archivo = t.files[0];
+    if (!archivo || pendientes || S.importando) return;
+    S.importando = true; delete S.err.gol;
     render();
-    try { await cargarGol(t.files[0]); }
+    try { await cargarGol(archivo); }
     catch (x) { S.err.gol = x.message; }
     finally { S.importando = false; }
   }
@@ -1920,11 +1986,11 @@ async function refrescar() {
   if (S.err.planilla || S.err.inv || S.err.zl) actualizarBases();
   const antes = JSON.stringify([S.diaOk, OV, PLAN]);
   const recuperando = !S.diaOk;
-  await cargarDia();
+  const [, golCambio] = await Promise.all([cargarDia(), S.vista === 'gol' && consultarGol()]);
   if (recuperando && S.diaOk) avisar('');
-  if (JSON.stringify([S.diaOk, OV, PLAN]) !== antes) render();
+  if (golCambio || JSON.stringify([S.diaOk, OV, PLAN]) !== antes) render();
 }
-window.addEventListener('beforeunload', e => { if (pendientes) { e.preventDefault(); e.returnValue = ''; } });   // hay un guardado en curso
+window.addEventListener('beforeunload', e => { if (pendientes || S.importando) { e.preventDefault(); e.returnValue = ''; } });
 document.addEventListener('DOMContentLoaded', async () => {
   if (typeof window.COM2?.acceso !== 'function') {
     document.querySelector('.com2-rueda').hidden = true;
@@ -1947,10 +2013,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   $('dashboard').hidden = false;
   COM2.carga.listo();
   actualizarBases();
+  if (S.vista === 'gol') consultarGol().then(cambio => { if (cambio && S.vista === 'gol') render(); });
   setInterval(refrescar, 30000);
   document.addEventListener('visibilitychange', refrescar);
   window.addEventListener('pageshow', e => {
-    if (e.persisted) actualizarBases();
+    if (e.persisted) { actualizarBases(); refrescar(); }
   });
 });
 })();
