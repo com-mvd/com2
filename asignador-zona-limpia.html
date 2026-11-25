@@ -1404,12 +1404,13 @@ async function cargarPlanilla() {
 
 /* ---------- estado ---------- */
 const S = { fecha: fechaMontevideo(), vista: 'turno', turno: null, inv: null, zl: null, asig: null, gol: null, planillaOk: false, err: {},
-  golRevision: -1, golActualizada: null, golConsultando: false, golError: '',
+  golRevision: -1, golActualizada: null, golVence: 0, golConsultando: false, golError: '',
   quitar: 1,            // lo ya realizado que se descuenta: -1 = nada, 0 = hoy, 1 = hoy y ayer
   completo: 80, porRecurso: 1, golRojo: 100, golNegro: 170, gap: 5, sinSug: new Set(), munSel: [],
   puedeEditar: false, diaOk: false };
 const edita = () => S.puedeEditar && S.diaOk && !pendientes && !leyendo;
-const puedeAsignar = () => edita() && !S.importando && S.planillaOk && S.zl && S.inv && S.gol && S.fecha === fechaMontevideo();
+const golVigente = () => S.gol && Date.now() < S.golVence;
+const puedeAsignar = () => edita() && !S.importando && S.planillaOk && S.zl && S.inv && golVigente() && S.fecha === fechaMontevideo();
 
 /* ---------- datos compartidos del día (Supabase) ---------- */
 let OV = { add: {}, del: {} };      // diferencias de recursos respecto de la planilla
@@ -1622,7 +1623,8 @@ async function leerArchivoGol(file) {
   if (filas.length > 50000) throw new Error('La Base GOL admite hasta 50.000 puntos');
   return filas;
 }
-function usarGol({ revision, actualizada, filas }) {
+let relojGol;
+function usarGol({ revision, actualizada, vence_en, filas }) {
   if (revision <= S.golRevision) return;
   const porCircuito = new Map();
   for (const [c, p, a] of filas || []) {
@@ -1632,12 +1634,17 @@ function usarGol({ revision, actualizada, filas }) {
   S.gol = actualizada ? porCircuito : null;
   S.golRevision = revision;
   S.golActualizada = actualizada;
+  S.golVence = Date.parse(vence_en);
   S.sinSug.clear();
+  clearTimeout(relojGol);
+  if (golVigente()) {
+    relojGol = setTimeout(() => { if (S.vista === 'gol') render(); }, S.golVence - Date.now());
+  }
 }
 async function cargarGol(file) {
   const filas = await leerArchivoGol(file);
   const { data, error } = await COM2.sb.from(T_GOL).update({ filas }).eq('id', 1)
-    .select('revision,actualizada').abortSignal(AbortSignal.timeout(20000)).single();
+    .select('revision,actualizada,vence_en').abortSignal(AbortSignal.timeout(20000)).single();
   if (error) {
     console.warn('Guardado Base GOL', error);
     throw new Error('No se pudo confirmar la carga compartida. Volvé a intentar.');
@@ -1657,7 +1664,7 @@ async function consultarGol() {
     if (data.revision > S.golRevision && !S.importando) {
       if (!data.actualizada) usarGol(data);
       else {
-        const base = await tabla.select('revision,actualizada,filas').eq('id', 1)
+        const base = await tabla.select('revision,actualizada,vence_en,filas').eq('id', 1)
           .abortSignal(AbortSignal.timeout(20000)).single();
         if (base.error) throw base.error;
         if (!S.importando) usarGol(base.data);
@@ -1771,6 +1778,7 @@ function vGol() {
   if (S.importando) return vacio('Guardando Base GOL…');
   if (S.golRevision < 0) return vacio(S.golError ? 'La Base GOL todavía no está disponible.' : 'Consultando Base GOL…');
   if (!S.gol) return vacio('Todavía no hay una Base GOL cargada. Elegí un archivo con “Cargar Base GOL”.');
+  if (!golVigente()) return vacio('Terminó el período de esta Base GOL. Cargá una base actualizada.');
   if (!S.zl || !S.inv) return vacio('Cargando Zona Limpia y Contenedores…');
   const d = golDelTurno(), disp = MUNIS.filter(m => d.porMun.has(m));
   if (!disp.length) return vacio(`No quedan circuitos con puntos rojos o negros en el turno ${S.turno}.`);
@@ -1819,7 +1827,7 @@ function toolbar() {
 }
 const horaGol = new Intl.DateTimeFormat('es-UY', { dateStyle: 'short', timeStyle: 'short', hourCycle: 'h23', timeZone: 'America/Montevideo' });
 function ultimaCargaGol() {
-  if (!S.golActualizada) return '';
+  if (!golVigente()) return '';
   return `<span class="gol-ultima">Última carga <time datetime="${esc(S.golActualizada)}">${horaGol.format(new Date(S.golActualizada))}</time></span>`;
 }
 const NOMBRES = { inv: 'Contenedores', zl: 'Zona Limpia', gol: 'GOL', planilla: 'Circuitos' };
@@ -1888,11 +1896,12 @@ document.addEventListener('click', e => {
   const del = e.target.closest('[data-del]');
   if (del) { const p = PLAN[+del.dataset.del]; if (p) { asignar(p.c, p.turno, '', '', null); render(); } return; }
   if (e.target.id === 'elegirGol') { $('fGol').click(); return; }
-  if (e.target.id === 'aplicar' && S.gol && puedeAsignar()) {
+  if (e.target.id === 'aplicar' && puedeAsignar()) {
     const filas = [...golDelTurno().porMun.values()].flat().filter(f => f.sug)
       .map(f => filaPlan(f.c, S.turno, f.sug, f.envio, f.edades));
     if (!filas.length) { avisar('No hay sugerencias para asignar.'); return; }
     if (confirm('¿Guardar ' + filas.length + ' sugerencias para todo el turno ' + S.turno + '?')) {
+      if (!puedeAsignar()) { render(); return; }
       guardarCambio(() => confirmarCambio(COM2.sb.from(T_PLAN).insert(filas).select('circuito')));
     }
     return;
