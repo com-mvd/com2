@@ -543,7 +543,6 @@ function fxAvisar(el) { el.dispatchEvent(new Event('input', { bubbles: true }));
 
 function fxSelect(sel) {
   const buscador = sel.dataset.buscar;
-  const libre = sel.hasAttribute('data-libre');
   const btn = document.createElement('button');
   btn.type = 'button'; btn.className = ('fx-btn ' + sel.className).trim();
   if (buscador) {
@@ -571,33 +570,20 @@ function fxSelect(sel) {
       : `<button type="button" class="fx-op${i === sel.selectedIndex ? ' on' : ''}" data-i="${i}">${esc(opcion.text)}</button>`).join('');
     pop.innerHTML = buscador ? `
       <input class="fx-buscar" type="search" maxlength="120" placeholder="${esc(buscador)}" aria-label="${esc(buscador)}">
-      <div class="fx-lista">${opciones}<div class="fx-sin-opciones" hidden>Sin resultados</div>
-        ${libre ? '<button type="button" class="fx-op" data-personalizado hidden></button>' : ''}
-      </div>` : opciones;
+      <div class="fx-lista">${opciones}<div class="fx-sin-opciones" hidden>Sin resultados</div></div>` : opciones;
     const elegir = opcion => {
-      if (opcion.hasAttribute('data-personalizado')) {
-        const valor = pop.querySelector('input').value.trim();
-        sel.add(new Option(valor, valor));
-        sel.selectedIndex = sel.options.length - 1;
-      } else {
-        sel.selectedIndex = +opcion.dataset.i;
-      }
+      sel.selectedIndex = +opcion.dataset.i;
       fxCerrar(); fxAvisar(sel); btn.focus();
     };
     pop.onclick = e => { const opcion = e.target.closest('.fx-op'); if (opcion) elegir(opcion); };
     const entrada = pop.querySelector('.fx-buscar');
     if (entrada) {
       const botones = [...pop.querySelectorAll('[data-i]')];
-      const personalizado = pop.querySelector('[data-personalizado]');
       const sinOpciones = pop.querySelector('.fx-sin-opciones');
       entrada.oninput = () => {
-        const texto = entrada.value.trim(), filtro = sinTildes(texto);
+        const filtro = sinTildes(entrada.value.trim());
         botones.forEach(opcion => { opcion.hidden = !sinTildes(opcion.textContent).includes(filtro); });
-        if (personalizado) {
-          personalizado.hidden = !filtro || botones.some(opcion => sinTildes(opcion.textContent) === filtro);
-          personalizado.textContent = `Usar «${texto}»`;
-        }
-        sinOpciones.hidden = botones.some(opcion => !opcion.hidden) || Boolean(personalizado && !personalizado.hidden);
+        sinOpciones.hidden = botones.some(opcion => !opcion.hidden);
       };
       entrada.onkeydown = e => {
         if (e.key !== 'ArrowDown' && e.key !== 'Enter') return;
@@ -862,7 +848,13 @@ $('hMas').onclick = () => { mostrar += POR_PAGINA; dibujarHistorial(); };
 
 // ── Incidentes ─────────────────────────────────────────────────────────────
 const CAMPOS_INCIDENTE = 'id,incidente,transportista,ocurrido,observaciones,tiene_foto';
-const TIPOS_INCIDENTE = ['Descarga en una caja sin cono', 'Descarga fuera de la caja', 'Deja la planta sucia'];
+const TIPOS_INCIDENTE = [
+  'Descarga en caja llena',
+  'Descarga en planta no autorizada',
+  'Deja entorno sucio',
+  'Hace tiempo/No trabaja',
+  'Otros',
+];
 let incidentes = [], cargandoIncidentes = false;
 
 function estadoIncidentes(texto) {
@@ -1044,8 +1036,8 @@ $('agregarIncidente').onclick = () => {
   abrirVentana(cabeza('Nuevo incidente') + `
     <form id="formIncidente" autocomplete="off">
       <label class="l" for="iIncidente">Incidente</label>
-      <select class="in" id="iIncidente" data-buscar="Buscar o escribir un incidente" data-libre>
-        <option value="" selected disabled>Elegí o escribí un incidente</option>
+      <select class="in" id="iIncidente" data-buscar="Buscar incidente">
+        <option value="" selected disabled>Elegí un incidente</option>
         ${TIPOS_INCIDENTE.map(tipo => `<option value="${esc(tipo)}">${esc(tipo)}</option>`).join('')}
       </select>
       <label class="l" for="iTransportista">Transportista</label>
