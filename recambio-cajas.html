@@ -5,15 +5,15 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex,nofollow">
 <meta name="theme-color" content="#16213e">
-<title>COM 2</title>
+<title>Monitoreo de plantas · COM 2</title>
 <link rel="icon" type="image/png" href="assets/logo-ciemsa.png">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:opsz,wght@9..40,400;9..40,500;9..40,600;9..40,700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="assets/barra.css?v=202611171930">
 <link rel="stylesheet" href="assets/carga.css?v=202611131600">
 <style>
 /* Recambio de cajas (15/11/2026). Reemplaza la planilla "Vaciados Cajas 2026" (Ingreso → Pendientes → Resueltos, con
-   dos Apps Script). Datos en las tablas cajas y cajas_recambios de Supabase (sql/16-cajas.sql). Solo supervisor o más arriba (15/11), desde el panel Supervisor, recuadro Bolsones.
-   Pestañas: Organización del servicio (lo de la hoja INFO; a la izquierda desde el 15/11), En curso (los pedidos pendientes, una columna por lugar) e Historial. Abre siempre en Organización del servicio.
+   dos Apps Script). Datos en cajas y cajas_recambios de Supabase. El operador registra cajas llenas en Recambio de cajas.
+   Ambos perfiles consultan Organización del servicio e Historial. Supervisión completa los pedidos.
    15/11: Historial solo con lo realizado, sin columna de quién cargó, CSV, filtro de estado ni buscador; sin Cancelar pedido.
    15/11: pestañas centradas con ícono, como Supervisión de Bolsones; "Pedir recambio" solo dentro de En curso.
    15/11: se sacó la pestaña Indicadores (se verá más adelante, con más datos) y En curso dejó de mostrar las cajas sin pedido. */
@@ -39,15 +39,16 @@ button{cursor:pointer}
 .cats::-webkit-scrollbar{display:none}
 .cats button{flex:none;display:inline-flex;align-items:center;gap:8px;border:0;background:transparent;color:#c7d5ea;font-size:13.5px;font-weight:600;padding:9px 16px;border-radius:10px;white-space:nowrap}
 /* Centradas, como en Supervisión de Agenda: si en el celular no entran, se desplazan sin cortarse */
-.cats button:first-child{margin-left:auto}
-.cats button:last-child{margin-right:auto}
+.cats{justify-content:safe center}
 .cats svg{width:16px;height:16px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
 .cats button:hover{background:rgba(255,255,255,.08);color:#fff}
 .cats button.on{background:#fff;color:#0f172a;box-shadow:0 2px 6px rgba(0,0,0,.18)}
 .cats .cuenta{display:inline-block;min-width:20px;margin-left:-2px;padding:1px 6px;border-radius:10px;background:#f59e0b;color:#1A1714;font-size:12px;font-weight:700;text-align:center}
-/* "+ Caja llena": en la cabecera de cada lugar (15/11), abre el pedido con ese lugar ya elegido */
+/* "+ Caja llena": abre el registro con la planta ya elegida. */
 .btn-pedir{flex:0 0 auto;border-radius:10px;padding:7px 13px;font-size:13.5px;font-weight:700;color:#fff;background:#1A1714;border:1px solid #1A1714;box-shadow:0 2px 6px rgba(0,0,0,.18)}
 .btn-pedir:hover{background:#2e2a26}
+.btn-pedir:disabled{opacity:.55;cursor:default}
+.aviso-esquema{margin:0 0 14px}
 /* En modo oscuro: del tono del fondo de la página, con borde para que se despegue de la tarjeta */
 [data-theme="dark"] .btn-pedir{background:var(--bg);border-color:var(--border);color:#f1f1f1}
 [data-theme="dark"] .btn-pedir:hover{background:#15171b}
@@ -102,12 +103,39 @@ td.obs{min-width:180px;max-width:320px;color:var(--text2)}
 .vacio{color:var(--text3);font-size:14px;text-align:center;padding:22px}
 .mas{display:block;margin:12px auto 0;border:1px solid var(--border);background:var(--campo);border-radius:10px;padding:9px 18px;font-size:14px;font-weight:600;color:var(--text2)}
 
+/* ── Incidentes ── */
+.incidentes-acciones{display:flex;justify-content:flex-end;margin-bottom:10px}
+.incidentes-acciones .bt{display:inline-flex;align-items:center;gap:7px;min-height:38px;padding:0 13px}
+.incidentes-acciones .bt span{font-size:20px;line-height:1}
+.incidentes-fecha{white-space:nowrap}
+.incidentes-texto{min-width:120px;overflow-wrap:anywhere}
+.incidentes-obs{white-space:pre-wrap;overflow-wrap:anywhere}
+.foto-incidente{display:block;width:100%;max-height:65vh;object-fit:contain;border-radius:8px}
+.inc-foto-zona{position:relative;border:2px dashed var(--border);border-radius:12px;background:var(--f-gris)}
+.inc-foto-zona.encima{border-color:var(--azul);background:var(--campo)}
+.inc-foto-elegir{display:grid;place-items:center;width:100%;min-height:120px;padding:14px;border:0;border-radius:10px;background:transparent;color:var(--text2);font-size:13.5px;line-height:1.55;text-align:center}
+.inc-foto-elegir img{display:block;max-width:100%;max-height:200px;border-radius:8px}
+.inc-foto-quitar{position:absolute;top:8px;right:8px;width:30px;height:30px;border:0;border-radius:50%;background:rgba(0,0,0,.65);color:#fff;font-size:20px;line-height:1}
+
 /* ── Operativa (hoja INFO) ── */
-.info{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}
+.info{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
 @media (max-width:1000px){.info{grid-template-columns:1fr}}
-.info h2{margin-bottom:10px;padding-bottom:8px;border-bottom:3px solid var(--c)}
-.info ol,.info ul{padding-left:20px;font-size:14px;line-height:1.55;color:var(--text)}
+:is(.info,.monitoreo-instrucciones) h2{margin-bottom:10px;padding-bottom:8px;border-bottom:3px solid #93c47d}
+.info ul{padding-left:20px;font-size:14px;line-height:1.55;color:var(--text)}
 .info li{margin-bottom:6px}
+.info .info-detalle{list-style:none;padding-left:0;margin:4px 0 12px}
+.info-detalle li{margin-bottom:2px}
+.monitoreo-instrucciones{margin-top:20px;padding-top:20px;border-top:1px solid var(--border);line-height:1.55}
+.monitoreo-instrucciones h2,.monitoreo-instrucciones h3{margin:0 0 10px}
+.monitoreo-instrucciones h3{margin-top:18px;font-size:14px}
+.monitoreo-instrucciones ul{padding-left:22px}
+.monitoreo-instrucciones li{margin:5px 0}
+.info-dia{display:grid;grid-template-columns:8.25em minmax(0,1fr);align-items:baseline;gap:4px 10px;padding:5px 0}
+.info-dia > strong{white-space:nowrap}
+.info-dia + .info-dia{border-top:1px solid var(--linea)}
+.info-franjas{display:flex;flex-wrap:wrap;gap:4px 6px}
+.info-franja{padding:1px 6px;border-radius:5px;background:var(--f-gris);font-variant-numeric:tabular-nums;white-space:nowrap}
+@media (max-width:360px){.info-dia{grid-template-columns:1fr}}
 
 /* ── Ventana para pedir / resolver / editar ── */
 .fondo{position:fixed;inset:0;z-index:1300;background:rgba(15,23,42,.45);display:flex;align-items:flex-start;justify-content:center;padding:16px 12px;overflow-y:auto}
@@ -142,6 +170,10 @@ textarea.in{resize:vertical;min-height:70px}
 .filtros .fx-btn{height:38px;min-width:150px;font-size:14px;padding:0 10px;border:1px solid var(--border);border-radius:9px;background:var(--campo);font-weight:500;color:var(--text);text-transform:none;letter-spacing:0}
 .fx-pop{position:fixed;z-index:1500;background:var(--card);border:1px solid var(--border);border-radius:14px;box-shadow:0 14px 40px rgba(0,0,0,.28);padding:10px;font-size:14px;color:var(--text)}
 .fx-menu{max-height:290px;overflow-y:auto;padding:6px}
+.fx-menu-busqueda{display:grid;gap:6px;padding:8px}
+.fx-buscar{width:100%;padding:8px 10px;border:1px solid var(--border);border-radius:9px;background:var(--campo);font-size:16px}
+.fx-lista{max-height:min(220px,35vh);overflow-y:auto}
+.fx-sin-opciones{padding:9px 11px;color:var(--text2)}
 .fx-op{display:block;width:100%;text-align:left;border:0;background:none;border-radius:9px;padding:9px 11px;font-size:14px;font-weight:500;white-space:nowrap}
 .fx-op:hover{background:var(--f-gris)}
 .fx-op.on{background:var(--azul);color:#fff;font-weight:700}
@@ -204,7 +236,7 @@ textarea.in{resize:vertical;min-height:70px}
 <header class="barra">
   <a class="com2-marca com2-volver" href="./" aria-label="Volver"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg><span>Volver</span></a>
   <div class="barra-in">
-    <div class="titulo"><h1>Recambios de Cajas</h1></div>
+    <div class="titulo"><h1>Monitoreo de plantas</h1></div>
   </div>
 </header>
 
@@ -215,11 +247,13 @@ textarea.in{resize:vertical;min-height:70px}
 <div class="wrap" id="pagina" hidden>
   <nav class="cats" id="cats">
     <button type="button" data-v="operativa" class="on"><svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M3 10h18M8 3v4M16 3v4"/></svg>Organización del servicio</button>
-    <button type="button" data-v="curso"><svg viewBox="0 0 24 24"><path d="M3 7h11v9H3z"/><path d="M14 10h4l3 3v3h-7"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg>En curso<span class="cuenta" id="cuentaPend" hidden></span></button>
-    <button type="button" data-v="historial"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="M9 10h6M9 14h6M9 18h3"/></svg>Historial</button>
+    <button type="button" data-v="curso"><svg viewBox="0 0 24 24"><path d="M3 7h11v9H3z"/><path d="M14 10h4l3 3v3h-7"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/></svg>Recambio de cajas<span class="cuenta" id="cuentaPend" hidden></span></button>
+    <button type="button" data-v="incidentes"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2 21h20L12 3Z"/><path d="M12 9v4m0 4h.01"/></svg>Incidentes</button>
+    <button type="button" data-v="historial"><svg viewBox="0 0 24 24"><rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1"/><path d="M9 10h6M9 14h6M9 18h3"/></svg>Historial de recambios</button>
   </nav>
 
   <section id="v-curso" hidden>
+    <p class="card aviso-esquema" id="avisoEsquema" role="status" hidden>El registro de cajas llenas se habilita al actualizar la base de datos.</p>
     <div class="lugares" id="lugares"></div>
   </section>
 
@@ -240,6 +274,46 @@ textarea.in{resize:vertical;min-height:70px}
 
   <section id="v-operativa">
     <div class="info" id="info"></div>
+    <div class="monitoreo-instrucciones">
+      <article class="card">
+        <h2>Procedimiento de monitoreo</h2>
+        <p>Para realizar estas tareas se debe utilizar en simultáneo el software para visualizar las cámaras de las plantas y el software de GPS «Punta tracking».</p>
+        <h3>Registros a realizar</h3>
+        <ul>
+          <li>Registrar en <strong>Recambio de cajas</strong> cada vez que se llena una caja.</li>
+          <li>Registrar en <strong>Incidentes</strong> cualquier incidente que se visualice.
+            <ul>
+              <li>Descarga en una caja llena después de enviar el aviso.</li>
+              <li>El transportista deja el entorno sucio.</li>
+              <li>Verificar por GPS qué motocarro estuvo involucrado.</li>
+            </ul>
+          </li>
+        </ul>
+        <h3>Reportes al grupo «Monitoreo plantas»</h3>
+        <ul>
+          <li>Enviar reporte <strong>cada hora</strong> del estado de las 3 plantas.</li>
+          <li>Informar cuando alguna de las cajas esté llegando a <strong>3/4 de su capacidad</strong>.</li>
+          <li>Informar cuando alguna de las cajas llegue al <strong>100% de su capacidad</strong>.</li>
+          <li>Informar al grupo «Monitoreo plantas» cuando se esté realizando un recambio de caja.</li>
+        </ul>
+        <h3>Reportes al grupo «Tareas Especiales + Municipio RECLAMOS»</h3>
+        <ul>
+          <li>Cuando una planta llegue al 100% de su capacidad, enviar mensaje de alerta con el siguiente formato:<br><strong>🚨(X PLANTA) LLENO, NO REALIZAR DESCARGA🚨</strong></li>
+          <li>Cuando la planta que estaba llena reciba un vaciado, enviar mensaje de alerta con el siguiente formato:<br><strong>✅(X PLANTA) SE PUEDE VACIAR✅</strong></li>
+        </ul>
+      </article>
+    </div>
+  </section>
+  <section id="v-incidentes" aria-label="Incidentes" hidden>
+    <div class="incidentes-acciones">
+      <button type="button" class="bt si" id="agregarIncidente" disabled><span aria-hidden="true">+</span> Nuevo incidente</button>
+    </div>
+    <div class="tabla">
+      <table aria-label="Incidentes de transportistas">
+        <thead><tr><th scope="col">Incidente</th><th scope="col">Transportista</th><th scope="col">Fecha y hora</th><th scope="col">Observaciones</th><th scope="col">Foto</th></tr></thead>
+        <tbody id="incFilas"></tbody>
+      </table>
+    </div>
   </section>
 </div>
 
@@ -253,11 +327,9 @@ const LUGARES = ['Univar', 'Filadelfia', 'Faro'];
 // Colores de los pedidos en curso según el tiempo desde el pedido: naranja desde 4 h, rojo desde 8 h
 // (pedido del usuario, 15/11). En el historial, la demora va en rojo desde HORAS_ROJO.
 const HORAS_NARANJA = 4, HORAS_ROJO = 8;
-// Horarios de descarga de cajas (hoja INFO): un pedido fuera de estos horarios lleva un aviso
-const HORARIOS = [{ nombre: 'DFR', desde: '23:00', hasta: '20:30' }, { nombre: 'ETRA', desde: '06:00', hasta: '20:00' }];
 // Lo que estaba en la hoja INFO de la planilla
 const INFO = [
-  { titulo: 'Operativa de recambios de cajas', color: '#6d9eeb', tipo: 'ul', items: [
+  { titulo: 'Operativa de recambios de cajas', items: [
     // Texto actualizado por el usuario el 15/11
     'El pedido de las cajas debe realizarse siempre al momento en que se llena la caja.',
     'Cuando haya más de un pedido de recambio en simultáneo, se debe indicar el orden de prioridad a la empresa.',
@@ -266,14 +338,20 @@ const INFO = [
     'Una vez que esa caja esté llena, solicitar a un transportista que mueva el indicador a la siguiente caja vacía.',
     'La caja debe estar llena pero sin sobrepasar el límite, porque dificultaría el recambio de la misma.',
   ] },
-  { titulo: 'Operativa en días de paro', color: '#e06666', tipo: 'ul', items: [
-    'Se habilitará ETRA para la descarga de las cajas.',
-    'Las descargas de cajas en ETRA no pueden contener residuos voluminosos, solo mezclados.',
+  { titulo: 'Horarios para descargas de cajas', items: [
+    { nombre: 'DFR', detalle: [
+      { dia: 'Lunes a viernes', franjas: ['07:00–21:00', '23:00–05:00'] },
+      { dia: 'Sábado', franjas: ['07:00–21:00'] },
+      { dia: 'Domingo', franjas: ['07:00–13:00', '23:00–05:00'] },
+    ] },
+    { nombre: 'ETRA', detalle: [
+      { dia: 'Lunes a domingo', franjas: ['00:00–24:00'] },
+      'Las descargas no pueden contener residuos voluminosos, solo mezclados.',
+    ] },
   ] },
-  { titulo: 'Horarios para descargas de cajas', color: '#93c47d', tipo: 'ul', items: HORARIOS.map(h => `Horario ${h.nombre}: ${h.desde} a ${h.hasta}`) },
 ];
 const POR_PAGINA = 60;
-const CAMPOS = 'id,lugar,caja,estado,pedido,obs_pedido,prioridad,eta,realizado,obs_realizado,creado,creado_nombre,resuelto_nombre,modificado,modificado_nombre';
+const CAMPOS = 'id,lugar,caja,estado,pedido,obs_pedido,realizado,obs_realizado,modificado';
 
 const sb = COM2.sb, esc = COM2.esc;
 const $ = id => document.getElementById(id);
@@ -300,6 +378,9 @@ function dur(m) {
 // ── Datos ──────────────────────────────────────────────────────────────────
 // Abre siempre en Organización del servicio (15/11, a pedido)
 let yo = null, cajas = [], recs = [], vista = 'operativa', mostrar = POR_PAGINA;
+let registraLlena = true;
+const esOperador = () => yo.rol === 'operador';
+const camposRecambios = () => CAMPOS + (registraLlena ? ',llena,llena_regularizada' : '');
 // Las cajas de hoy siempre con número (15/11, a pedido): "Volkemax" se ve "Volkemax 1". En el historial no se toca,
 // porque ahí hay nombres viejos sin número que eran otra caja ("Richard Gonzalez" ≠ "Richard Gonzalez 1")
 const nomCaja = c => /\d\s*$/.test(c) ? c : c + ' 1';
@@ -308,8 +389,8 @@ const pendienteDe = (l, c) => recs.find(r => r.estado === 'pendiente' && r.lugar
 
 function mensaje(e) {
   if (!e) return 'Error';
-  if (e.code === '23505') return 'Ya hay un pedido pendiente para esa caja';
-  if (e.code === '23514') return 'La fecha de realizado tiene que ser igual o posterior a la del pedido';
+  if (e.code === '23505') return 'Esa caja ya tiene un recambio abierto';
+  if (e.code === '23514') return 'Revisá el orden de las fechas de caja llena, pedido y resuelto';
   if (e.code === '42501') return 'Tu usuario no tiene permiso para esto';
   return e.message || 'Error';
 }
@@ -317,23 +398,30 @@ function mensaje(e) {
 async function leerTodo() {
   const c = await sb.from('cajas').select('lugar,caja,empresa,activa,orden').order('orden').order('caja');
   if (c.error) throw new Error(mensaje(c.error));
+  await leerRecambios();
+  cajas = c.data;
+}
+async function leerRecambios() {
   // De a 1000 (el máximo que devuelve Supabase por pedido)
   const todas = [];
   for (let d = 0; ; d += 1000) {
-    const r = await sb.from('cajas_recambios').select(CAMPOS).order('pedido', { ascending: false }).order('id', { ascending: false }).range(d, d + 999);
+    const r = await sb.from('cajas_recambios').select(camposRecambios()).order('id', { ascending: false }).range(d, d + 999);
+    if (registraLlena && r.error?.code === '42703' && /\bllena(?:_regularizada)?\b/.test(r.error.message)) {
+      registraLlena = false;
+      return leerRecambios();
+    }
     if (r.error) throw new Error(mensaje(r.error));
     todas.push(...r.data);
     if (r.data.length < 1000) break;
   }
-  cajas = c.data; recs = todas;
+  recs = todas;
 }
-const ordenar = () => recs.sort((a, b) => ms(b.pedido) - ms(a.pedido) || b.id - a.id);
 
 // Cambios de otros usuarios, en vivo (Realtime respeta los permisos de la tabla)
 function escucharCambios() {
   sb.channel('cajas-recambios').on('postgres_changes', { event: '*', schema: 'public', table: 'cajas_recambios' }, p => {
     if (p.eventType === 'DELETE') recs = recs.filter(r => r.id !== p.old.id);
-    else { recs = recs.filter(r => r.id !== p.new.id); recs.push(p.new); ordenar(); }
+    else { recs = recs.filter(r => r.id !== p.new.id); recs.push(p.new); }
     dibujar();
   }).subscribe();
 }
@@ -349,13 +437,13 @@ setInterval(() => { if (vista === 'curso' && $('fondo').hidden) dibujarCurso(); 
 async function cambiar(rec, cambios) {
   let q = sb.from('cajas_recambios').update(cambios).eq('id', rec.id);
   q = rec.modificado ? q.eq('modificado', rec.modificado) : q.is('modificado', null);
-  const r = await q.select(CAMPOS);
+  const r = await q.select(camposRecambios());
   if (r.error) throw new Error(mensaje(r.error));
   if (!r.data.length) {
     await leerTodo(); dibujar();
     throw new Error('Ese pedido cambió mientras tanto (otra persona). Ya se actualizó la pantalla: revisalo y probá de nuevo');
   }
-  recs = recs.filter(x => x.id !== rec.id); recs.push(r.data[0]); ordenar();
+  recs = recs.filter(x => x.id !== rec.id); recs.push(r.data[0]);
 }
 
 // ── Aviso abajo ────────────────────────────────────────────────────────────
@@ -368,10 +456,18 @@ function aviso(texto, error = false) {
 }
 
 // ── Pestañas ───────────────────────────────────────────────────────────────
-$('cats').querySelectorAll('button[data-v]').forEach(b => b.onclick = () => { vista = b.dataset.v; dibujar(); scrollTo(0, 0); });
+$('cats').querySelectorAll('button[data-v]').forEach(b => b.onclick = () => {
+  vista = b.dataset.v;
+  dibujar();
+  if (vista === 'incidentes') cargarIncidentes();
+  scrollTo(0, 0);
+});
 function dibujar() {
-  $('cats').querySelectorAll('button[data-v]').forEach(b => b.classList.toggle('on', b.dataset.v === vista));
-  for (const v of ['curso', 'historial', 'operativa']) $('v-' + v).hidden = v !== vista;
+  $('cats').querySelectorAll('button[data-v]').forEach(b => {
+    const activa = b.dataset.v === vista;
+    b.classList.toggle('on', activa);
+    $('v-' + b.dataset.v).hidden = !activa;
+  });
   const n = recs.filter(r => r.estado === 'pendiente').length;
   $('cuentaPend').hidden = !n; $('cuentaPend').textContent = n;
   if (vista === 'curso') dibujarCurso();
@@ -379,20 +475,22 @@ function dibujar() {
   if (vista === 'operativa') dibujarOperativa();
 }
 
-// ── En curso: solo los pedidos pendientes, en una columna por lugar ─────────
-// Color según el tiempo desde el pedido: azul hasta 4 h, naranja de 4 a 8 h, rojo 8 h o más
+// ── En curso: cajas registradas, en una columna por planta ───────────────────
 const nivel = m => m >= HORAS_ROJO * 60 ? 'tarde' : m >= HORAS_NARANJA * 60 ? 'pend' : '';
 function dibujarCurso() {
+  $('avisoEsquema').hidden = registraLlena;
+  $('lugares').hidden = !registraLlena && esOperador();
+  if ($('lugares').hidden) return;
   const pend = recs.filter(r => r.estado === 'pendiente');
   // El más viejo arriba
-  const orden = (a, b) => ms(a.pedido) - ms(b.pedido);
+  const orden = (a, b) => ms(a.llena || a.pedido) - ms(b.llena || b.pedido) || a.id - b.id;
   // Siempre las tres columnas: cada una tiene su botón "+ Caja llena"
   $('lugares').innerHTML = LUGARES.map(l => {
       const lista = pend.filter(r => r.lugar === l).sort(orden);
-      return `<div class="card lugar"><h2>${esc(l)}<button type="button" class="btn-pedir" data-l="${esc(l)}">+ Caja llena</button></h2>`
-        + (lista.length ? lista.map(pedidoHTML).join('') : '<div class="vacio">Sin pedidos en curso</div>') + '</div>';
+      return `<div class="card lugar"><h2>${esc(l)}<button type="button" class="btn-pedir" data-l="${esc(l)}"${registraLlena ? '' : ' disabled'}>+ Caja llena</button></h2>`
+        + (lista.length ? lista.map(pedidoHTML).join('') : '<div class="vacio">Sin cajas en curso</div>') + '</div>';
     }).join('');
-  $('lugares').querySelectorAll('button[data-l]').forEach(b => b.onclick = () => abrirPedido(null, { lugar: b.dataset.l }));
+  $('lugares').querySelectorAll('button[data-l]').forEach(b => b.onclick = () => abrirCajaLlena(b.dataset.l));
   $('lugares').querySelectorAll('button[data-a]').forEach(b => b.onclick = () => {
     const r = recs.find(x => x.id === +b.dataset.id);
     if (!r) return;
@@ -403,11 +501,12 @@ function pedidoHTML(r) {
   // La empresa abajo, solo si el nombre de la caja no la dice ya ("Volkemax 2" ya es de Volkemax)
   const empresa = empresaDe(r.lugar, r.caja);
   const emp = empresa && !sinTildes(r.caja).startsWith(sinTildes(empresa)) ? `<span class="emp">${esc(empresa)}</span>` : '';
-  const m = min(r.pedido, ahora());
+  const m = min(r.llena || r.pedido, ahora());
   return `<div class="caja ${nivel(m)}"><div class="cab"><div class="nom">${esc(nomCaja(r.caja))}${emp}</div><span class="est num">hace ${dur(m)}</span></div>
-      <div class="det">Pedido <b class="num">${fLinda(r.pedido)}</b></div>
+      <div class="det">Caja llena <b class="num">${fLinda(r.llena) || 'Sin registro'}</b>${r.llena_regularizada ? ' <span class="sub">(hora asignada al migrar)</span>' : ''}</div>
+      ${esOperador() ? '' : `<div class="det">Pedido <b class="num">${fLinda(r.pedido) || 'Sin pedir'}</b></div>
       ${r.obs_pedido ? `<div class="obs-p">${esc(r.obs_pedido)}</div>` : ''}
-      <div class="acc"><button type="button" class="bt" data-a="editar" data-id="${r.id}">Editar o cerrar</button></div></div>`;
+      <div class="acc"><button type="button" class="bt" data-a="editar" data-id="${r.id}">Editar o cerrar</button></div>`}</div>`;
 }
 
 // ── Controles propios de fecha/hora y desplegables (15/11) ─────────────────
@@ -418,10 +517,16 @@ const FX_MESES = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio'
 const FX_CHEV = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>';
 const FX_CAL = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M16 3v4M8 3v4M3 10h18"/></svg>';
 let fxAbierto = null;   // { pop, btn }
-function fxCerrar() { if (!fxAbierto) return; fxAbierto.pop.remove(); fxAbierto.btn.classList.remove('abierto'); fxAbierto = null; }
-function fxAbrir(btn, pop) {
+function fxCerrar() {
+  if (!fxAbierto) return;
+  const { pop, btn } = fxAbierto;
+  pop.remove(); btn.classList.remove('abierto');
+  if (btn.hasAttribute('aria-expanded')) btn.setAttribute('aria-expanded', 'false');
+  fxAbierto = null;
+}
+function fxAbrir(btn, pop, contenedor = document.body) {
   fxCerrar();
-  document.body.appendChild(pop); btn.classList.add('abierto'); fxAbierto = { pop, btn };
+  contenedor.appendChild(pop); btn.classList.add('abierto'); fxAbierto = { pop, btn };
   const r = btn.getBoundingClientRect(), w = pop.offsetWidth, h = pop.offsetHeight;
   let top = r.bottom + 6;
   if (top + h > innerHeight - 8) top = r.top - 6 - h >= 8 ? r.top - 6 - h : Math.max(8, innerHeight - h - 8);
@@ -429,28 +534,84 @@ function fxAbrir(btn, pop) {
   pop.style.top = top + 'px';
 }
 document.addEventListener('pointerdown', e => { if (fxAbierto && !fxAbierto.pop.contains(e.target) && !fxAbierto.btn.contains(e.target)) fxCerrar(); }, true);
-window.addEventListener('keydown', e => { if (fxAbierto && e.key === 'Escape') { e.stopImmediatePropagation(); fxCerrar(); } }, true);   // Escape cierra el panel, no la ventana
+window.addEventListener('keydown', e => {
+  if (fxAbierto && e.key === 'Escape') { e.stopImmediatePropagation(); const btn = fxAbierto.btn; fxCerrar(); btn.focus(); }
+}, true);   // Escape cierra el panel, no la ventana
 window.addEventListener('resize', fxCerrar);
 document.addEventListener('scroll', e => { if (fxAbierto && !fxAbierto.pop.contains(e.target)) fxCerrar(); }, true);
 function fxAvisar(el) { el.dispatchEvent(new Event('input', { bubbles: true })); el.dispatchEvent(new Event('change', { bubbles: true })); }
 
 function fxSelect(sel) {
+  const buscador = sel.dataset.buscar;
+  const libre = sel.hasAttribute('data-libre');
   const btn = document.createElement('button');
   btn.type = 'button'; btn.className = ('fx-btn ' + sel.className).trim();
+  if (buscador) {
+    btn.id = sel.id + '-selector';
+    const etiqueta = sel.labels[0];
+    etiqueta.id = sel.id + '-etiqueta';
+    etiqueta.htmlFor = btn.id;
+    btn.setAttribute('aria-labelledby', etiqueta.id + ' ' + sel.id + '-valor');
+    btn.setAttribute('aria-expanded', 'false');
+  }
   sel.hidden = true; sel.after(btn);
-  const pintar = () => { const o = sel.options[sel.selectedIndex]; btn.innerHTML = `<span>${esc(o ? o.text : '')}</span>${FX_CHEV}`; };
-  new MutationObserver(pintar).observe(sel, { childList: true });   // llenarFiltros() cambia las opciones
+  const pintar = () => {
+    const opcion = sel.options[sel.selectedIndex];
+    btn.disabled = sel.disabled;
+    btn.innerHTML = `<span id="${esc(sel.id)}-valor"${opcion?.disabled ? ' class="fx-ph"' : ''}>${esc(opcion?.text || '')}</span>${FX_CHEV}`;
+  };
+  new MutationObserver(pintar).observe(sel, { childList: true, subtree: true, attributes: true, attributeFilter: ['disabled'] });
   sel.addEventListener('change', pintar); pintar();
   btn.onclick = () => {
     if (fxAbierto && fxAbierto.btn === btn) return fxCerrar();
     const pop = document.createElement('div');
-    pop.className = 'fx-pop fx-menu'; pop.style.minWidth = btn.offsetWidth + 'px';
-    pop.innerHTML = [...sel.options].map((o, i) => `<button type="button" class="fx-op${i === sel.selectedIndex ? ' on' : ''}" data-i="${i}">${esc(o.text)}</button>`).join('');
-    pop.onclick = e => {
-      const b = e.target.closest('.fx-op'); if (!b) return;
-      sel.selectedIndex = +b.dataset.i; fxCerrar(); fxAvisar(sel);
+    pop.className = buscador ? 'fx-pop fx-menu-busqueda' : 'fx-pop fx-menu';
+    pop.style[buscador ? 'width' : 'minWidth'] = btn.offsetWidth + 'px';
+    const opciones = [...sel.options].map((opcion, i) => opcion.disabled ? ''
+      : `<button type="button" class="fx-op${i === sel.selectedIndex ? ' on' : ''}" data-i="${i}">${esc(opcion.text)}</button>`).join('');
+    pop.innerHTML = buscador ? `
+      <input class="fx-buscar" type="search" maxlength="120" placeholder="${esc(buscador)}" aria-label="${esc(buscador)}">
+      <div class="fx-lista">${opciones}<div class="fx-sin-opciones" hidden>Sin resultados</div>
+        ${libre ? '<button type="button" class="fx-op" data-personalizado hidden></button>' : ''}
+      </div>` : opciones;
+    const elegir = opcion => {
+      if (opcion.hasAttribute('data-personalizado')) {
+        const valor = pop.querySelector('input').value.trim();
+        sel.add(new Option(valor, valor));
+        sel.selectedIndex = sel.options.length - 1;
+      } else {
+        sel.selectedIndex = +opcion.dataset.i;
+      }
+      fxCerrar(); fxAvisar(sel); btn.focus();
     };
-    fxAbrir(btn, pop);
+    pop.onclick = e => { const opcion = e.target.closest('.fx-op'); if (opcion) elegir(opcion); };
+    const entrada = pop.querySelector('.fx-buscar');
+    if (entrada) {
+      const botones = [...pop.querySelectorAll('[data-i]')];
+      const personalizado = pop.querySelector('[data-personalizado]');
+      const sinOpciones = pop.querySelector('.fx-sin-opciones');
+      entrada.oninput = () => {
+        const texto = entrada.value.trim(), filtro = sinTildes(texto);
+        botones.forEach(opcion => { opcion.hidden = !sinTildes(opcion.textContent).includes(filtro); });
+        if (personalizado) {
+          personalizado.hidden = !filtro || botones.some(opcion => sinTildes(opcion.textContent) === filtro);
+          personalizado.textContent = `Usar «${texto}»`;
+        }
+        sinOpciones.hidden = botones.some(opcion => !opcion.hidden) || Boolean(personalizado && !personalizado.hidden);
+      };
+      entrada.onkeydown = e => {
+        if (e.key !== 'ArrowDown' && e.key !== 'Enter') return;
+        e.preventDefault();
+        const visibles = [...pop.querySelectorAll('.fx-op:not([hidden])')];
+        if (e.key === 'ArrowDown') visibles[0]?.focus();
+        else if (visibles.length === 1) elegir(visibles[0]);
+      };
+    }
+    fxAbrir(btn, pop, buscador ? btn.closest('[role="dialog"]') || document.body : document.body);
+    if (entrada) {
+      btn.setAttribute('aria-expanded', 'true');
+      if (matchMedia('(pointer:fine)').matches) entrada.focus();
+    }
   };
 }
 
@@ -528,11 +689,56 @@ function cerrarVentana() { fxCerrar(); $('fondo').hidden = true; document.body.s
 $('fondo').onclick = e => { if (e.target === $('fondo')) cerrarVentana(); };
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && !$('fondo').hidden) cerrarVentana(); });
 const cabeza = t => `<div class="top"><h2>${t}</h2><button type="button" class="cerrar" aria-label="Cerrar">×</button></div>`;
-// Pedir un recambio nuevo, o editar uno (en curso, o del historial: solo el admin)
-function abrirPedido(r, pre = {}) {
-  const nuevo = !r;
-  let lugar = r ? r.lugar : pre.lugar || '', caja = r ? r.caja : pre.caja || '';
-  const hist = r && r.estado !== 'pendiente';
+function abrirCajaLlena(lugar) {
+  if (!registraLlena) return;
+  let caja = '';
+  abrirVentana(cabeza('Registrar caja llena') + `
+    <form id="fp" autocomplete="off">
+      <label class="l">Lugar</label><div class="dato">${esc(lugar)}</div>
+      <label class="l">Caja</label><div class="opciones" id="opC"></div>
+      <label class="l" for="iLlena">Fecha y hora de caja llena</label>
+      <input class="in num" type="datetime-local" id="iLlena" required value="${ahora()}">
+      <div class="botones">
+        <button type="submit" class="bt si" id="bGuardar">Registrar caja llena</button>
+      </div>
+    </form>`);
+
+  const dibujarOps = () => {
+    const lista = cajas.filter(c => c.lugar === lugar && c.activa);
+    $('opC').innerHTML = lista.map(c => {
+      const ocupada = pendienteDe(lugar, c.caja);
+      return `<button type="button" class="op${c.caja === caja ? ' on' : ''}" data-c="${esc(c.caja)}" ${ocupada ? 'disabled' : ''}>${esc(nomCaja(c.caja))}${ocupada ? '<small>Ya está en curso</small>' : ''}</button>`;
+    }).join('');
+    $('opC').querySelectorAll('button').forEach(b => b.onclick = () => { caja = b.dataset.c; dibujarOps(); });
+  };
+  dibujarOps();
+
+  const guardar = $('bGuardar');
+  $('fp').onsubmit = async e => {
+    e.preventDefault();
+    if (guardar.disabled) return;
+    if (!caja) return aviso('Elegí la caja', true);
+    if (pendienteDe(lugar, caja)) return aviso('Esa caja ya tiene un recambio abierto', true);
+    const llena = $('iLlena').value;
+    if (!llena) return aviso('Falta la fecha y hora de caja llena', true);
+    if (ms(llena) > ms(ahora()) + 5 * 60000) return aviso('La fecha y hora de caja llena no puede ser futura', true);
+    guardar.disabled = true;
+    try {
+      const q = await sb.from('cajas_recambios').insert({ lugar, caja, llena }).select(camposRecambios()).single();
+      if (q.error) throw new Error(mensaje(q.error));
+      recs = recs.filter(x => x.id !== q.data.id); recs.push(q.data);
+      cerrarVentana(); dibujar(); aviso('Caja llena registrada: ' + nomCaja(caja) + ' de ' + lugar);
+    } catch (err) {
+      aviso(err.message, true);
+      guardar.disabled = false;
+    }
+  };
+}
+
+// Editar uno en curso o, para el admin, corregir un recambio del historial.
+function abrirPedido(r) {
+  const hist = r.estado !== 'pendiente';
+  if (esOperador() || (hist && yo.rol !== 'admin')) return;
   // Desde el historial (15/11, pedido del usuario): los mismos campos y en el mismo orden que la tabla del historial
   const formHist = () => `
       <div class="fila2">
@@ -547,26 +753,25 @@ function abrirPedido(r, pre = {}) {
       <textarea class="in" id="iObsH" maxlength="500">${esc(r.obs_realizado)}</textarea>
       <label class="l">Demora</label>
       <div class="dato num" id="dDem"></div>`;
-  // Pedir uno nuevo, o editar uno en curso
   const formCurso = () => `
-      ${nuevo ? `<label class="l">Lugar</label><div class="dato">${esc(lugar)}</div>
-      <label class="l">Caja</label><div class="opciones" id="opC"></div>`
-      : `<div class="fila2">
+      <div class="fila2">
         <div><label class="l">Lugar</label><div class="dato">${esc(r.lugar)}</div></div>
         <div><label class="l">Caja</label><div class="dato">${esc(nomCaja(r.caja))}</div></div>
-      </div>`}
+      </div>
+      <label class="l">Fecha y hora de caja llena</label>
+      <div class="dato num">${fLinda(r.llena, true) || 'Sin registro'}${r.llena_regularizada ? ' <span class="sub">(hora asignada al migrar)</span>' : ''}</div>
       <label class="l" for="iPed">Fecha y hora del pedido</label>
-      <input class="in num" type="datetime-local" id="iPed" required value="${campo(r ? r.pedido : ahora())}">
-      ${nuevo ? '' : `<label class="l" for="iObs">Observaciones</label>
-      <textarea class="in" id="iObs" maxlength="500" placeholder="Ej.: la empresa no contesta, se vuelve a pedir">${esc(r.obs_pedido)}</textarea>`}
-      ${nuevo ? '' : `<label class="l" for="iRes">Fecha y hora de resuelto</label>
-      <input class="in num" type="datetime-local" id="iRes">`}`;
-  abrirVentana(cabeza(nuevo ? 'Registrar recambio' : hist ? 'Editar recambio' : 'Editar o cerrar') + `
+      <input class="in num" type="datetime-local" id="iPed" value="${campo(r.pedido)}">
+      <label class="l" for="iRes">Fecha y hora de resuelto</label>
+      <input class="in num" type="datetime-local" id="iRes">
+      <label class="l" for="iObs">Observaciones (opcional)</label>
+      <textarea class="in" id="iObs" maxlength="500">${esc(r.obs_pedido)}</textarea>`;
+  abrirVentana(cabeza(hist ? 'Editar recambio' : 'Editar o cerrar') + `
     <form id="fp" autocomplete="off">
       ${hist ? formHist() : formCurso()}
       <div class="botones">
-        ${!nuevo && (!hist || yo.rol === 'admin') ? `<button type="button" class="bt sec no" id="bBorrar">Borrar</button>` : ''}
-        <button type="submit" class="bt si" id="bGuardar">${nuevo ? 'Registrar recambio' : 'Guardar cambios'}</button>
+        <button type="button" class="bt sec no" id="bBorrar">Borrar</button>
+        <button type="submit" class="bt si" id="bGuardar">Guardar cambios</button>
       </div>
     </form>`);
   // Demora (solo lectura), se recalcula al cambiar las fechas
@@ -575,25 +780,10 @@ function abrirPedido(r, pre = {}) {
     $('iPed').addEventListener('input', demora); $('iHec').addEventListener('input', demora); demora();
   }
 
-  // Sin aviso de horarios de descarga al cargar la hora (sacado el 15/11, a pedido); los horarios siguen en la info
-  // Editar o cerrar (15/11): si se carga la fecha de resuelto, el botón cierra el pedido y pasa al historial
   if ($('iRes')) $('iRes').addEventListener('input', () => { $('bGuardar').textContent = $('iRes').value ? 'Cerrar recambio' : 'Guardar cambios'; });
-
-  if (nuevo) {
-    const dibujarOps = () => {
-      const lista = cajas.filter(c => c.lugar === lugar && c.activa);
-      $('opC').innerHTML = lista.map(c => {
-        const p = pendienteDe(lugar, c.caja);
-        return `<button type="button" class="op${c.caja === caja ? ' on' : ''}" data-c="${esc(c.caja)}" ${p ? 'disabled' : ''}>${esc(nomCaja(c.caja))}${p ? '<small>Ya está pedida</small>' : ''}</button>`;
-      }).join('');
-      $('opC').querySelectorAll('button').forEach(b => b.onclick = () => { caja = b.dataset.c; dibujarOps(); });
-    };
-    if (caja && pendienteDe(lugar, caja)) caja = '';
-    dibujarOps();
-  }
   // Borrar (15/11): en curso cualquiera de supervisión; del historial solo el admin. La base también lo exige (sql/19)
-  if ($('bBorrar')) $('bBorrar').onclick = async () => {
-    if (!confirm(`¿Borrar el recambio de ${nomCaja(r.caja)} de ${r.lugar} pedido el ${fLinda(r.pedido)}? No se puede deshacer.`)) return;
+  $('bBorrar').onclick = async () => {
+    if (!confirm(`¿Borrar el recambio de ${nomCaja(r.caja)} de ${r.lugar}? No se puede deshacer.`)) return;
     $('bBorrar').disabled = true;
     const q = await sb.from('cajas_recambios').delete().eq('id', r.id).select('id');
     if (q.error || !q.data.length) { $('bBorrar').disabled = false; return aviso(q.error ? mensaje(q.error) : 'No se pudo borrar', true); }
@@ -601,41 +791,34 @@ function abrirPedido(r, pre = {}) {
     cerrarVentana(); aviso('Recambio borrado'); dibujar();
   };
 
+  const guardar = $('bGuardar');
   $('fp').onsubmit = async e => {
     e.preventDefault();
-    if (nuevo && (!lugar || !caja)) return aviso('Elegí la caja', true);
+    if (guardar.disabled) return;
     const ped = $('iPed').value;
-    if (!ped) return aviso('Falta la fecha y hora del pedido', true);
+    const res = $(hist ? 'iHec' : 'iRes').value;
+    if (!ped && (hist || res || !r.llena)) return aviso('Falta la fecha y hora del pedido', true);
+    if (ped && r.llena && !r.llena_regularizada && ms(ped) < ms(r.llena)) return aviso('La fecha y hora del pedido no puede ser anterior a la de caja llena', true);
     if (ms(ped) > ms(ahora()) + 5 * 60000) return aviso('La fecha y hora del pedido no puede ser futura', true);
-    // Al pedir no hay observaciones (15/11, pedido del usuario): se agregan con Editar mientras está en curso
-    const datos = { pedido: ped };
+    const datos = { pedido: ped || null };
     if ($('iObs')) datos.obs_pedido = $('iObs').value.trim();
+    if (res && ms(res) < ms(ped)) return aviso('La fecha de resuelto no puede ser anterior a la del pedido', true);
+    if (ms(res) > ms(ahora()) + 5 * 60000) return aviso('La fecha de resuelto no puede ser futura', true);
     if (hist) {
-      if (!$('iHec').value) return aviso('Falta la fecha realizado', true);
-      if (ms($('iHec').value) < ms(ped)) return aviso('La fecha realizado tiene que ser después de la del pedido', true);
-      datos.realizado = $('iHec').value;
+      if (!res) return aviso('Falta la fecha realizado', true);
+      datos.realizado = res;
       datos.obs_realizado = $('iObsH').value.trim();
-    } else if (!nuevo && $('iRes').value) {   // cerrar desde Editar: la observación pasa a la del historial
-      const res = $('iRes').value;
-      if (ms(res) < ms(ped)) return aviso('La fecha de resuelto tiene que ser después de la del pedido', true);
-      if (ms(res) > ms(ahora()) + 5 * 60000) return aviso('La fecha de resuelto no puede ser futura', true);
+    } else if (res) {
       Object.assign(datos, { estado: 'realizado', realizado: res, obs_realizado: datos.obs_pedido });
     }
-    $('bGuardar').disabled = true;
+    guardar.disabled = true;
     try {
-      if (nuevo) {
-        const q = await sb.from('cajas_recambios').insert({ lugar, caja, ...datos }).select(CAMPOS);
-        if (q.error) throw new Error(mensaje(q.error));
-        recs = recs.filter(x => x.id !== q.data[0].id); recs.push(q.data[0]); ordenar();
-        aviso('Pedido cargado: ' + caja + ' de ' + lugar);
-      } else {
-        await cambiar(r, datos);
-        aviso(datos.estado === 'realizado' ? 'Listo: ' + r.caja + ' de ' + r.lugar + ' realizado' : 'Cambios guardados');
-      }
+      await cambiar(r, datos);
       cerrarVentana(); dibujar();
+      aviso(datos.estado === 'realizado' ? 'Recambio resuelto: ' + r.caja + ' de ' + r.lugar : 'Cambios guardados');
     } catch (err) {
       aviso(err.message, true);
-      $('bGuardar').disabled = false;
+      guardar.disabled = false;
     }
   };
 }
@@ -676,10 +859,263 @@ function dibujarHistorial() {
   });
 }
 $('hMas').onclick = () => { mostrar += POR_PAGINA; dibujarHistorial(); };
+
+// ── Incidentes ─────────────────────────────────────────────────────────────
+const CAMPOS_INCIDENTE = 'id,incidente,transportista,ocurrido,observaciones,tiene_foto';
+const TIPOS_INCIDENTE = ['Descarga en una caja sin cono', 'Descarga fuera de la caja', 'Deja la planta sucia'];
+let incidentes = [], cargandoIncidentes = false;
+
+function estadoIncidentes(texto) {
+  $('incFilas').innerHTML = `<tr><td colspan="5" class="vacio" role="status">${esc(texto)}</td></tr>`;
+}
+
+function dibujarIncidentes() {
+  if (!incidentes.length) return estadoIncidentes('Todavía no hay incidentes registrados.');
+  $('incFilas').innerHTML = incidentes.map(i => `<tr>
+    <td class="incidentes-texto">${esc(i.incidente)}</td>
+    <td class="incidentes-texto">${esc(i.transportista)}</td>
+    <td class="num incidentes-fecha">${fLinda(i.ocurrido, true)}</td>
+    <td class="obs incidentes-obs">${esc(i.observaciones || '—')}</td>
+    <td>${i.tiene_foto ? `<button type="button" class="bt" data-foto="${esc(i.id)}">Ver foto</button>` : '—'}</td>
+  </tr>`).join('');
+}
+
+async function cargarIncidentes() {
+  if (cargandoIncidentes) return;
+  cargandoIncidentes = true;
+  $('agregarIncidente').disabled = true;
+  estadoIncidentes('Cargando incidentes…');
+  try {
+    const todos = [];
+    for (let d = 0; ; d += 1000) {
+      const q = await sb.from('incidentes_plantas').select(CAMPOS_INCIDENTE)
+        .order('ocurrido', { ascending: false }).order('id', { ascending: false }).range(d, d + 999);
+      if (q.error) throw q.error;
+      todos.push(...q.data);
+      if (q.data.length < 1000) break;
+    }
+    incidentes = todos;
+    dibujarIncidentes();
+    $('agregarIncidente').disabled = false;
+  } catch (e) {
+    const faltaTabla = ['42P01', 'PGRST205', '42703'].includes(e.code);
+    estadoIncidentes(faltaTabla ? 'El registro de incidentes se habilita al actualizar la base de datos.' : 'No se pudieron cargar los incidentes.');
+    if (!faltaTabla) {
+      const reintentar = document.createElement('button');
+      reintentar.type = 'button';
+      reintentar.className = 'mas';
+      reintentar.textContent = 'Reintentar';
+      reintentar.onclick = cargarIncidentes;
+      $('incFilas').querySelector('td').append(reintentar);
+    }
+  } finally {
+    cargandoIncidentes = false;
+  }
+}
+
+async function cargarTransportistas(selector, guardar) {
+  try {
+    const nombres = [];
+    for (let desde = 0; ; desde += 1000) {
+      const q = await sb.from('reclamos_transportistas').select('nombre').order('nombre').range(desde, desde + 999);
+      if (q.error) throw q.error;
+      nombres.push(...q.data.map(t => t.nombre));
+      if (q.data.length < 1000) break;
+    }
+    if (!selector.isConnected) return;
+    nombres.sort((a, b) => a.localeCompare(b, 'es', { sensitivity: 'base' }));
+    selector.options[0].text = nombres.length ? 'Elegí un transportista' : 'No hay transportistas disponibles';
+    selector.append(...nombres.map(nombre => new Option(nombre, nombre)));
+    selector.disabled = guardar.disabled = !nombres.length;
+  } catch {
+    if (selector.isConnected) selector.options[0].text = 'No se pudo cargar el listado';
+  }
+}
+
+async function prepararFoto(archivo) {
+  if (!['image/jpeg', 'image/png', 'image/webp'].includes(archivo.type)) throw new Error('Elegí una foto JPG, PNG o WebP.');
+  const imagen = new Image(), url = URL.createObjectURL(archivo);
+  try {
+    imagen.src = url;
+    try { await imagen.decode(); } catch { throw new Error('No se pudo abrir la foto. Elegí otra imagen.'); }
+    const escala = Math.min(1, 1280 / Math.max(imagen.naturalWidth, imagen.naturalHeight));
+    const lienzo = document.createElement('canvas');
+    lienzo.width = Math.max(1, Math.round(imagen.naturalWidth * escala));
+    lienzo.height = Math.max(1, Math.round(imagen.naturalHeight * escala));
+    const contexto = lienzo.getContext('2d', { alpha: false });
+    contexto.fillStyle = '#fff';
+    contexto.fillRect(0, 0, lienzo.width, lienzo.height);
+    contexto.drawImage(imagen, 0, 0, lienzo.width, lienzo.height);
+    for (const calidad of [.85, .65, .45]) {
+      const foto = lienzo.toDataURL('image/jpeg', calidad);
+      if (foto.length <= 500000) return foto;
+    }
+    throw new Error('La foto es demasiado grande. Elegí una imagen más chica.');
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
+function iniciarFotoIncidente(form) {
+  const archivo = $('iIncFoto'), zona = $('zonaFotoIncidente'), elegir = $('elegirFotoIncidente');
+  const instrucciones = $('instruccionesFotoIncidente'), imagen = $('vistaFotoIncidente'), quitar = $('quitarFotoIncidente');
+  const estado = $('estadoFotoIncidente');
+  let foto = null, version = 0, preparando = false;
+
+  const mostrar = () => {
+    instrucciones.hidden = Boolean(foto);
+    imagen.hidden = quitar.hidden = !foto;
+    if (foto) imagen.src = foto;
+    else imagen.removeAttribute('src');
+    elegir.setAttribute('aria-label', foto ? 'Cambiar foto del incidente' : 'Elegir foto del incidente');
+  };
+  const poner = async archivoNuevo => {
+    const intento = ++version;
+    preparando = true;
+    estado.hidden = false;
+    try {
+      const resultado = await prepararFoto(archivoNuevo);
+      if (intento === version) foto = resultado;
+    } catch (e) {
+      if (intento === version && form.isConnected && !$('fondo').hidden) aviso(e.message, true);
+    } finally {
+      if (intento === version) {
+        preparando = false;
+        estado.hidden = true;
+        mostrar();
+      }
+    }
+  };
+
+  elegir.onclick = () => archivo.click();
+  archivo.onchange = () => {
+    const seleccion = archivo.files[0];
+    if (seleccion) poner(seleccion);
+    archivo.value = '';
+  };
+  quitar.onclick = () => {
+    version++;
+    foto = null;
+    preparando = false;
+    estado.hidden = true;
+    mostrar();
+    elegir.focus();
+  };
+  for (const evento of ['dragenter', 'dragover', 'dragleave', 'drop']) {
+    zona.addEventListener(evento, e => {
+      e.preventDefault();
+      if (evento === 'dragleave' && zona.contains(e.relatedTarget)) return;
+      zona.classList.toggle('encima', evento === 'dragenter' || evento === 'dragover');
+      if (evento !== 'drop') return;
+      const archivos = [...e.dataTransfer.files];
+      const seleccion = archivos.find(f => f.type.startsWith('image/')) || archivos[0];
+      if (seleccion) poner(seleccion);
+    });
+  }
+  form.addEventListener('paste', e => {
+    const item = [...(e.clipboardData?.items || [])].find(i => i.kind === 'file' && i.type.startsWith('image/'));
+    const imagenPegada = item?.getAsFile() || [...(e.clipboardData?.files || [])].find(f => f.type.startsWith('image/'));
+    if (!imagenPegada) return;
+    e.preventDefault();
+    poner(imagenPegada);
+  });
+  return { valor: () => foto, procesando: () => preparando };
+}
+
+$('incFilas').onclick = async e => {
+  const boton = e.target.closest('button[data-foto]');
+  if (!boton) return;
+  boton.disabled = true;
+  try {
+    const q = await sb.from('incidentes_plantas').select('foto').eq('id', boton.dataset.foto).single();
+    const foto = q.data?.foto;
+    if (q.error || !foto?.startsWith('data:image/jpeg;base64,')) throw new Error();
+    if (vista === 'incidentes' && $('fondo').hidden) {
+      abrirVentana(cabeza('Foto del incidente') + `<img class="foto-incidente" alt="Foto del incidente" src="${esc(foto)}">`);
+    }
+  } catch {
+    aviso('No se pudo abrir la foto.', true);
+  } finally {
+    boton.disabled = false;
+  }
+};
+
+$('agregarIncidente').onclick = () => {
+  abrirVentana(cabeza('Nuevo incidente') + `
+    <form id="formIncidente" autocomplete="off">
+      <label class="l" for="iIncidente">Incidente</label>
+      <select class="in" id="iIncidente" data-buscar="Buscar o escribir un incidente" data-libre>
+        <option value="" selected disabled>Elegí o escribí un incidente</option>
+        ${TIPOS_INCIDENTE.map(tipo => `<option value="${esc(tipo)}">${esc(tipo)}</option>`).join('')}
+      </select>
+      <label class="l" for="iTransportista">Transportista</label>
+      <select class="in" id="iTransportista" data-buscar="Buscar transportista" disabled>
+        <option value="" selected disabled>Cargando transportistas…</option>
+      </select>
+      <label class="l" for="iIncFecha">Fecha y hora</label>
+      <input class="in num" type="datetime-local" id="iIncFecha" value="${ahora()}" required>
+      <label class="l" for="elegirFotoIncidente">Foto del incidente (obligatoria)</label>
+      <input type="file" id="iIncFoto" accept="image/jpeg,image/png,image/webp" hidden>
+      <div class="inc-foto-zona" id="zonaFotoIncidente">
+        <button type="button" class="inc-foto-elegir" id="elegirFotoIncidente" aria-label="Elegir foto del incidente" aria-describedby="instruccionesFotoIncidente">
+          <span id="instruccionesFotoIncidente">Tocá para elegir una foto<br>Pegala con Ctrl+V<br>O arrastrala hasta acá</span>
+          <img id="vistaFotoIncidente" alt="Vista previa de la foto del incidente" hidden>
+        </button>
+        <button type="button" class="inc-foto-quitar" id="quitarFotoIncidente" aria-label="Quitar foto" hidden>×</button>
+      </div>
+      <p class="ayuda" id="estadoFotoIncidente" role="status" hidden>Preparando foto…</p>
+      <label class="l" for="iIncObs">Observaciones (opcional)</label>
+      <textarea class="in" id="iIncObs" maxlength="500"></textarea>
+      <div class="botones"><button type="submit" class="bt si" id="guardarIncidente" disabled>Guardar incidente</button></div>
+    </form>`);
+  $('iIncidente-selector').focus();
+
+  const guardar = $('guardarIncidente'), form = $('formIncidente');
+  const fotoIncidente = iniciarFotoIncidente(form);
+  cargarTransportistas($('iTransportista'), guardar);
+  form.onsubmit = async e => {
+    e.preventDefault();
+    if (guardar.disabled) return;
+    const incidente = $('iIncidente').value.trim(), transportista = $('iTransportista').value.trim();
+    const ocurrido = $('iIncFecha').value, observaciones = $('iIncObs').value.trim();
+    const foto = fotoIncidente.valor();
+    if (!incidente || !transportista || !ocurrido) return aviso('Completá el incidente, el transportista y la fecha y hora', true);
+    if (fotoIncidente.procesando()) return aviso('Esperá a que se prepare la foto', true);
+    if (!foto) return aviso('Adjuntá una foto del incidente', true);
+    if (ms(ocurrido) > ms(ahora()) + 5 * 60000) return aviso('La fecha y hora del incidente no puede ser futura', true);
+
+    guardar.disabled = true;
+    try {
+      const q = await sb.from('incidentes_plantas').insert({ incidente, transportista, ocurrido, observaciones, foto })
+        .select(CAMPOS_INCIDENTE).single();
+      if (q.error) throw q.error;
+      incidentes = incidentes.filter(i => i.id !== q.data.id);
+      incidentes.push(q.data);
+      incidentes.sort((a, b) => ms(b.ocurrido) - ms(a.ocurrido) || b.id - a.id);
+      dibujarIncidentes();
+      if (form.isConnected) cerrarVentana();
+      aviso('Incidente registrado');
+    } catch (err) {
+      aviso('No se pudo guardar el incidente (' + err.message + ')', true);
+      guardar.disabled = false;
+    }
+  };
+};
+
 // ── Operativa ──────────────────────────────────────────────────────────────
 function dibujarOperativa() {
-  $('info').innerHTML = INFO.map(b => `<div class="card" style="--c:${b.color}"><h2>${esc(b.titulo)}</h2>
-    <${b.tipo}>${b.items.map(i => `<li>${esc(i)}</li>`).join('')}</${b.tipo}>${b.nota ? `<p class="sub" style="margin-top:8px">${esc(b.nota)}</p>` : ''}</div>`).join('');
+  $('info').innerHTML = INFO.map(b => {
+    const items = b.items.map(item => {
+      if (typeof item === 'string') return `<li>${esc(item)}</li>`;
+      const detalle = item.detalle.map(linea => {
+        if (typeof linea === 'string') return `<li>${esc(linea)}</li>`;
+        const franjas = linea.franjas.map(hora => `<span class="info-franja">${esc(hora)}</span>`).join('');
+        return `<li class="info-dia"><strong>${esc(linea.dia)}</strong><span class="info-franjas">${franjas}</span></li>`;
+      }).join('');
+      return `<li><strong>${esc(item.nombre)}</strong><ul class="info-detalle">${detalle}</ul></li>`;
+    }).join('');
+    return `<div class="card"><h2>${esc(b.titulo)}</h2><ul>${items}</ul></div>`;
+  }).join('');
 }
 
 // ── Inicio ─────────────────────────────────────────────────────────────────
@@ -687,6 +1123,7 @@ async function iniciar() {
   COM2.carga.mostrar('Cargando información');
   try {
     await leerTodo();
+    if (esOperador()) vista = 'curso';
     llenarFiltros();
     fxMejorar($('v-historial'));
     $('pagina').hidden = false;
@@ -697,8 +1134,7 @@ async function iniciar() {
     COM2.carga.error('No se pudieron leer los recambios (' + e.message + ')', iniciar);
   }
 }
-// Entran supervisor, auxiliar, sup gral y admin (no operadores)
-COM2.acceso().then(p => { if (p) { yo = p; iniciar(); } });
+COM2.acceso({ roles: [...COM2.ROLES_SUPERVISION, 'operador'] }).then(p => { if (p) { yo = p; iniciar(); } });
 </script>
 </body>
 </html>
