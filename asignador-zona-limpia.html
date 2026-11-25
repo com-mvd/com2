@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex">
-  <title>Asignador de Zona Limpia · COM 2</title>
+  <title>COM 2</title>
   <script>
     try { if (localStorage.getItem('com2.tema') === 'light') document.documentElement.dataset.theme = 'light'; } catch {}
   </script>
@@ -122,7 +122,6 @@
     @media (max-width: 1099px) { .munis { grid-template-columns: minmax(0, 1fr); } }
     .recursos-mun { padding: 7px 12px; font-size: .8rem; color: var(--muted); border-bottom: 1px solid var(--line-soft); text-align: center; }
     .recursos-mun.sin { color: var(--pending); font-weight: 700; }
-    .nota-sin { font-size: .8rem; color: var(--muted); padding: 8px 12px; text-align: center; }
 
     /* Recursos */
     .recursos th, .recursos td { border: 1px solid var(--line-celda); min-width: 130px; vertical-align: top; text-align: left; }
@@ -150,7 +149,7 @@
   <main class="wrap">
     <div class="dashboard" id="dashboard" hidden>
       <div class="toolbar" id="toolbar"></div>
-    <p class="source-status" id="estado" hidden></p>
+      <p class="source-status" id="estado" hidden></p>
       <p class="source-status err" id="aviso" role="alert" hidden></p>
       <div id="vista"></div>
       <div id="semaforoBox" hidden></div>
@@ -533,7 +532,7 @@
       const DIA = 24 * HORA;
       // El formato 2 guarda los segundos del reloj local de Montevideo como si fueran UTC.
       const DESFASE_MONTEVIDEO = 3 * HORA;
-      const fallido = /no visitado|omitido|no se encuentra|no se pudo|no realizado/;
+      const fallido = /no visitado|omitido|no se pudo|no realizado/;
       const edades = [
         { clase: 'edad-ayer', etiqueta: 'Ayer' },
         { clase: 'edad-anteayer', etiqueta: 'Antes de ayer' },
@@ -1332,7 +1331,7 @@ const MUNIS = ['A', 'C', 'CH', 'D', 'E', 'F', 'G'];      // el municipio B no se
 const MUN_INICIO = ['D', 'F', 'E'];                      // municipios que se abren por defecto en GOL
 const MAX_MUN = 3;                                       // tablas de municipio que se ven a la vez
 const GENERICOS = ['MC DINALI', 'MC COM'];               // transportistas genéricos: sirven para el Semáforo, no para GOL
-const FALLIDO = /no visitado|omitido|no se encuentra|no se pudo|no realizado/;
+const FALLIDO = /no visitado|omitido|no se pudo|no realizado/;
 const ETQ = { ayer: 'Atendidos ayer', antes: 'Atendidos antes de ayer', tres: 'Atendidos hace 3 a 6 días', siete: 'Hace 7 días o más / sin registro' };
 
 const $ = id => document.getElementById(id);
@@ -1348,13 +1347,11 @@ const esGenerico = e => GENERICOS.includes(String(e).trim().toUpperCase());
 const celdaTsv = s => { s = String(s ?? '').replace(/[\t\r\n]+/g, ' '); return /^\s*[=+@-]/.test(s) ? "'" + s : s; };
 
 /* ---------- tramos ---------- */
-function tramos(puntos, tol = 0, excluidos = new Set()) {
+function tramos(puntos, tol = 0) {
   const p = [...new Set(puntos)].sort((a, b) => a - b), out = [];
   for (const x of p) {
     const u = out.at(-1);
-    const unir = u && x - u[1] - 1 <= tol &&
-      Array.from({ length: x - u[1] - 1 }, (_, i) => u[1] + i + 1).every(n => !excluidos.has(n));
-    if (unir) u[1] = x;
+    if (u && x - u[1] - 1 <= tol) u[1] = x;
     else out.push([x, x]);
   }
   return out;
@@ -1362,21 +1359,15 @@ function tramos(puntos, tol = 0, excluidos = new Set()) {
 const texto = t => t.map(([a, b]) => a === b ? a : a + '-' + b).join(', ');     // formato del sistema: "1-5, 8, 20-41"
 
 /* ---------- planilla del Semáforo: turno y camión de cada circuito ---------- */
-// C, CH, D, E y F salen de la planilla de COM 2; A y G, de las listas del asignador anterior.
-const circTurnos = new Map(), circTotal = new Map();
+const circTotal = new Map();
 let PL = [];   // filas: { turno 0-2, municipio, camion, circuito, total }
-const LISTAS_AG = {
-  Matutino: ['A113', 'A109', 'A108', 'A114', 'A111', 'A116', 'A202', 'A203', 'G106', 'G101', 'G115', 'G116', 'G104', 'G113', 'G111', 'G112', 'G103', 'G107', 'G105'],
-  Vespertino: ['A112', 'A205', 'A204', 'A105', 'A106', 'A107', 'A110', 'G114', 'G110', 'G109', 'G108']
-};
 const deArchivo = () => (window.PlanillaZonaLimpia || []).flatMap((t, i) => t.filas.map(f => ({ turno: i, municipio: f.municipio, camion: f.camion, circuito: f.circuito, total: /^\d+$/.test(f.cantidad) ? +f.cantidad : 0 })));
 function armarPlanilla(filas) {
-  PL = filas; circTurnos.clear(); circTotal.clear();
-  const add = (c, t) => (circTurnos.get(c) || circTurnos.set(c, new Set()).get(c)).add(t);
-  PL.forEach(f => { add(f.circuito, TURNOS[f.turno]); if (f.total) circTotal.set(f.circuito, Math.max(circTotal.get(f.circuito) || 0, f.total)); });
-  Object.entries(LISTAS_AG).forEach(([t, L]) => L.forEach(c => {
-    if (!PL.some(f => f.circuito === c)) add(c, t);
-  }));
+  PL = filas;
+  circTotal.clear();
+  for (const f of PL) {
+    if (f.total) circTotal.set(f.circuito, Math.max(circTotal.get(f.circuito) || 0, f.total));
+  }
 }
 function recursosBase() {
   const r = {}; TURNOS.forEach(t => { r[t] = {}; });
@@ -1399,14 +1390,18 @@ async function cargarPlanilla() {
     delete S.err.planilla;
   } catch (e) {
     console.warn('Planilla del Semáforo', e);
-    S.err.planilla = 'No se pudo leer la planilla de circuitos. Recargá para volver a intentar.';
+    const referencia = deArchivo();
+    armarPlanilla(referencia);
+    S.err.planilla = referencia.length
+      ? 'Sin conexión. Se muestra la planilla de referencia en solo lectura.'
+      : 'No se pudo leer la planilla de circuitos.';
   }
   aplicarOV();
 }
 
 /* ---------- estado ---------- */
 const S = { fecha: fechaMontevideo(), vista: 'turno', turno: null, inv: null, zl: null, asig: null, gol: null, planillaOk: false, err: {},
-  quitar: 1,            // lo ya realizado que se descuenta: 0 = hoy, 1 = hoy y ayer
+  quitar: 1,            // lo ya realizado que se descuenta: -1 = nada, 0 = hoy, 1 = hoy y ayer
   completo: 80, porRecurso: 1, golRojo: 100, golNegro: 170, gap: 5, sinSug: new Set(), munSel: [],
   puedeEditar: false, diaOk: false };
 const edita = () => S.puedeEditar && S.diaOk && !pendientes && !leyendo;
@@ -1628,23 +1623,16 @@ async function cargarGol(file) {
 // Lo ya atendido (hoy, u hoy y ayer) se descuenta como en el Semáforo. El tramo es único: lo que queda pendiente, y completo si llega al umbral.
 // La antigüedad de la última atención de lo pendiente se calcula aparte y se guarda con la asignación.
 function golDelTurno() {
-  const hoy = inicioDia(Date.now()), desde = hoy - S.quitar * DIA, filas = [];
-  let sinTurno = 0;
+  const hoy = inicioDia(Date.now()), desde = S.quitar < 0 ? Infinity : hoy - S.quitar * DIA, filas = [];
   for (const [c, pts] of S.gol) {
     if (!validCirc(c) || munDe(c) === 'B') continue;
-    const ts = circTurnos.get(c);
-    if (!ts) { if (pts.some(p => p.a > S.golRojo)) sinTurno++; continue; }
-    if (!ts.has(S.turno)) continue;
     const hechos = S.zl?.get(c);
-    const excluidos = new Set(S.asig?.get(c));
-    for (const [p, fecha] of hechos || []) {
-      if (fecha >= desde) excluidos.add(p);
-    }
-    const vivo = pts.filter(p => !excluidos.has(p.p));
+    const asignados = S.asig?.get(c);
+    const vivo = pts.filter(p => !(hechos?.get(p.p) >= desde) && !asignados?.has(p.p));
     const neg = vivo.filter(p => p.a > S.golNegro).map(p => p.p), roj = vivo.filter(p => p.a > S.golRojo && p.a <= S.golNegro).map(p => p.p);
     if (!neg.length && !roj.length) continue;
     const total = Math.max(S.inv?.get(c) || 0, circTotal.get(c) || 0, ...pts.map(p => p.p));
-    const pend = (neg.length + roj.length) / total * 100, completo = pend >= S.completo && !excluidos.size;
+    const pend = (neg.length + roj.length) / total * 100, completo = pend >= S.completo;
     const g = { ayer: [], antes: [], tres: [], siete: [] };
     neg.concat(roj).forEach(p => {
       const f = hechos?.get(p), d = f == null ? Infinity : (hoy - inicioDia(f)) / DIA;
@@ -1652,24 +1640,21 @@ function golDelTurno() {
     });
     const pctN = neg.length / total * 100, pctR = roj.length / total * 100;
     filas.push({ c, mun: munDe(c), total, neg: neg.length, roj: roj.length, pctN, pctR, score: pctN * 0.75 + pctR * 0.25, pend, completo,
-      envio: completo ? texto([[1, total]]) : texto(tramos(neg.concat(roj), S.gap, excluidos)),
+      envio: completo ? '1-' + total : texto(tramos(neg.concat(roj), S.gap)),
       edades: { ayer: texto(tramos(g.ayer)), antes: texto(tramos(g.antes)), tres: texto(tramos(g.tres)), siete: texto(tramos(g.siete)) } });
   }
   filas.sort((a, b) => b.score - a.score || natCmp(a.c, b.c));
   const porMun = new Map();
   filas.forEach(f => (porMun.get(f.mun) || porMun.set(f.mun, []).get(f.mun)).push(f));
-  // Distribuir por prioridad, contando el plan existente del turno.
-  const ocupacion = new Map();
-  const carga = recurso => ocupacion.get(recurso) || 0;
-  for (const p of PLAN) {
-    if (p.turno === S.turno) ocupacion.set(p.emp, carga(p.emp) + 1);
+  // En cada municipio se alternan los recursos siguiendo el orden de prioridad de los circuitos.
+  for (const [m, lista] of porMun) {
+    const recursos = recursosGol(S.turno, m);
+    const libres = lista.filter(f => !enPlan(f.c, S.turno));
+    libres.slice(0, recursos.length * S.porRecurso).forEach((f, i) => {
+      if (!S.sinSug.has(f.c + '|' + S.turno)) f.sug = recursos[i % recursos.length];
+    });
   }
-  for (const f of filas) {
-    if (enPlan(f.c, S.turno) || S.sinSug.has(f.c + '|' + S.turno)) continue;
-    f.sug = recursosGol(S.turno, f.mun).sort((a, b) => carga(a) - carga(b)).find(e => carga(e) < S.porRecurso);
-    if (f.sug) ocupacion.set(f.sug, carga(f.sug) + 1);
-  }
-  return { porMun, sinTurno };
+  return { porMun };
 }
 const recursosGol = (t, m) => (R[t]?.[m] || []).filter(e => !esGenerico(e));
 const edadesTxt = ed => Object.keys(ETQ).filter(k => ed?.[k]).map(k => ETQ[k] + ': ' + ed[k]).join(' | ');
@@ -1699,7 +1684,8 @@ function vBloques() {
     </div></div></div>`;
 }
 function vRecursos() {
-  const ed = edita() && S.planillaOk, munis = MUNIS;
+  const ed = edita() && S.planillaOk;
+  const munis = MUNIS.filter(m => m !== 'G' || TURNOS.some(t => R[t]?.[m]?.length));
   const todas = [...new Set(TURNOS.flatMap(t => Object.values(R[t] || {}).flat()))].sort(natCmp);
   const nota = !S.puedeEditar ? 'Solo lectura: los recursos los editan auxiliar, sup. gral y admin.'
     : !S.diaOk || !S.planillaOk ? 'La edición requiere los recursos del día y la planilla de circuitos.'
@@ -1717,18 +1703,18 @@ function selectorRecurso(f) {
   const E = [...recursosGol(S.turno, f.mun)];
   if (cur && !E.includes(cur.emp)) E.push(cur.emp);
   if (!E.length) return '<span class="muted">Sin recursos</span>';
-  const sugiere = !cur && f.sug, val = cur ? cur.emp : '';
+  const sugiere = !cur && f.sug, val = cur ? cur.emp : sugiere || '';
   const nota = cur && cur.tramos !== f.envio ? `<span class="sub">Enviado: ${esc(cur.tramos)}</span>` : '';   // lo asignado antes difiere de lo que queda pendiente
   return `<select class="camion-sel ${cur ? 'asignado' : sugiere ? 'sugerido' : ''}" data-c="${f.c}" data-tr="${esc(f.envio)}" data-ed="${esc(JSON.stringify(f.edades))}" aria-label="Recurso de ${f.c}">
-    <option value="">— Sin asignar —</option>${E.map(e => `<option value="${esc(e)}" ${e === val ? 'selected' : ''}>${esc(e)}${e === sugiere ? ' (sugerido)' : ''}</option>`).join('')}</select>${sugiere ? `<span class="sub">Sugerido: ${esc(sugiere)}</span>` : ''}${nota}`;
+    <option value="">— Sin asignar —</option>${E.map(e => `<option value="${esc(e)}" ${e === val ? 'selected' : ''}>${esc(e)}${e === sugiere ? ' (sugerido)' : ''}</option>`).join('')}</select>${nota}`;
 }
 function vGol() {
   const vacio = t => `<section class="card"><div class="aviso-vacio">${t}</div></section>`;
   if (S.fecha !== fechaMontevideo()) return vacio('Las sugerencias GOL están disponibles para el plan de hoy. Para otras fechas, abrí el Plan del día.');
   if (S.cargandoBases) return vacio('Cargando la planilla de circuitos y las bases de Zona Limpia y Contenedores…');
-  if (S.err.zl || S.err.inv || !S.planillaOk) return vacio('Para calcular los pendientes se necesita la planilla de circuitos y las bases de Zona Limpia y Contenedores.');
+  if (S.err.zl || S.err.inv) return vacio('Para calcular los pendientes se necesitan las bases de Zona Limpia y Contenedores.');
   if (S.importando) return vacio('Leyendo Base GOL…');
-  if (!S.gol || S.golFecha !== S.fecha) return vacio('Subí una planilla con Circuito, Posición y % de acumulación desde “Cargar Base GOL”.');
+  if (!S.gol || S.golFecha !== S.fecha) return vacio('Todavía no hay Base GOL en la nube. Por ahora se carga el archivo a mano con “Cargar Base GOL”.');
   if (!S.zl || !S.inv) return vacio('Cargando Zona Limpia y Contenedores…');
   const d = golDelTurno(), disp = MUNIS.filter(m => d.porMun.has(m));
   if (!disp.length) return vacio(`No quedan circuitos con puntos rojos o negros en el turno ${S.turno}.`);
@@ -1747,7 +1733,7 @@ function vGol() {
         <td class="numeric"><b>${f.neg}</b> N · ${f.roj} R<span class="sub">${Math.round(f.pctN)} % negros · ${Math.round(f.pctR)} % rojos</span></td>
         <td class="result" title="${esc(edadesTxt(f.edades))}">${f.completo ? `<span class="completo">Plano completo ${f.envio}</span><span class="completo-nota">${Math.round(f.pend)} % ≥ ${S.completo} %</span>` : `<span class="rango">${esc(f.envio)}</span>`}</td>
         <td>${selectorRecurso(f)}</td></tr>`).join('') + '</tbody></table></div></section>';
-  }).join('') + '</div>' + (d.sinTurno ? `<p class="nota-sin">${d.sinTurno} circuito(s) con puntos rojos o negros no figuran en ningún turno y no se muestran.</p>` : '');
+  }).join('') + '</div>';
 }
 function vPlan() {
   if (!S.diaOk) return '<section class="card"><div class="aviso-vacio">El plan de esta fecha todavía no está disponible.</div></section>';
@@ -1764,13 +1750,12 @@ function toolbar() {
   const plan = `<button class="btn-m pri" data-ir="plan">Plan (${PLAN.length})</button>`;
   if (S.vista === 'gol' && S.fecha !== fechaMontevideo()) return fecha + plan;
   if (S.vista === 'gol') return fecha + `<button class="btn-m" id="elegirGol" ${pendientes || S.importando ? 'disabled' : ''}>Cargar Base GOL</button><input type="file" id="fGol" accept=".xlsx,.xls,.ods,.csv" hidden>
-    <button class="btn-m" id="actualizarBases" ${pendientes || S.cargandoBases ? 'disabled' : ''}>Actualizar bases</button>
-    <div class="field"><label for="quitar">Quitar lo ya realizado</label><select id="quitar"><option value="0" ${S.quitar === 0 ? 'selected' : ''}>Hoy</option><option value="1" ${S.quitar === 1 ? 'selected' : ''}>Hoy y ayer</option></select></div>
+    <div class="field"><label for="quitar">Quitar lo ya realizado</label><select id="quitar"><option value="-1" ${S.quitar === -1 ? 'selected' : ''}>Nada</option><option value="0" ${S.quitar === 0 ? 'selected' : ''}>Hoy</option><option value="1" ${S.quitar === 1 ? 'selected' : ''}>Hoy y ayer</option></select></div>
     <div class="field"><label for="completo">Plano completo desde (%)</label><input type="number" id="completo" min="1" max="100" value="${S.completo}"></div>
     <div class="field"><label for="porRecurso">Circuitos por recurso</label><input type="number" id="porRecurso" min="1" max="10" value="${S.porRecurso}"></div>
     ${puedeAsignar() && S.gol ? '<button class="btn-m" id="aplicar">Asignar sugerencias</button>' : ''}` + plan;
-  if (S.vista === 'plan') return fecha + (S.diaOk && PLAN.length ? '<button class="btn-m pri" id="copiar">Copiar plan</button>' : '') +
-    (edita() && PLAN.length ? '<button class="btn-m" id="vaciar">Vaciar plan</button>' : '');
+  if (S.vista === 'plan') return fecha + `<button class="btn-m pri" id="copiar" ${S.diaOk ? '' : 'disabled'}>Copiar plan</button>` +
+    (edita() ? `<button class="btn-m" id="vaciar" ${PLAN.length ? '' : 'disabled'}>Vaciar</button>` : '');
   if (S.vista === 'recursos') return fecha;
   if (S.vista === 'bloques') return fecha + plan;
   return '';
@@ -1778,22 +1763,25 @@ function toolbar() {
 const NOMBRES = { inv: 'Contenedores', zl: 'Zona Limpia', gol: 'GOL', planilla: 'Circuitos' };
 function estado() {   // solo problemas: lo que anda bien no se muestra
   const avisos = Object.entries(S.err).map(([k, v]) => `<span class="err">${esc(NOMBRES[k])}: ${esc(v)}</span>`);
-  if (S.vista === 'gol' && S.golFecha === S.fecha && S.archivoGol) avisos.unshift(esc(S.archivoGol));
   return avisos.join(' · ');
 }
 function render() {
   const y = scrollY, v = S.vista;
   const sufijo = v === 'recursos' || v === 'plan' ? ' · ' + ddmm(S.fecha) : '';
-  $('titulo').textContent = v === 'bloques' ? S.turno : (v === 'gol' ? S.turno + ' · ' : '') + TITULOS[v] + sufijo;
+  const prefijo = v === 'gol' || v === 'plan' ? S.turno + ' · ' : '';
+  $('titulo').textContent = v === 'bloques' ? S.turno : prefijo + TITULOS[v] + sufijo;
   $('volver').hidden = v === 'turno'; $('salir').hidden = v !== 'turno';
   $('toolbar').innerHTML = toolbar();
-  $('estado').innerHTML = estado();
+  $('estado').innerHTML = v === 'semaforo' ? '' : estado();
   $('estado').hidden = !$('estado').textContent;
   $('vista').hidden = v === 'semaforo';
   $('semaforoBox').hidden = v !== 'semaforo';
   if (v === 'semaforo') abrirSemaforo();
   else $('vista').innerHTML = { turno: vTurno, bloques: vBloques, recursos: vRecursos, gol: vGol, plan: vPlan }[v]();
-  try { history.replaceState(null, '', '#' + (S.turno || '') + '/' + v); } catch {}
+  try {
+    history.replaceState(null, '', '#' + (S.turno || '') + '/' + v);
+    sessionStorage.setItem('azl2.nav', JSON.stringify({ t: S.turno, v }));
+  } catch {}
   scrollTo(0, y);
 }
 function abrirSemaforo() {
@@ -1811,14 +1799,13 @@ function ir(v) {
   render();
   scrollTo(0, 0);
 }
-let volverPlan = 'bloques';
 
 /* ---------- eventos ---------- */
 // "Atrás" interno: va antes que el "Volver" de COM 2 (comun.js), que llevaría al menú
 document.addEventListener('click', e => {
   if (!e.target.closest('#volver')) return;
   e.preventDefault(); e.stopPropagation();
-  ir(S.vista === 'plan' ? volverPlan : ['gol', 'semaforo'].includes(S.vista) ? 'bloques' : 'turno');
+  ir(['gol', 'plan', 'semaforo'].includes(S.vista) ? 'bloques' : 'turno');
 }, true);
 document.addEventListener('click', e => {
   const a = e.target.closest('[data-ir]');
@@ -1826,10 +1813,7 @@ document.addEventListener('click', e => {
     e.preventDefault();
     const d = a.dataset.ir;
     if (d.startsWith('t:')) { S.turno = d.slice(2); ir('bloques'); }
-    else {
-      if (d === 'plan') volverPlan = S.vista;
-      ir(d);
-    }
+    else ir(d);
     return;
   }
   const mu = e.target.closest('[data-mun]');
@@ -1839,7 +1823,6 @@ document.addEventListener('click', e => {
   const del = e.target.closest('[data-del]');
   if (del) { const p = PLAN[+del.dataset.del]; if (p) { asignar(p.c, p.turno, '', '', null); render(); } return; }
   if (e.target.id === 'elegirGol') { $('fGol').click(); return; }
-  if (e.target.id === 'actualizarBases' && !pendientes) { actualizarBases(); return; }
   if (e.target.id === 'aplicar' && S.gol && puedeAsignar()) {
     const filas = [...golDelTurno().porMun.values()].flat().filter(f => f.sug)
       .map(f => filaPlan(f.c, S.turno, f.sug, f.envio, f.edades));
@@ -1882,9 +1865,9 @@ document.addEventListener('change', async e => {
   else if (id === 'porRecurso') S.porRecurso = Math.min(10, Math.max(1, Math.trunc(+t.value) || 1));
   else if (id === 'fGol') {
     if (!t.files[0] || pendientes || S.importando) return;
-    S.importando = true; S.gol = null; S.archivoGol = ''; delete S.err.gol;
+    S.importando = true; S.gol = null; delete S.err.gol;
     render();
-    try { await cargarGol(t.files[0]); S.archivoGol = t.files[0].name; }
+    try { await cargarGol(t.files[0]); }
     catch (x) { S.err.gol = x.message; }
     finally { S.importando = false; }
   }
@@ -1934,6 +1917,7 @@ async function actualizarBases() {
 async function refrescar() {
   if (document.hidden || pendientes || leyendo || S.importando) return;
   const a = document.activeElement; if (a && a.matches('input, select, textarea')) return;
+  if (S.err.planilla || S.err.inv || S.err.zl) actualizarBases();
   const antes = JSON.stringify([S.diaOk, OV, PLAN]);
   const recuperando = !S.diaOk;
   await cargarDia();
@@ -1952,7 +1936,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   window.AZL = { perfil };
   S.puedeEditar = ROLES_EDITAN.includes(perfil.rol);
   await cargarDia();
-  const [t, v] = location.hash.slice(1).split('/');
+  let [t, v] = location.hash.slice(1).split('/');
+  if (!location.hash && performance.getEntriesByType('navigation')[0]?.type === 'back_forward') {
+    try { ({ t, v } = JSON.parse(sessionStorage.getItem('azl2.nav')) || {}); } catch {}
+  }
   if (v === 'recursos' || (TURNOS.includes(t) && ['bloques', 'gol', 'plan', 'semaforo'].includes(v))) {
     S.turno = TURNOS.includes(t) ? t : null;
     S.vista = v;
