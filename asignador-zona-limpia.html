@@ -41,27 +41,40 @@
 
     /* barra de herramientas */
     .toolbar { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 8px 22px; }
-    .toolbar.gol { justify-content: flex-start; }
-    .gol-ultima { color: var(--muted); font-size: .8rem; }
+    .toolbar:empty { display: none; }
+    .toolbar.gol { position: sticky; top: calc(76px + env(safe-area-inset-top)); z-index: 900; display: block; min-width: 0; color: #f0f5ff; color-scheme: dark; }
+    .gol-fila { display: flex; align-items: center; gap: 12px; padding: 7px 10px; overflow-x: auto; scrollbar-width: thin; scroll-padding-inline: 10px;
+      border-radius: 14px; background: linear-gradient(135deg, #162a4d 0%, #193563 55%, #1b3f74 100%); box-shadow: 0 4px 12px rgba(15,23,42,.25); }
+    .gol-fila:focus-visible { outline-offset: -3px; }
+    .gol-controles { display: flex; flex: none; align-items: center; gap: 12px; }
+    .gol-controles .field { flex-wrap: nowrap; gap: 6px; }
+    .gol-carga { display: flex; flex: none; align-items: center; gap: 4px 8px; margin-inline-start: auto; padding-inline-start: 12px;
+      border-inline-start: 1px solid rgba(255,255,255,.19); white-space: nowrap; }
+    .gol-ultima { color: #c7d5ea; font-size: .8rem; }
     .field { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
     .field > label { font-size: .82rem; font-weight: 700; }
-    .toolbar select, .toolbar input[type=date], .toolbar input[type=number] {
+    .toolbar input[type=date], .toolbar input[type=number] {
       min-height: 30px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel); padding: 3px 9px; font-size: .82rem; font-weight: 600;
     }
     .toolbar input[type=number] { width: 66px; }
+    .gol-controles input[type=number] { width: 54px; }
     .btn-m { background: var(--panel); border: 1px solid var(--line); border-radius: 7px; padding: 5px 9px; color: var(--blue); font-size: .8rem; font-weight: 700; cursor: pointer; }
     .btn-m:hover { border-color: var(--blue); }
     .btn-m.pri { background: #184a91; border-color: #184a91; color: #fff; }
+    .toolbar.gol :is(.btn-m, .chip-mun, select, input[type="date"], input[type="number"]) {
+      background-color: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.26); color: inherit;
+    }
+    .toolbar.gol :is(.btn-m, .chip-mun):hover:not(:disabled) { border-color: #fff; }
+    .toolbar.gol :focus-visible { outline-color: #fff; }
     .source-status { margin: 0; font-size: .85rem; color: var(--muted); text-align: center; }
     .source-status.err { color: var(--pending); font-weight: 700; }
     .source-status .ok { color: var(--ok); }
     .source-status .err { color: var(--pending); }
 
     /* inicio: tarjetas como el menú de COM 2 */
-    .portada { min-height: calc(100dvh - 62px - 70px); display: flex; align-items: flex-start; justify-content: center; }
+    .portada { min-height: calc(100dvh - 2 * (62px + 14px + env(safe-area-inset-top))); display: flex; align-items: center; justify-content: center; }
     .cover { width: 100%; max-width: 860px; }
-    .titulo-bloque { text-align: center; margin: 0 0 18px; font-size: .95rem; color: var(--muted); font-weight: 600; }
-    .recursos-acc { display: inline-flex; align-items: center; gap: 10px; margin-bottom: 40px; padding: 9px 16px; border: 1px solid var(--line); border-radius: 12px;
+    .recursos-acc { display: flex; align-items: center; justify-content: center; flex-wrap: wrap; gap: 4px 10px; margin: 16px auto 0; padding: 9px 16px; border: 1px solid var(--line); border-radius: 12px;
       background: var(--panel); color: var(--text); cursor: pointer; font-weight: 700; }
     .recursos-acc:hover { border-color: var(--blue); }
     .recursos-acc span { font-weight: 500; font-size: .82rem; color: var(--muted); }
@@ -80,11 +93,9 @@
     .tile-name { font-size: 14.5px; font-weight: 600; }
     .tile-sub { font-size: .8rem; color: var(--muted); text-align: center; }
     .acc-teal .tile-icon { background: #DCEDE4; } .acc-teal .tile-icon svg { stroke: #39745E; }
-    .acc-blue .tile-icon { background: #DDECF4; } .acc-blue .tile-icon svg { stroke: #346A92; }
     .acc-amber .tile-icon { background: #F5E4CF; } .acc-amber .tile-icon svg { stroke: #9A642A; }
     .acc-violet .tile-icon { background: #E5DDF0; } .acc-violet .tile-icon svg { stroke: #6C5790; }
     [data-theme="dark"] .acc-teal .tile-icon { background: #1d3a2f; } [data-theme="dark"] .acc-teal .tile-icon svg { stroke: #6cc39f; }
-    [data-theme="dark"] .acc-blue .tile-icon { background: #1a2d3d; } [data-theme="dark"] .acc-blue .tile-icon svg { stroke: #7fb2d9; }
     [data-theme="dark"] .acc-amber .tile-icon { background: #3a2c1a; } [data-theme="dark"] .acc-amber .tile-icon svg { stroke: #e0a867; }
     [data-theme="dark"] .acc-violet .tile-icon { background: #2c2440; } [data-theme="dark"] .acc-violet .tile-icon svg { stroke: #b29ee0; }
 
@@ -107,32 +118,93 @@
     .completo { display: inline-block; font-weight: 800; background: #090b10; color: #fff; padding-inline: .45em; border: 1px solid var(--line); border-radius: 5px; }
     .completo-nota { display: block; margin-top: 2px; font-size: .72rem; font-weight: 600; color: var(--muted); }
     .sub { display: block; font-size: .72rem; color: var(--muted); font-weight: 500; }
-    .camion-sel { width: 100%; max-width: 190px; min-height: 30px; padding: 3px 5px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); font-size: .82rem; text-align: center; }
-    .camion-sel.asignado { border-color: var(--ok); color: var(--ok); font-weight: 700; }
-    .camion-sel.sugerido { border-style: dashed; border-color: var(--blue); }
+    .detalle-colores { white-space: nowrap; overflow-wrap: normal; }
+    .gol-select {
+      appearance: none; min-height: 30px; padding: 3px 28px 3px 9px; border: 1px solid var(--line); border-radius: 8px;
+      background: var(--panel) url("data:image/svg+xml,%3Csvg width='14' height='14' viewBox='0 0 16 16' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='m4 6 4 4 4-4' fill='none' stroke='%23758fb3' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") no-repeat right 8px center;
+      font-size: .82rem; font-weight: 600; cursor: pointer;
+    }
+    .gol-select:hover { border-color: var(--blue); }
+    .toolbar.gol .gol-select { min-width: 6.5rem; }
+    .toolbar.gol .gol-select:hover { border-color: #fff; }
+    @supports (appearance: base-select) and selector(::picker(select)) {
+      .gol-select, .gol-select::picker(select) { appearance: base-select; }
+      .gol-select { align-items: center; gap: 8px; justify-content: space-between; background-image: none; padding-inline: 9px; }
+      .gol-select::picker-icon { color: var(--blue); font-size: .72rem; }
+      .toolbar.gol .gol-select::picker-icon { color: #c7d5ea; }
+      .gol-select::picker(select) {
+        margin-top: 5px; padding: 4px; border: 1px solid var(--line); border-radius: 9px;
+        background: var(--panel); color: var(--text); box-shadow: 0 5px 16px #0f172a26;
+      }
+      .gol-select option { min-height: 33px; gap: 6px; border-radius: 5px; padding: 5px 7px; font-weight: 600; cursor: pointer; }
+      .gol-select option:is(:hover, :focus-visible, :checked) { background: var(--surface); color: var(--blue); }
+      .gol-select option::checkmark { order: 1; margin-inline-start: auto; }
+    }
+    .camion-sel, .recurso-opciones { width: 100%; max-width: 190px; min-height: 32px; }
+    :is(.camion-sel.asignado, .recurso-opciones) {
+      border: 1px solid var(--ok); border-radius: 8px; background-color: color-mix(in srgb, var(--ok) 14%, var(--panel)); color: var(--ok); font-weight: 700;
+    }
+    :is(.camion-sel.asignado, .recurso-opciones):hover { background-color: color-mix(in srgb, var(--ok) 24%, var(--panel)); }
+    .recurso-opciones { display: flex; align-items: stretch; margin-inline: auto; }
+    .recurso-directo { flex: 1; min-width: 0; padding: 3px 0 3px 10px; border: 0; border-radius: 7px 0 0 7px; background: transparent;
+      color: inherit; font-size: .82rem; line-height: 1.2; font-weight: 700; text-align: start; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+    .camion-sel.alternativas { flex: 0 0 34px; width: 34px; min-width: 34px; min-height: 30px; padding-inline: 0; justify-content: center; gap: 0;
+      border: 0; border-radius: 0 7px 7px 0; background-color: transparent; }
+    .recurso-opciones > :focus-visible { outline-offset: -2px; }
+    @supports (appearance: base-select) and selector(::picker(select)) {
+      .camion-sel:not(.alternativas) { padding-inline: 10px 12px; }
+      .camion-sel > button { flex: 1; min-width: 0; padding: 0; border: 0; background: none; color: inherit; text-align: start; }
+      .camion-sel selectedcontent { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+      .camion-sel:is(.asignado, .alternativas)::picker-icon { color: inherit; }
+      .camion-sel.alternativas::picker-icon { margin-inline: auto; }
+      .camion-sel.alternativas::picker(select) { min-width: max-content; }
+    }
     .aviso-vacio { padding: 26px; text-align: center; color: var(--muted); }
 
     /* GOL: una columna por municipio */
-    .muni-chips { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 8px; margin-bottom: 14px; }
-    .muni-chips .lab { font-size: .82rem; font-weight: 700; margin-right: 4px; }
-    .chip-mun { min-height: 30px; padding: 3px 13px; border: 1px solid var(--line); border-radius: 99px; background: var(--panel); font-size: .85rem; font-weight: 700; cursor: pointer; }
-    .chip-mun span { font-weight: 500; color: var(--muted); margin-left: 2px; }
-    .chip-mun:hover:not(:disabled) { border-color: var(--blue); }
-    .chip-mun.on { background: #184a91; border-color: #184a91; color: #fff; } .chip-mun.on span { color: #dbe6f7; }
+    .muni-chips, .muni-opciones { display: flex; align-items: center; gap: 4px; }
+    .muni-chips .lab { font-size: .82rem; font-weight: 700; margin-right: 2px; }
+    @media (721px <= width <= 1340px) {
+      .gol-controles { align-items: flex-start; }
+      .gol-controles .field, .muni-chips { flex-direction: column; align-items: flex-start; gap: 3px; }
+    }
+    @media (721px <= width <= 1100px) {
+      .gol-carga { flex-direction: column; align-items: flex-start; }
+    }
+    .chip-mun { min-height: 30px; padding: 3px 7px; border: 1px solid var(--line); border-radius: 99px; background: var(--panel); font-size: .8rem; font-weight: 700; cursor: pointer; }
+    .chip-mun span { font-weight: 500; margin-left: 2px; }
+    .toolbar.gol .chip-mun.on { background: #fff; border-color: #fff; color: #162a4d; }
     .chip-mun:disabled { opacity: .4; cursor: not-allowed; }
     .munis { display: grid; grid-template-columns: repeat(var(--cols, 3), minmax(0, 1fr)); gap: 14px; align-items: start; }
+    .munis :is(th, td) { padding-inline: 7px; }
     @media (max-width: 1099px) { .munis { grid-template-columns: minmax(0, 1fr); } }
+    @media (max-width: 480px) { .munis :is(th, td) { padding-inline: 5px; } }
     .recursos-mun { padding: 7px 12px; font-size: .8rem; color: var(--muted); border-bottom: 1px solid var(--line-soft); text-align: center; }
     .recursos-mun.sin { color: var(--pending); font-weight: 700; }
+    .recurso-fuera { display: block; color: var(--pending); font-size: .75rem; font-weight: 700; }
 
     /* Recursos */
-    .recursos th, .recursos td { border: 1px solid var(--line-celda); min-width: 130px; vertical-align: top; text-align: left; }
-    .recursos thead th { text-align: center; }
-    .recursos th.t { background: var(--surface); text-align: center; min-width: 110px; font-size: .86rem; color: var(--text); }
-    .tag { display: inline-flex; align-items: center; gap: 4px; margin: 2px; padding: 2px 4px 2px 9px; border: 1px solid var(--line); border-radius: 99px; background: var(--surface); font-size: .82rem; font-weight: 600; }
+    .wrap:has(.recursos-panel) { padding-bottom: 12px; }
+    .recursos-panel { display: grid; gap: 10px; width: 100%; min-width: 0; max-width: 1480px; }
+    .recursos-panel .card { overflow: hidden; box-shadow: 0 4px 20px rgba(26,23,20,.08); }
+    .recursos-panel .table-box:focus-visible { outline-offset: -3px; }
+    .recursos { table-layout: fixed; min-width: calc(5.75rem + var(--municipios) * 6.25rem); }
+    .recursos th, .recursos td { padding: 5px; }
+    .recursos thead { background: linear-gradient(135deg, #162a4d, #1b3f74); color: #fff; }
+    .recursos thead th { border-color: rgba(255,255,255,.2); font-size: .82rem; overflow-wrap: anywhere; }
+    .recursos tbody tr { height: clamp(108px, 19dvh, 144px); }
+    .recursos .col-turno { width: 10%; }
+    .recursos th.t { background: var(--surface); font-size: .91rem; font-weight: 700; color: var(--text); }
+    .recursos-empresas { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: 3px; }
+    .tag { display: inline-flex; align-items: center; gap: 3px; max-width: 100%; padding: 1px 5px; border: 1px solid var(--line); border-radius: 99px;
+      background: var(--surface); font-size: .84rem; font-weight: 600; line-height: 1.2; }
+    .tag span { min-width: 0; }
     .tag[draggable="true"] { cursor: grab; }
-    .tag button { border: 0; background: none; cursor: pointer; color: var(--muted); padding: 0 4px; font-size: .9rem; }
-    .celda input { width: 100%; margin-top: 4px; min-height: 28px; padding: 3px 7px; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); font-size: .8rem; }
+    .tag button { flex: none; border: 0; background: none; cursor: pointer; color: var(--muted); padding: 0 1px; font-size: inherit; }
+    .tag-agregar { justify-content: center; min-width: 25px; color: var(--blue); cursor: pointer; }
+    .tag-agregar:hover { border-color: var(--blue); }
+    .celda input { width: 100%; max-width: 120px; min-height: 24px; padding: 1px 6px; border: 1px solid var(--line);
+      border-radius: 99px; background: var(--panel); font-size: .75rem; text-align: center; }
     .celda.sobre { outline: 2px dashed var(--blue); outline-offset: -3px; background: var(--surface); }
   </style>
 </head>
@@ -359,9 +431,11 @@
     .camion-editable {
       display: block; width: 100%; min-width: 0; padding: 5px 3px; text-align: center;
       border: 1px solid var(--blue); border-radius: 6px; background: var(--panel); font-size: inherit;
-      field-sizing: content; min-height: 30px; max-height: 6em; resize: none;
+      min-height: 30px;
     }
-    .camion-editable::placeholder { color: var(--muted); }
+    .aviso-recursos { margin: 0; padding: 8px 10px; background: var(--surface); color: var(--pending); text-align: center; font-size: .82rem; font-weight: 700; }
+    .aviso-recursos p { margin: 0; }
+    .grupo-camion.sin-recurso { color: var(--pending); }
     .circuito-acciones { display: flex; justify-content: center; align-items: center; flex-wrap: wrap; gap: 3px; margin-top: 4px; }
     .circuito-acciones .fila-accion { margin: 0; }
     .mover-fila {
@@ -441,7 +515,7 @@
           <p class="leyenda-atencion" id="leyenda-atencion" hidden></p>
         </div>
         <button type="button" id="modo-edicion" aria-label="Editar planificación" aria-controls="tablas"
-          aria-pressed="false" title="Activar edición" hidden disabled>
+          aria-pressed="false" hidden disabled>
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="m14 6 4 4M4 20l4.5-1 11-11a2.8 2.8 0 0 0-4-4l-11 11L4 20Z"/>
@@ -450,6 +524,7 @@
       </div>
       <p class="source-status" id="estado-base" role="status" hidden></p>
       <p class="source-status" id="estado-planilla" role="status" hidden></p>
+      <p class="source-status" id="estado-recursos" role="status" hidden></p>
       <button type="button" id="reintentar-planilla" hidden>Reintentar carga de tablas</button>
       <div class="turnos" id="tablas"></div>
     </div>
@@ -464,7 +539,7 @@
         <label id="campo-circuito-nuevo" hidden>Código del circuito
           <input name="circuito_nuevo" maxlength="80" autocomplete="off" aria-describedby="editar-info" disabled>
         </label>
-        <label id="campo-camion-nuevo">Camión <input name="camion" maxlength="120" placeholder="Sin camión"></label>
+        <label id="campo-camion-nuevo">Camión <select name="camion"></select></label>
         <label>Tramo asignado
           <input name="tramo" maxlength="30" placeholder="Circuito completo" aria-describedby="editar-info">
         </label>
@@ -495,6 +570,7 @@
       const estadoBase = document.getElementById('estado-base');
       const leyendaAtencion = document.getElementById('leyenda-atencion');
       const estadoPlanilla = document.getElementById('estado-planilla');
+      const estadoRecursos = document.getElementById('estado-recursos');
       const reintentar = document.getElementById('reintentar-planilla');
       const tablas = document.getElementById('tablas');
       const dialogo = document.getElementById('editar-fila');
@@ -509,6 +585,7 @@
       const cancelar = document.getElementById('cancelar-edicion');
       const guardar = formulario.querySelector('[type="submit"]');
       const paneles = [];
+      let recursosDia = null, firmaRecursos;
       const totalesReferencia = new Map();
       const totalesDeclarados = new Map();
       const municipiosCircuito = new Map();
@@ -650,6 +727,33 @@
         return municipioCircuito(fila.circuito) || fila.municipio;
       }
 
+      function recursosDe(turno, municipio, recursos = recursosDia) {
+        return recursos?.[turno]?.[normalizarCodigo(municipio)] || [];
+      }
+
+      function recursoVigente(fila) {
+        const camion = String(fila.camion || '').trim();
+        return !recursosDia || recursosDe(fila.turno, municipioDeFila(fila)).includes(camion) ? camion : '';
+      }
+
+      function cargarOpcionesCamion(select, turno, municipio, camion) {
+        const lista = recursosDe(turno, municipio);
+        select.replaceChildren(new Option('Sin recurso', ''), ...lista.map(nombre => new Option(nombre, nombre)));
+        if (camion && !lista.includes(camion)) {
+          const anterior = new Option(recursosDia ? 'Sin recurso vigente' : camion, camion);
+          anterior.disabled = true;
+          select.prepend(anterior);
+        }
+        select.value = camion;
+        select.disabled = !recursosDia;
+      }
+
+      function actualizarRecursosDialogo() {
+        if (editando) return;
+        cargarOpcionesCamion(campos.camion, turnoEdicion, municipioCircuito(codigoSeleccionado()), campos.camion.value);
+        if (campos.camion.selectedOptions[0]?.disabled) campos.camion.value = '';
+      }
+
       function gruposContiguos(filas, clave) {
         const grupos = [];
         for (const fila of filas) {
@@ -670,19 +774,10 @@
         const controles = {};
         if (editable) {
           const nombre = circuito.textContent;
-          const camion = crear('textarea', null, 'camion-editable');
-          camion.rows = 1;
-          camion.maxLength = 120;
-          camion.value = fila.camion;
-          camion.placeholder = '—';
+          const camion = crear('select', null, 'camion-editable');
+          cargarOpcionesCamion(camion, fila.turno, municipioDeFila(fila), String(fila.camion || '').trim());
           camion.setAttribute('aria-label', 'Camión de ' + nombre);
           camion.addEventListener('change', () => cambiarCamion(fila, camion));
-          camion.addEventListener('keydown', evento => {
-            if (!['Enter', 'Escape'].includes(evento.key) || evento.isComposing) return;
-            evento.preventDefault();
-            if (evento.key === 'Escape') camion.value = fila.camion;
-            camion.blur();
-          });
           const celdaCamion = crear('td', null, 'grupo-camion');
           celdaCamion.append(camion);
           tr.append(crear('td', municipioDeFila(fila), 'grupo-municipio'), celdaCamion);
@@ -733,13 +828,15 @@
           const municipioEl = crear('th', municipioDeFila(filasMunicipio[0]), 'grupo grupo-municipio');
           municipioEl.scope = 'rowgroup';
           municipioEl.rowSpan = filasMunicipio.length;
-          for (const grupoFilas of gruposContiguos(filasMunicipio, fila => fila.camion)) {
+          for (const grupoFilas of gruposContiguos(filasMunicipio, recursoVigente)) {
             for (const [i, fila] of grupoFilas.entries()) {
               const tr = grupo.insertRow();
               if (i === 0) {
                 if (grupo.rows.length === 1) tr.append(municipioEl);
                 else tr.className = 'nuevo-camion';
-                const camionEl = crear('td', fila.camion || '—', 'grupo grupo-camion');
+                const camion = recursoVigente(fila);
+                const camionEl = crear('td', camion || (recursosDia ? 'Sin recurso' : '—'), 'grupo grupo-camion');
+                camionEl.classList.toggle('sin-recurso', Boolean(recursosDia && !camion));
                 camionEl.rowSpan = grupoFilas.length;
                 if (grupo.rows.length - 1 + grupoFilas.length === municipioEl.rowSpan) {
                   camionEl.classList.add('ultimo-camion');
@@ -754,6 +851,10 @@
       }
 
       function armarTurnos() {
+        recursosDia = parent.AZL.recursosDelDia();
+        firmaRecursos = JSON.stringify(recursosDia);
+        estadoRecursos.hidden = Boolean(recursosDia);
+        estadoRecursos.textContent = recursosDia ? '' : 'Los recursos de hoy todavía están sin confirmar.';
         tablas.replaceChildren();
         paneles.length = 0;
         turnos.forEach(({ nombre }, i) => {
@@ -769,6 +870,20 @@
           tabla.setAttribute('aria-labelledby', titulo.id);
           contenido.append(tabla);
           seccion.append(titulo, contenido);
+          if (recursosDia) {
+            const sinRecurso = [...new Set(filas.filter(fila => !recursoVigente(fila)).map(fila => fila.circuito))];
+            const sinTarea = Object.entries(recursosDia[i] ?? {}).flatMap(([municipio, camiones]) => {
+              const usados = new Set(filas.filter(fila => normalizarCodigo(municipioDeFila(fila)) === municipio).map(recursoVigente));
+              return camiones.filter(camion => !usados.has(camion)).map(camion => camion + ' (Municipio ' + municipio + ')');
+            });
+            if (sinRecurso.length || sinTarea.length) {
+              const aviso = crear('div', null, 'aviso-recursos');
+              aviso.setAttribute('role', 'status');
+              if (sinRecurso.length) aviso.append(crear('p', 'Circuitos sin recurso vigente: ' + sinRecurso.join(', ')));
+              if (sinTarea.length) aviso.append(crear('p', 'Camiones sin tarea: ' + sinTarea.join(', ')));
+              contenido.before(aviso);
+            }
+          }
           if (!filas.length) {
             const pie = tabla.createTBody().insertRow().insertCell();
             pie.colSpan = 6;
@@ -789,11 +904,16 @@
         mostrarPendientes();
       }
 
+      window.actualizarRecursosAsignador = () => {
+        if (guardando || arrastre || JSON.stringify(parent.AZL.recursosDelDia()) === firmaRecursos) return;
+        armarTurnos();
+        if (dialogo.open) actualizarRecursosDialogo();
+      };
+
       function crearTirador(tr, fila, nombre) {
         const tirador = crear('button', null, 'mover-fila');
         tirador.type = 'button';
         tirador.setAttribute('aria-label', 'Mover ' + nombre);
-        tirador.title = 'Arrastrá la fila o hacé clic para elegir dónde moverla';
         tirador.innerHTML = '<svg viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M3 4h10M3 8h10M3 12h10"/></svg>';
         let suprimirClick = false;
         tirador.addEventListener('pointerdown', evento => {
@@ -896,7 +1016,14 @@
 
       function moverFila(fila, turno, referencia, despues) {
         if (!modoEdicion || guardando || revision == null || !filasPlanilla.includes(fila)) return;
-        const movida = turno === fila.turno ? fila : { ...fila, turno };
+        const recursos = parent.AZL.recursosDelDia();
+        if (turno !== fila.turno && !recursos) {
+          estadoRecursos.textContent = 'Esperá a que se carguen los recursos para mover el circuito a otro turno.';
+          estadoRecursos.hidden = false;
+          return;
+        }
+        const camion = recursosDe(turno, municipioDeFila(fila), recursos).includes(fila.camion) ? fila.camion : '';
+        const movida = turno === fila.turno ? fila : { ...fila, turno, camion };
         const nuevas = filasPlanilla.filter(otra => otra !== fila);
         const ultima = nuevas.findLastIndex(otra => otra.turno === turno);
         const destino = referencia ? nuevas.indexOf(referencia) + Number(despues) : ultima + 1;
@@ -906,12 +1033,14 @@
       }
 
       function cambiarCamion(fila, entrada) {
-        const camion = entrada.value.trim().replace(/\s*[\r\n]+\s*/g, ' ');
+        const camion = entrada.value;
         if (camion === fila.camion) {
           entrada.value = camion;
           return;
         }
-        if (!modoEdicion || guardando || revision == null || !filasPlanilla.includes(fila)) {
+        const recursos = parent.AZL.recursosDelDia();
+        if (!modoEdicion || guardando || revision == null || !filasPlanilla.includes(fila) || !recursos
+          || (camion && !recursosDe(fila.turno, municipioDeFila(fila), recursos).includes(camion))) {
           entrada.value = fila.camion;
           return;
         }
@@ -937,8 +1066,8 @@
           for (const { fila, cantidad: total, pendientes, detalle } of celdas) {
             const puntos = puntosCircuito(fila.circuito);
             total.textContent = puntos.length || '—';
-            total.title = puntos.length && !inventario.has(fila.circuito)
-              ? 'Cantidad tomada de la planilla de referencia' : '';
+            total.setAttribute('aria-description', puntos.length && !inventario.has(fila.circuito)
+              ? 'Cantidad tomada de la planilla de referencia' : '');
             if (!puntos.length || !datos) continue;
             const atenciones = datos.ultimasAtenciones.get(fila.circuito);
             const { cantidad, grupos } = puntosPendientes(puntos, fila, atenciones, hoy, inicio);
@@ -966,9 +1095,9 @@
                 const s = segmentos.at(-1);
                 if (s && s.edad === edad) { s.hasta = p; s.n++; } else segmentos.push({ edad, desde: p, hasta: p, n: 1 });
               }
-              renglon.title = segmentos.map(s => (edades[s.edad].etiqueta === 'Ayer' || edades[s.edad].etiqueta === 'Antes de ayer'
+              renglon.setAttribute('aria-description', segmentos.map(s => (edades[s.edad].etiqueta === 'Ayer' || edades[s.edad].etiqueta === 'Antes de ayer'
                 ? 'Atendidos ' + edades[s.edad].etiqueta.toLowerCase() : edades[s.edad].etiqueta) + ': '
-                + (s.desde === s.hasta ? s.desde : s.desde + '-' + s.hasta)).join(' · ');
+                + (s.desde === s.hasta ? s.desde : s.desde + '-' + s.hasta)).join(' · '));
               // Un solo color por tramo: el que más puntos tiene (amarillo = ayer, naranja = antes de ayer y 3 a 6 días, rojo = 7 días o más).
               // Si empatan, gana el más antiguo.
               const cuenta = [0, 0, 0];
@@ -1075,7 +1204,6 @@
       function actualizarBotonEdicion() {
         botonEdicion.disabled = revision == null || guardando;
         botonEdicion.setAttribute('aria-pressed', String(modoEdicion));
-        botonEdicion.title = modoEdicion ? 'Volver a la vista de consulta' : 'Activar edición';
       }
 
       function cargarOpcionesCircuito() {
@@ -1134,8 +1262,8 @@
           campos.circuito_nuevo.value = codigo;
         }
         actualizarCircuitoNuevo();
-        campos.camion.disabled = Boolean(fila);
         document.getElementById('campo-camion-nuevo').hidden = Boolean(fila);
+        if (!fila) actualizarRecursosDialogo();
         campos.tramo.value = fila?.desde == null ? '' : fila.desde + '–' + fila.hasta;
         eliminar.hidden = !fila;
         eliminar.disabled = guardar.disabled = false;
@@ -1158,12 +1286,13 @@
           if (!data) return false;
           filasPlanilla = nuevas;
           revision = data.revision;
-          return true;
         } finally {
           guardando = false;
           tablas.inert = false;
           actualizarBotonEdicion();
         }
+        parent.AZL.planillaGuardada(nuevas);
+        return true;
       }
 
       async function guardarCambioDirecto(nuevas, fila, control, deshacer) {
@@ -1231,12 +1360,13 @@
         const actualizarTramo = () => {
           if (codigoSeleccionado() !== editando?.circuito) campos.tramo.value = '';
           mostrarInfoEdicion();
+          actualizarRecursosDialogo();
         };
         campos.circuito.addEventListener('change', () => {
           actualizarCircuitoNuevo();
           actualizarTramo();
         });
-        campos.circuito_nuevo.addEventListener('input', mostrarInfoEdicion);
+        campos.circuito_nuevo.addEventListener('input', () => { mostrarInfoEdicion(); actualizarRecursosDialogo(); });
         campos.circuito_nuevo.addEventListener('change', actualizarTramo);
         formulario.addEventListener('submit', evento => {
           evento.preventDefault();
@@ -1253,9 +1383,19 @@
             errorEdicion.hidden = false;
             return;
           }
+          const recursos = parent.AZL.recursosDelDia();
+          const municipioCambio = editando && municipio !== municipioDeFila(editando);
+          if (municipioCambio && !recursos) {
+            errorEdicion.textContent = 'Esperá a que se carguen los recursos para cambiar el circuito de municipio.';
+            errorEdicion.hidden = false;
+            return;
+          }
+          const elegido = editando?.camion ?? campos.camion.value;
+          const camion = editando && !municipioCambio
+            ? elegido : recursosDe(turnoEdicion, municipio, recursos).includes(elegido) ? elegido : '';
           guardarEdicion({
             circuito, municipio, desde, hasta,
-            turno: turnoEdicion, camion: editando?.camion ?? campos.camion.value.trim()
+            turno: turnoEdicion, camion
           });
         });
         cancelar.addEventListener('click', () => dialogo.close());
@@ -1332,7 +1472,7 @@ const DIA = 24 * 3600e3, DESFASE = 3 * 3600e3;           // las fechas de las ba
 const TURNOS = ['Matutino', 'Vespertino', 'Nocturno'];
 const MUNIS = ['A', 'C', 'CH', 'D', 'E', 'F', 'G'];      // el municipio B no se asigna
 const MUN_INICIO = ['D', 'F', 'E'];                      // municipios que se abren por defecto en GOL
-const MAX_MUN = 3;                                       // tablas de municipio que se ven a la vez
+const COLUMNAS_MUN = 3;                                  // tablas por fila en escritorio
 const GENERICOS = ['MC DINALI', 'MC COM'];               // transportistas genéricos: sirven para el Semáforo, no para GOL
 const FALLIDO = /no visitado|omitido|no se pudo|no realizado/;
 const ETQ = { ayer: 'Atendidos ayer', antes: 'Atendidos antes de ayer', tres: 'Atendidos hace 3 a 6 días', siete: 'Hace 7 días o más / sin registro' };
@@ -1345,7 +1485,6 @@ const munDe = c => (/^(CH|[A-G])(?=\d)/.exec(c) || [''])[1];
 const natCmp = (a, b) => String(a).localeCompare(String(b), 'es-UY', { numeric: true });
 const inicioDia = ms => Math.floor((ms - DESFASE) / DIA) * DIA + DESFASE;
 const fechaMontevideo = () => new Date(Date.now() - DESFASE).toISOString().slice(0, 10);
-const ddmm = s => s.slice(8, 10) + '/' + s.slice(5, 7);
 const esGenerico = e => GENERICOS.includes(String(e).trim().toUpperCase());
 const celdaTsv = s => { s = String(s ?? '').replace(/[\t\r\n]+/g, ' '); return /^\s*[=+@-]/.test(s) ? "'" + s : s; };
 
@@ -1377,13 +1516,20 @@ function recursosBase() {
   PL.forEach(f => { const L = (r[TURNOS[f.turno]][f.municipio] ||= []); if (f.camion && !L.includes(f.camion)) L.push(f.camion); });
   return r;
 }
+
+function armarPlanillaGuardada(filas) {
+  armarPlanilla(filas.filter(f => [0, 1, 2].includes(f.turno) && f.circuito).map(f => ({
+    turno: f.turno, municipio: String(f.municipio).trim().toUpperCase(), camion: String(f.camion || '').trim(),
+    circuito: String(f.circuito).trim().toUpperCase(), total: 0
+  })));
+}
 async function cargarPlanilla() {
   S.planillaOk = false;
   try {
     const { data, error } = await COM2.sb.from(T_PLANILLA).select('filas').eq('id', 1).abortSignal(AbortSignal.timeout(12000)).single();
     if (error) throw error;
     if (Array.isArray(data.filas)) {
-      armarPlanilla(data.filas.filter(f => [0, 1, 2].includes(f.turno) && f.circuito).map(f => ({ turno: f.turno, municipio: String(f.municipio).trim().toUpperCase(), camion: String(f.camion || '').trim(), circuito: String(f.circuito).trim().toUpperCase(), total: 0 })));
+      armarPlanillaGuardada(data.filas);
     } else if (data.filas === null && deArchivo().length) {
       armarPlanilla(deArchivo());
     } else {
@@ -1405,8 +1551,8 @@ async function cargarPlanilla() {
 /* ---------- estado ---------- */
 const S = { fecha: fechaMontevideo(), vista: 'turno', turno: null, inv: null, zl: null, asig: null, gol: null, planillaOk: false, err: {},
   golRevision: -1, golActualizada: null, golVence: 0, golConsultando: false, golError: '',
-  quitar: 1,            // lo ya realizado que se descuenta: -1 = nada, 0 = hoy, 1 = hoy y ayer
-  completo: 80, porRecurso: 1, golRojo: 100, golNegro: 170, gap: 5, sinSug: new Set(), munSel: [],
+  quitar: 1,            // días previos que se descuentan además de hoy
+  completo: 80, golRojo: 100, golNegro: 170, gap: 5, sinSug: new Set(), munSel: [],
   puedeEditar: false, diaOk: false };
 const edita = () => S.puedeEditar && S.diaOk && !pendientes && !leyendo;
 const golVigente = () => S.gol && Date.now() < S.golVence;
@@ -1685,7 +1831,7 @@ async function consultarGol() {
 // Lo ya atendido (hoy, u hoy y ayer) se descuenta como en el Semáforo. El tramo es único: lo que queda pendiente, y completo si llega al umbral.
 // La antigüedad de la última atención de lo pendiente se calcula aparte y se guarda con la asignación.
 function golDelTurno() {
-  const hoy = inicioDia(Date.now()), desde = S.quitar < 0 ? Infinity : hoy - S.quitar * DIA, filas = [];
+  const hoy = inicioDia(Date.now()), desde = hoy - S.quitar * DIA, filas = [];
   for (const [c, pts] of S.gol) {
     if (!validCirc(c) || munDe(c) === 'B') continue;
     const hechos = S.zl?.get(c);
@@ -1708,12 +1854,12 @@ function golDelTurno() {
   filas.sort((a, b) => b.score - a.score || natCmp(a.c, b.c));
   const porMun = new Map();
   filas.forEach(f => (porMun.get(f.mun) || porMun.set(f.mun, []).get(f.mun)).push(f));
-  // En cada municipio se alternan los recursos siguiendo el orden de prioridad de los circuitos.
+  // En cada municipio se sugiere un circuito por recurso, siguiendo el orden de prioridad.
   for (const [m, lista] of porMun) {
     const recursos = recursosGol(S.turno, m);
-    const libres = lista.filter(f => !enPlan(f.c, S.turno));
-    libres.slice(0, recursos.length * S.porRecurso).forEach((f, i) => {
-      if (!S.sinSug.has(f.c + '|' + S.turno)) f.sug = recursos[i % recursos.length];
+    const libres = lista.filter(f => !recursos.includes(enPlan(f.c, S.turno)?.emp));
+    libres.slice(0, recursos.length).forEach((f, i) => {
+      if (!S.sinSug.has(f.c + '|' + S.turno)) f.sug = recursos[i];
     });
   }
   return { porMun };
@@ -1732,47 +1878,66 @@ const ICO = {
   luna: '<path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/>'
 };
 function vTurno() {
-  return `<div class="portada"><div class="cover"><button type="button" class="recursos-acc" data-ir="recursos">Recursos <span>Empresas por turno y municipio</span></button>
-    <p class="titulo-bloque">¿Qué turno querés asignar?</p><div class="turnos-sel">
-    ${tile('t:Matutino', 'acc-amber', ICO.sol, 'Matutino')}${tile('t:Vespertino', 'acc-blue', ICO.tarde, 'Vespertino')}${tile('t:Nocturno', 'acc-violet', ICO.luna, 'Nocturno')}
-  </div></div></div>`;
+  return `<div class="portada"><div class="cover">
+    <div class="turnos-sel">
+      ${tile('t:Matutino', 'acc-teal', ICO.sol, 'Matutino')}
+      ${tile('t:Vespertino', 'acc-teal', ICO.tarde, 'Vespertino')}
+      ${tile('t:Nocturno', 'acc-teal', ICO.luna, 'Nocturno')}
+    </div>
+    <button type="button" class="recursos-acc" data-ir="recursos">Recursos <span>Empresas por turno y municipio</span></button>
+  </div></div>`;
 }
 function vBloques() {
   return `<div class="portada"><div class="cover">
     <div class="grid">
       ${tile('gol', 'acc-violet', ICO.gol, 'GOL')}
       ${tile('semaforo', 'acc-teal', ICO.sem, 'Semáforo')}
-      <div class="tile acc-amber off" aria-disabled="true"><div class="tile-icon"><svg viewBox="0 0 24 24">${ICO.recl}</svg></div><div class="tile-name">Reclamos</div><div class="tile-sub">Deshabilitado por ahora</div></div>
+      <div class="tile acc-amber off" aria-disabled="true"><div class="tile-icon"><svg viewBox="0 0 24 24">${ICO.recl}</svg></div><div class="tile-name">Reclamos</div><div class="tile-sub">Próximamente</div></div>
     </div></div></div>`;
 }
 function vRecursos() {
   const ed = edita() && S.planillaOk;
   const munis = MUNIS.filter(m => m !== 'G' || TURNOS.some(t => R[t]?.[m]?.length));
+  const pesos = munis.map(m => 5 + Math.min(10, Math.max(...TURNOS.map(t => R[t]?.[m]?.length || 0))));
+  const totalPeso = pesos.reduce((total, peso) => total + peso, 0);
   const todas = [...new Set(TURNOS.flatMap(t => Object.values(R[t] || {}).flat()))].sort(natCmp);
   const nota = !S.puedeEditar ? 'Solo lectura: los recursos los editan auxiliar, sup. gral y admin.'
-    : !S.diaOk || !S.planillaOk ? 'La edición requiere los recursos del día y la planilla de circuitos.'
-    : 'Arrastrá una empresa a otra celda para moverla. Los cambios valen solo para este día; la planilla del Semáforo no se modifica.';
-  return `<p class="source-status">${nota}</p><datalist id="empresas">${todas.map(e => `<option value="${esc(e)}">`).join('')}</datalist>
-  <section class="card"><div class="table-box"><table class="recursos"><thead><tr><th scope="col"></th>${munis.map(m => `<th scope="col">Municipio ${m}</th>`).join('')}</tr></thead><tbody>
-  ${TURNOS.map(t => `<tr><th class="t" scope="row">${t}</th>${munis.map(m => `<td class="celda" data-celda="${t}|${m}">${(R[t]?.[m] || []).map(e =>
-    `<span class="tag" ${ed ? `draggable="true" data-mv="${t}|${m}|${esc(e)}"` : ''}>${esc(e)}${ed ? `<button data-rm="${t}|${m}|${esc(e)}" title="Quitar" aria-label="Quitar ${esc(e)}">✕</button>` : ''}</span>`).join('')}
-    ${ed ? `<input type="text" maxlength="120" list="empresas" placeholder="+ empresa" data-add="${t}|${m}" aria-label="Agregar empresa a ${t} municipio ${m}">` : ''}</td>`).join('')}</tr>`).join('')}
-  </tbody></table></div></section>`;
+    : !S.diaOk || !S.planillaOk ? 'La edición requiere los recursos del día y la planilla de circuitos.' : '';
+  return `<div class="portada"><div class="recursos-panel">
+  ${nota ? `<p class="source-status">${nota}</p>` : ''}
+  ${ed ? `<datalist id="empresas">${todas.map(e => `<option value="${esc(e)}">`).join('')}</datalist>` : ''}
+  <section class="card"><div class="table-box" role="region" aria-label="Recursos por turno y municipio" tabindex="0">
+  <table class="recursos" style="--municipios:${munis.length}">
+  <colgroup><col class="col-turno">${pesos.map(peso => `<col style="width:${90 * peso / totalPeso}%">`).join('')}</colgroup>
+  <thead><tr><th scope="col">Turno</th>${munis.map(m => `<th scope="col">Municipio ${m}</th>`).join('')}</tr></thead><tbody>
+  ${TURNOS.map(t => `<tr><th class="t" scope="row">${t}</th>${munis.map(m => `<td class="celda" data-celda="${t}|${m}"><div class="recursos-empresas">${(R[t]?.[m] || []).map(e =>
+    `<span class="tag" ${ed ? `draggable="true" data-mv="${t}|${m}|${esc(e)}"` : ''}><span>${esc(e)}</span>${ed ? `<button type="button" data-rm="${t}|${m}|${esc(e)}" aria-label="Quitar ${esc(e)}">✕</button>` : ''}</span>`).join('')}
+    ${ed ? `<button type="button" class="tag tag-agregar" data-abrir-empresa aria-label="Agregar empresa a ${t} municipio ${m}">+</button><input type="text" maxlength="120" list="empresas" placeholder="Empresa" data-add="${t}|${m}" aria-label="Empresa para ${t} municipio ${m}" hidden>` : ''}</div></td>`).join('')}</tr>`).join('')}
+  </tbody></table></div></section></div></div>`;
 }
 function selectorRecurso(f) {
   const cur = enPlan(f.c, S.turno);
-  if (!puedeAsignar()) return cur ? esc(cur.emp) : '<span class="muted">—</span>';
-  const E = [...recursosGol(S.turno, f.mun)];
-  if (cur && !E.includes(cur.emp)) E.push(cur.emp);
-  if (!E.length) return '<span class="muted">Sin recursos</span>';
-  const sugiere = !cur && f.sug, val = cur ? cur.emp : sugiere || '';
-  const nota = cur && cur.tramos !== f.envio ? `<span class="sub">Enviado: ${esc(cur.tramos)}</span>` : '';   // lo asignado antes difiere de lo que queda pendiente
-  return `<select class="camion-sel ${cur ? 'asignado' : sugiere ? 'sugerido' : ''}" data-c="${f.c}" data-tr="${esc(f.envio)}" data-ed="${esc(JSON.stringify(f.edades))}" aria-label="Recurso de ${f.c}">
-    <option value="">— Sin asignar —</option>${E.map(e => `<option value="${esc(e)}" ${e === val ? 'selected' : ''}>${esc(e)}${e === sugiere ? ' (sugerido)' : ''}</option>`).join('')}</select>${nota}`;
+  const E = recursosGol(S.turno, f.mun);
+  const fuera = cur && S.diaOk && S.planillaOk && !E.includes(cur.emp);
+  const aviso = fuera ? `<span class="recurso-fuera">Fuera de Recursos: ${esc(cur.emp)}</span>` : '';
+  if (!puedeAsignar()) return aviso || (cur ? esc(cur.emp) : '<span class="muted">—</span>');
+  if (!E.length && !cur) return '<span class="muted">Sin recursos</span>';
+  const asignado = cur && !fuera;
+  const propuesto = !asignado && f.sug;
+  const nota = asignado && cur.tramos !== f.envio ? `<span class="sub">Enviado: ${esc(cur.tramos)}</span>` : '';
+  const datos = `data-c="${f.c}" data-tr="${esc(f.envio)}" data-ed="${esc(JSON.stringify(f.edades))}"`;
+  const selector = `<select class="gol-select camion-sel ${asignado ? 'asignado' : propuesto ? 'alternativas' : ''}" ${datos} aria-label="${propuesto ? 'Elegir recurso para' : 'Recurso de'} ${f.c}">
+    ${propuesto ? '<option value="" selected disabled hidden></option>' : '<button type="button"><selectedcontent></selectedcontent></button>'}
+    ${fuera && !propuesto ? '<option value="" selected disabled hidden>Elegir recurso</option>' : ''}
+    <option value="">— Sin asignar —</option>${E.map(e => `<option value="${esc(e)}" ${asignado && e === cur.emp ? 'selected' : ''}>${esc(e)}</option>`).join('')}</select>`;
+  const control = propuesto
+    ? `<div class="recurso-opciones"><button type="button" class="recurso-directo" data-asignar-gol="${esc(propuesto)}" ${datos} aria-label="Asignar ${esc(propuesto)} a ${f.c}">${esc(propuesto)}</button>${selector}</div>`
+    : selector;
+  return control + aviso + nota;
 }
 function vGol() {
-  const vacio = t => `<section class="card"><div class="aviso-vacio">${t}</div></section>`;
-  if (S.fecha !== fechaMontevideo()) return vacio('Las sugerencias GOL están disponibles para el plan de hoy. Para otras fechas, abrí el Plan del día.');
+  const vacio = t => ({ contenido: `<section class="card"><div class="aviso-vacio">${t}</div></section>` });
+  if (S.fecha !== fechaMontevideo() || (leyendo && !S.diaOk)) return vacio('Cargando los datos de hoy…');
   if (S.cargandoBases) return vacio('Cargando la planilla de circuitos y las bases de Zona Limpia y Contenedores…');
   if (S.err.zl || S.err.inv) return vacio('Para calcular los pendientes se necesitan las bases de Zona Limpia y Contenedores.');
   if (S.importando) return vacio('Guardando Base GOL…');
@@ -1783,21 +1948,22 @@ function vGol() {
   const d = golDelTurno(), disp = MUNIS.filter(m => d.porMun.has(m));
   if (!disp.length) return vacio(`No quedan circuitos con puntos rojos o negros en el turno ${S.turno}.`);
   S.munSel = S.munSel.filter(m => disp.includes(m));
-  if (!S.munSel.length) { const ini = MUN_INICIO.filter(m => disp.includes(m)); S.munSel = ini.length ? ini : disp.slice(0, MAX_MUN); }
-  const chips = `<div class="muni-chips" role="group" aria-label="Municipios a ver"><span class="lab">Municipios (hasta ${MAX_MUN})</span>` + MUNIS.map(m => {
-    const n = d.porMun.get(m)?.length || 0, on = S.munSel.includes(m), lleno = !on && S.munSel.length >= MAX_MUN;
-    return `<button type="button" class="chip-mun ${on ? 'on' : ''}" data-mun="${m}" aria-pressed="${on}" ${!n || lleno ? 'disabled' : ''} title="${!n ? 'Sin circuitos pendientes' : lleno ? 'Ya hay ' + MAX_MUN + ' municipios: quitá uno' : ''}">${m} <span>${n}</span></button>`;
-  }).join('') + '</div>';
-  return chips + `<div class="munis" style="--cols:${S.munSel.length}">` + S.munSel.map(m => {
+  if (!S.munSel.length) { const ini = MUN_INICIO.filter(m => disp.includes(m)); S.munSel = ini.length ? ini : disp.slice(0, COLUMNAS_MUN); }
+  const municipios = `<div class="muni-chips" role="group" aria-label="Municipios a ver"><span class="lab">Municipios</span><div class="muni-opciones">` + MUNIS.map(m => {
+    const n = d.porMun.get(m)?.length || 0, on = S.munSel.includes(m);
+    return `<button type="button" class="chip-mun ${on ? 'on' : ''}" data-mun="${m}" aria-pressed="${on}" ${n ? '' : 'disabled aria-description="Sin circuitos pendientes"'}>${m} <span>${n}</span></button>`;
+  }).join('') + '</div></div>';
+  const contenido = `<div class="munis" style="--cols:${Math.min(S.munSel.length, COLUMNAS_MUN)}">` + S.munSel.map(m => {
     const L = d.porMun.get(m), E = recursosGol(S.turno, m);
     return `<section class="card turno"><h2>Municipio ${m}</h2>
       <div class="recursos-mun ${E.length ? '' : 'sin'}">${E.length ? 'Recursos: ' + E.map(esc).join(' · ') : 'Sin recursos en este turno'}</div>
       <div class="table-box"><table><thead><tr><th scope="col">Circuito</th><th scope="col">Negros / rojos</th><th scope="col">Puntos a enviar</th><th scope="col">Recurso</th></tr></thead><tbody>` +
       L.map(f => `<tr><th scope="row"><span class="codigo-circuito">${f.c}</span><span class="sub">${f.total} puntos</span></th>
-        <td class="numeric"><b>${f.neg}</b> N · ${f.roj} R<span class="sub">${Math.round(f.pctN)} % negros · ${Math.round(f.pctR)} % rojos</span></td>
-        <td class="result" title="${esc(edadesTxt(f.edades))}">${f.completo ? `<span class="completo">Plano completo ${f.envio}</span><span class="completo-nota">${Math.round(f.pend)} % ≥ ${S.completo} %</span>` : `<span class="rango">${esc(f.envio)}</span>`}</td>
+        <td class="numeric"><b>${f.neg}</b> N · ${f.roj} R<span class="sub detalle-colores">${Math.round(f.pctN)} % negros</span><span class="sub detalle-colores">${Math.round(f.pctR)} % rojos</span></td>
+        <td class="result" aria-description="${esc(edadesTxt(f.edades))}">${f.completo ? `<span class="completo">Plano completo ${f.envio}</span><span class="completo-nota">${Math.round(f.pend)} % ≥ ${S.completo} %</span>` : `<span class="rango">${esc(f.envio)}</span>`}</td>
         <td>${selectorRecurso(f)}</td></tr>`).join('') + '</tbody></table></div></section>';
   }).join('') + '</div>';
+  return { municipios, contenido };
 }
 function vPlan() {
   if (!S.diaOk) return '<section class="card"><div class="aviso-vacio">El plan de esta fecha todavía no está disponible.</div></section>';
@@ -1805,24 +1971,20 @@ function vPlan() {
   if (!filas.length) return '<section class="card"><div class="aviso-vacio">Todavía no se asignó nada para este día.</div></section>';
   const ed = edita();
   return `<section class="card"><div class="table-box"><table><thead><tr><th scope="col">Turno</th><th scope="col">Recurso</th><th scope="col">Circuito</th><th scope="col">Puntos a enviar</th><th scope="col">Criterio</th>${ed ? '<th scope="col"></th>' : ''}</tr></thead><tbody>` +
-    filas.map(p => `<tr><td>${p.turno}</td><td class="grupo">${esc(p.emp)}</td><th scope="row"><span class="codigo-circuito">${esc(p.c)}</span></th><td class="result" title="${esc(edadesTxt(p.edades))}"><span class="rango">${esc(p.tramos)}</span></td><td>${esc(p.origen)}</td>${ed ? `<td><button class="btn-m" data-del="${p.i}" aria-label="Quitar ${esc(p.c)}">✕</button></td>` : ''}</tr>`).join('') + '</tbody></table></div></section>';
+    filas.map(p => `<tr><td>${p.turno}</td><td class="grupo">${esc(p.emp)}</td><th scope="row"><span class="codigo-circuito">${esc(p.c)}</span></th><td class="result" aria-description="${esc(edadesTxt(p.edades))}"><span class="rango">${esc(p.tramos)}</span></td><td>${esc(p.origen)}</td>${ed ? `<td><button class="btn-m" data-del="${p.i}" aria-label="Quitar ${esc(p.c)}">✕</button></td>` : ''}</tr>`).join('') + '</tbody></table></div></section>';
 }
 
-const TITULOS = { turno: 'Asignador de Zona Limpia', recursos: 'Recursos', gol: 'GOL', plan: 'Plan del día', semaforo: 'Semáforo de Zona Limpia' };
-function toolbar() {
-  const esGol = S.vista === 'gol';
-  const fecha = `<div class="field"><label for="fecha">${esGol ? 'Fecha' : 'Fecha del plan'}</label><input type="date" id="fecha" value="${S.fecha}" ${pendientes || S.importando ? 'disabled' : ''}></div>`;
-  const plan = `<button class="btn-m pri" data-ir="plan">Plan (${PLAN.length})</button>`;
-  if (esGol) return `<button class="btn-m" id="elegirGol" ${pendientes || S.importando ? 'disabled' : ''}>Cargar Base GOL</button><input type="file" id="fGol" accept=".xlsx,.xls,.ods,.csv" hidden>` + fecha + `
-    <div class="field"><label for="quitar">Quitar lo ya realizado</label><select id="quitar"><option value="-1" ${S.quitar === -1 ? 'selected' : ''}>Nada</option><option value="0" ${S.quitar === 0 ? 'selected' : ''}>Hoy</option><option value="1" ${S.quitar === 1 ? 'selected' : ''}>Hoy y ayer</option></select></div>
-    <div class="field"><label for="completo">Plano completo desde (%)</label><input type="number" id="completo" min="1" max="100" value="${S.completo}"></div>
-    <div class="field"><label for="porRecurso">Circuitos por recurso</label><input type="number" id="porRecurso" min="1" max="10" value="${S.porRecurso}"></div>
-    ${puedeAsignar() ? '<button class="btn-m" id="aplicar">Asignar sugerencias</button>' : ''}
-    ${ultimaCargaGol()}`;
-  if (S.vista === 'plan') return fecha + `<button class="btn-m pri" id="copiar" ${S.diaOk ? '' : 'disabled'}>Copiar plan</button>` +
+function toolbar(municipios = '') {
+  if (S.vista === 'gol') return `<div class="gol-fila" role="region" aria-label="Controles de GOL" tabindex="0">
+    <div class="gol-controles">
+    <div class="field"><label for="quitar">Quitar lo ya realizado</label><select class="gol-select" id="quitar"><option value="0" ${S.quitar === 0 ? 'selected' : ''}>Hoy</option><option value="1" ${S.quitar === 1 ? 'selected' : ''}>Hoy y ayer</option></select></div>
+    <div class="field"><label for="completo">Asignar plano completo desde (%)</label><input type="number" id="completo" min="1" max="100" value="${S.completo}"></div>
+    ${municipios}</div>
+    <div class="gol-carga"><button type="button" class="btn-m" id="elegirGol" ${pendientes || S.importando ? 'disabled' : ''}>Cargar Base GOL</button><input type="file" id="fGol" accept=".xlsx,.xls,.ods,.csv" hidden>
+    ${ultimaCargaGol()}</div></div>`;
+  if (S.vista === 'plan') return `<div class="field"><label for="fecha">Fecha del plan</label><input type="date" id="fecha" value="${S.fecha}" ${pendientes || S.importando ? 'disabled' : ''}></div>
+    <button class="btn-m pri" id="copiar" ${S.diaOk ? '' : 'disabled'}>Copiar plan</button>` +
     (edita() ? `<button class="btn-m" id="vaciar" ${PLAN.length ? '' : 'disabled'}>Vaciar</button>` : '');
-  if (S.vista === 'recursos') return fecha;
-  if (S.vista === 'bloques') return fecha + plan;
   return '';
 }
 const horaGol = new Intl.DateTimeFormat('es-UY', { dateStyle: 'short', timeStyle: 'short', hourCycle: 'h23', timeZone: 'America/Montevideo' });
@@ -1838,18 +2000,19 @@ function estado() {   // solo problemas: lo que anda bien no se muestra
 }
 function render() {
   const y = scrollY, v = S.vista;
-  const sufijo = v === 'recursos' || v === 'plan' ? ' · ' + ddmm(S.fecha) : '';
-  const prefijo = v === 'gol' || v === 'plan' ? S.turno + ' · ' : '';
-  $('titulo').textContent = v === 'bloques' ? S.turno : prefijo + TITULOS[v] + sufijo;
+  const gol = v === 'gol' ? vGol() : null;
+  const barra = $('toolbar');
+  const xFiltros = barra.querySelector('.gol-fila')?.scrollLeft || 0;
   $('volver').hidden = v === 'turno'; $('salir').hidden = v !== 'turno';
-  $('toolbar').classList.toggle('gol', v === 'gol');
-  $('toolbar').innerHTML = toolbar();
+  barra.classList.toggle('gol', v === 'gol');
+  barra.innerHTML = toolbar(gol?.municipios);
+  if (gol && xFiltros) barra.querySelector('.gol-fila').scrollLeft = xFiltros;
   $('estado').innerHTML = v === 'semaforo' ? '' : estado();
   $('estado').hidden = !$('estado').textContent;
   $('vista').hidden = v === 'semaforo';
   $('semaforoBox').hidden = v !== 'semaforo';
   if (v === 'semaforo') abrirSemaforo();
-  else $('vista').innerHTML = { turno: vTurno, bloques: vBloques, recursos: vRecursos, gol: vGol, plan: vPlan }[v]();
+  else $('vista').innerHTML = gol?.contenido ?? { turno: vTurno, bloques: vBloques, recursos: vRecursos, plan: vPlan }[v]();
   try {
     history.replaceState(null, '', '#' + (S.turno || '') + '/' + v);
     sessionStorage.setItem('azl2.nav', JSON.stringify({ t: S.turno, v }));
@@ -1857,20 +2020,45 @@ function render() {
   scrollTo(0, y);
 }
 function abrirSemaforo() {
-  if ($('semaforoMarco')) return;
+  const marco = $('semaforoMarco');
+  if (marco) {
+    marco.contentWindow?.actualizarRecursosAsignador?.();
+    return;
+  }
   const f = document.createElement('iframe');
-  f.id = 'semaforoMarco'; f.title = 'Semáforo de Zona Limpia'; f.scrolling = 'no';
+  f.id = 'semaforoMarco'; f.setAttribute('aria-label', 'Semáforo de Zona Limpia'); f.scrolling = 'no';
   f.style.cssText = 'display:block;width:100%;border:0;height:600px';
   f.srcdoc = $('semaforo-src').textContent.replace(/<\\\/script>/g, '<' + '/script>');   // (partido en dos para no cerrar este <script>)
+  f.addEventListener('load', () => f.contentWindow?.actualizarRecursosAsignador?.());
   $('semaforoBox').append(f);
 }
 function ir(v) {
+  const fecha = ['recursos', 'gol', 'semaforo'].includes(v) ? fechaMontevideo() : S.fecha;
+  const cambiaFecha = fecha !== S.fecha;
+  if (cambiaFecha && (pendientes || S.importando)) return;
   const vieneDelSemaforo = S.vista === 'semaforo';
   S.vista = v;
+  if (cambiaFecha) cargarFecha(fecha).then(render);
   if (vieneDelSemaforo) cargarPlanilla().then(render);
   if (v === 'gol') consultarGol().then(cambio => { if (cambio && S.vista === 'gol') render(); });
   render();
   scrollTo(0, 0);
+  if (v === 'semaforo' && !cambiaFecha) refrescar();
+}
+
+function cargarFecha(fecha) {
+  S.fecha = fecha; avisar(''); S.diaOk = false; S.sinSug.clear();
+  OV = { add: {}, del: {} }; revRec = null; PLAN = []; aplicarOV();
+  return cargarDia();
+}
+
+function elegirRecurso(control, empresa) {
+  const { c, tr, ed } = control.dataset;
+  if (!puedeAsignar() || (empresa && !recursosGol(S.turno, munDe(c)).includes(empresa))) { render(); return; }
+  const k = c + '|' + S.turno;
+  if (empresa) S.sinSug.delete(k); else S.sinSug.add(k);
+  asignar(c, S.turno, empresa, tr, JSON.parse(ed || 'null'));
+  render();
 }
 
 /* ---------- eventos ---------- */
@@ -1890,22 +2078,30 @@ document.addEventListener('click', e => {
     return;
   }
   const mu = e.target.closest('[data-mun]');
-  if (mu) { const m = mu.dataset.mun, i = S.munSel.indexOf(m); if (i >= 0) { if (S.munSel.length > 1) S.munSel.splice(i, 1); } else if (S.munSel.length < MAX_MUN) S.munSel.push(m); render(); return; }
+  if (mu) {
+    const m = mu.dataset.mun, i = S.munSel.indexOf(m);
+    if (i < 0) S.munSel.push(m);
+    else if (S.munSel.length > 1) S.munSel.splice(i, 1);
+    else return;
+    render();
+    $('toolbar').querySelector(`[data-mun="${m}"]`)?.focus({ preventScroll: true });
+    return;
+  }
+  const agregar = e.target.closest('[data-abrir-empresa]');
+  if (agregar) {
+    const campo = agregar.nextElementSibling;
+    agregar.hidden = true;
+    campo.hidden = false;
+    campo.focus();
+    return;
+  }
   const rm = e.target.closest('[data-rm]');
   if (rm) { if (!edita() || !S.planillaOk) return; const [t, m, ...r] = rm.dataset.rm.split('|'); cambiarRecurso(t, m, r.join('|'), true); guardarRecursos(); return; }
   const del = e.target.closest('[data-del]');
   if (del) { const p = PLAN[+del.dataset.del]; if (p) { asignar(p.c, p.turno, '', '', null); render(); } return; }
+  const directo = e.target.closest('[data-asignar-gol]');
+  if (directo) { elegirRecurso(directo, directo.dataset.asignarGol); return; }
   if (e.target.id === 'elegirGol') { $('fGol').click(); return; }
-  if (e.target.id === 'aplicar' && puedeAsignar()) {
-    const filas = [...golDelTurno().porMun.values()].flat().filter(f => f.sug)
-      .map(f => filaPlan(f.c, S.turno, f.sug, f.envio, f.edades));
-    if (!filas.length) { avisar('No hay sugerencias para asignar.'); return; }
-    if (confirm('¿Guardar ' + filas.length + ' sugerencias para todo el turno ' + S.turno + '?')) {
-      if (!puedeAsignar()) { render(); return; }
-      guardarCambio(() => confirmarCambio(COM2.sb.from(T_PLAN).insert(filas).select('circuito')));
-    }
-    return;
-  }
   if (e.target.id === 'vaciar' && edita() && PLAN.length && confirm('¿Borrar las asignaciones que ves en el plan de este día?')) {
     vaciarPlan();
     return;
@@ -1919,24 +2115,36 @@ document.addEventListener('click', e => {
       .catch(() => avisar('No se pudo copiar el plan al portapapeles.'));
   }
 });
+document.addEventListener('focusout', e => {
+  const campo = e.target;
+  if (!campo.matches('input[data-add]')) return;
+  campo.value = '';
+  campo.hidden = true;
+  campo.previousElementSibling.hidden = false;
+});
+document.addEventListener('keydown', e => {
+  const campo = e.target;
+  if (!campo.matches('input[data-add]') || e.isComposing || !['Enter', 'Escape'].includes(e.key)) return;
+  e.preventDefault();
+  if (e.key === 'Escape') campo.value = '';
+  const agregar = campo.previousElementSibling;
+  agregar.hidden = false;
+  agregar.focus();
+});
 document.addEventListener('change', async e => {
   const t = e.target, id = t.id;
   if (t.dataset.add) { const v = t.value.trim(), [tu, m] = t.dataset.add.split('|'); if (v && edita() && S.planillaOk) { cambiarRecurso(tu, m, v, false); guardarRecursos(); } return; }
   if (t.classList.contains('camion-sel')) {
-    if (!puedeAsignar()) { render(); return; }
-    const k = t.dataset.c + '|' + S.turno;
-    if (t.value) S.sinSug.delete(k); else S.sinSug.add(k);
-    asignar(t.dataset.c, S.turno, t.value, t.dataset.tr, JSON.parse(t.dataset.ed || 'null')); render(); return;
+    elegirRecurso(t, t.value);
+    return;
   }
   if (id === 'fecha') {
     if (!t.value || pendientes || S.importando) return;
-    S.fecha = t.value; avisar(''); S.diaOk = false; S.sinSug.clear();
-    OV = { add: {}, del: {} }; revRec = null; PLAN = []; aplicarOV();
-    render(); await cargarDia();
+    const carga = cargarFecha(t.value);
+    render(); await carga;
   }
   else if (id === 'quitar') S.quitar = +t.value;
   else if (id === 'completo') S.completo = Math.min(100, Math.max(1, +t.value || 80));
-  else if (id === 'porRecurso') S.porRecurso = Math.min(10, Math.max(1, Math.trunc(+t.value) || 1));
   else if (id === 'fGol') {
     const archivo = t.files[0];
     if (!archivo || pendientes || S.importando) return;
@@ -1991,16 +2199,26 @@ async function actualizarBases() {
 /* ---------- arranque: login de COM 2; el inicio se usa mientras bajan las bases ---------- */
 async function refrescar() {
   if (document.hidden || pendientes || leyendo || S.importando) return;
-  const a = document.activeElement; if (a && a.matches('input, select, textarea')) return;
+  const fecha = ['recursos', 'gol', 'semaforo'].includes(S.vista) ? fechaMontevideo() : S.fecha;
+  const cambiaFecha = fecha !== S.fecha;
+  const a = document.activeElement; if (!cambiaFecha && a && a.matches('input, select, textarea')) return;
   if (S.err.planilla || S.err.inv || S.err.zl) actualizarBases();
   const antes = JSON.stringify([S.diaOk, OV, PLAN]);
   const recuperando = !S.diaOk;
-  const [, golCambio] = await Promise.all([cargarDia(), S.vista === 'gol' && consultarGol()]);
+  const dia = cambiaFecha ? cargarFecha(fecha) : cargarDia();
+  if (cambiaFecha) render();
+  const [, golCambio] = await Promise.all([dia, S.vista === 'gol' && consultarGol()]);
   if (recuperando && S.diaOk) avisar('');
-  if (golCambio || JSON.stringify([S.diaOk, OV, PLAN]) !== antes) render();
+  if (cambiaFecha || golCambio || JSON.stringify([S.diaOk, OV, PLAN]) !== antes) render();
+  else if (S.vista === 'semaforo') abrirSemaforo();
 }
 window.addEventListener('beforeunload', e => { if (pendientes || S.importando) { e.preventDefault(); e.returnValue = ''; } });
+function quitarAyudaTema() {
+  document.querySelector('header.barra .tema-btn')?.removeAttribute('title');
+}
+window.addEventListener('com2:tema', quitarAyudaTema);
 document.addEventListener('DOMContentLoaded', async () => {
+  quitarAyudaTema();
   if (typeof window.COM2?.acceso !== 'function') {
     document.querySelector('.com2-rueda').hidden = true;
     document.querySelector('.com2-carga-t').textContent = 'Abrí esta página desde COM 2.';
@@ -2008,7 +2226,17 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
   const perfil = await COM2.acceso();
   if (!perfil) return;
-  window.AZL = { perfil };
+  quitarAyudaTema();
+  window.AZL = {
+    perfil,
+    recursosDelDia: () => S.diaOk && S.planillaOk && S.fecha === fechaMontevideo() ? TURNOS.map(t => R[t]) : null,
+    planillaGuardada(filas) {
+      armarPlanillaGuardada(filas);
+      S.planillaOk = true;
+      delete S.err.planilla;
+      aplicarOV();
+    }
+  };
   S.puedeEditar = ROLES_EDITAN.includes(perfil.rol);
   await cargarDia();
   let [t, v] = location.hash.slice(1).split('/');
