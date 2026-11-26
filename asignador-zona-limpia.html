@@ -1552,7 +1552,7 @@ async function cargarPlanilla() {
 const S = { fecha: fechaMontevideo(), vista: 'turno', turno: null, inv: null, zl: null, asig: null, gol: null, planillaOk: false, err: {},
   golRevision: -1, golActualizada: null, golVence: 0, golConsultando: false, golError: '',
   quitar: 1,            // días previos que se descuentan además de hoy
-  completo: 80, golRojo: 100, golNegro: 170, gap: 5, sinSug: new Set(), munSel: [],
+  completo: 80, golRojo: 100, golNegro: 170, gap: 5, seleccionesGol: new Map(), munSel: [],
   puedeEditar: false, diaOk: false };
 const edita = () => S.puedeEditar && S.diaOk && !pendientes && !leyendo;
 const golVigente = () => S.gol && Date.now() < S.golVence;
@@ -1575,24 +1575,26 @@ function avisar(msg) { $('aviso').textContent = msg || ''; $('aviso').hidden = !
 
 async function cargarDia() {
   const id = ++cargaId, f = S.fecha;
+  const leePlan = S.vista === 'plan';
   leyendo = true;
   try {
     const [rec, plan] = await Promise.all([
       COM2.sb.from(T_REC).select('diferencias,revision').eq('fecha', f).abortSignal(AbortSignal.timeout(12000)).maybeSingle(),
-      COM2.sb.from(T_PLAN).select('turno,circuito,recurso,tramos,criterio,edades,actualizado').eq('fecha', f).abortSignal(AbortSignal.timeout(12000))
+      leePlan ? COM2.sb.from(T_PLAN).select('turno,circuito,recurso,tramos,criterio,edades,actualizado').eq('fecha', f).abortSignal(AbortSignal.timeout(12000)) : null
     ]);
     if (rec.error) throw rec.error;
-    if (plan.error) throw plan.error;
+    if (plan?.error) throw plan.error;
     if (id !== cargaId) return;
     OV = limpiarOV(rec.data?.diferencias); revRec = rec.data ? rec.data.revision : null; aplicarOV();
-    PLAN = plan.data.map(p => ({ turno: TURNOS[p.turno], emp: p.recurso, c: p.circuito, tramos: p.tramos, origen: p.criterio, edades: p.edades, revision: p.actualizado }))
+    if (plan) PLAN = plan.data.map(p => ({ turno: TURNOS[p.turno], emp: p.recurso, c: p.circuito, tramos: p.tramos, origen: p.criterio, edades: p.edades, revision: p.actualizado }))
       .sort((a, b) => TURNOS.indexOf(a.turno) - TURNOS.indexOf(b.turno) || natCmp(a.c, b.c));
     S.diaOk = true;
   } catch (e) {
     if (id !== cargaId) return;
     console.warn('Datos del día', e); S.diaOk = false;
     OV = { add: {}, del: {} }; revRec = null; PLAN = []; aplicarOV();
-    avisar('No se pudieron leer los recursos y el plan de este día. Se volverá a intentar.');
+    avisar(leePlan ? 'No se pudieron leer los recursos y el plan de este día. Se volverá a intentar.'
+      : 'No se pudieron leer los recursos de este día. Se volverá a intentar.');
   } finally {
     if (id === cargaId) leyendo = false;
   }
@@ -1645,21 +1647,10 @@ async function confirmarCambio(consulta) {
   if (error) throw error;
   if (!data) throw Object.assign(new Error('Cambio simultáneo'), { code: 'AZL_CONFLICTO' });
 }
-const enPlan = (c, turno) => PLAN.find(p => p.c === c && p.turno === turno);
-const filaPlan = (c, turno, emp, tramosTxt, edades) => ({
-  fecha: S.fecha, turno: TURNOS.indexOf(turno), circuito: c,
-  recurso: emp, tramos: tramosTxt, criterio: 'GOL', edades
-});
-function asignar(c, turno, emp, tramosTxt, edades) {
-  if (emp ? !puedeAsignar() : !edita()) return;
-  const actual = enPlan(c, turno);
-  if (!emp && !actual) return;
-  const tabla = COM2.sb.from(T_PLAN);
-  const { fecha, turno: numeroTurno, circuito, ...detalle } = filaPlan(c, turno, emp, tramosTxt, edades);
-  const consulta = actual
-    ? (emp ? tabla.update(detalle) : tabla.delete()).eq('fecha', fecha)
-      .eq('turno', numeroTurno).eq('circuito', circuito).eq('actualizado', actual.revision)
-    : tabla.insert({ fecha, turno: numeroTurno, circuito, ...detalle });
+function quitarAsignacionGuardada(asignacion) {
+  if (!edita()) return;
+  const consulta = COM2.sb.from(T_PLAN).delete().eq('fecha', S.fecha)
+    .eq('turno', TURNOS.indexOf(asignacion.turno)).eq('circuito', asignacion.c).eq('actualizado', asignacion.revision);
   guardarCambio(() => confirmarCambio(consulta.select('circuito').maybeSingle()));
 }
 function vaciarPlan() {
@@ -1781,7 +1772,7 @@ function usarGol({ revision, actualizada, vence_en, filas }) {
   S.golRevision = revision;
   S.golActualizada = actualizada;
   S.golVence = Date.parse(vence_en);
-  S.sinSug.clear();
+  S.seleccionesGol.clear();
   clearTimeout(relojGol);
   if (golVigente()) {
     relojGol = setTimeout(() => { if (S.vista === 'gol') render(); }, S.golVence - Date.now());
@@ -1827,6 +1818,8 @@ async function consultarGol() {
 }
 
 /* ---------- GOL del turno ---------- */
+const claveSeleccionGol = circuito => circuito + '|' + S.turno;
+const recursoElegidoGol = circuito => S.seleccionesGol.get(claveSeleccionGol(circuito));
 // Prioridad: % de negros × 75 + % de rojos × 25 (sobre los puntos del circuito). Un circuito 100 % negro queda primero.
 // Lo ya atendido (hoy, u hoy y ayer) se descuenta como en el Semáforo. El tramo es único: lo que queda pendiente, y completo si llega al umbral.
 // La antigüedad de la última atención de lo pendiente se calcula aparte y se guarda con la asignación.
@@ -1857,9 +1850,9 @@ function golDelTurno() {
   // En cada municipio se sugiere un circuito por recurso, siguiendo el orden de prioridad.
   for (const [m, lista] of porMun) {
     const recursos = recursosGol(S.turno, m);
-    const libres = lista.filter(f => !recursos.includes(enPlan(f.c, S.turno)?.emp));
+    const libres = lista.filter(f => !recursos.includes(recursoElegidoGol(f.c)));
     libres.slice(0, recursos.length).forEach((f, i) => {
-      if (!S.sinSug.has(f.c + '|' + S.turno)) f.sug = recursos[i];
+      if (recursoElegidoGol(f.c) !== '') f.sug = recursos[i];
     });
   }
   return { porMun };
@@ -1916,24 +1909,23 @@ function vRecursos() {
   </tbody></table></div></section></div></div>`;
 }
 function selectorRecurso(f) {
-  const cur = enPlan(f.c, S.turno);
+  const cur = recursoElegidoGol(f.c);
   const E = recursosGol(S.turno, f.mun);
-  const fuera = cur && S.diaOk && S.planillaOk && !E.includes(cur.emp);
-  const aviso = fuera ? `<span class="recurso-fuera">Fuera de Recursos: ${esc(cur.emp)}</span>` : '';
-  if (!puedeAsignar()) return aviso || (cur ? esc(cur.emp) : '<span class="muted">—</span>');
+  const fuera = cur && S.diaOk && S.planillaOk && !E.includes(cur);
+  const aviso = fuera ? `<span class="recurso-fuera">Fuera de Recursos: ${esc(cur)}</span>` : '';
+  if (!puedeAsignar()) return aviso || (cur ? esc(cur) : '<span class="muted">—</span>');
   if (!E.length && !cur) return '<span class="muted">Sin recursos</span>';
   const asignado = cur && !fuera;
   const propuesto = !asignado && f.sug;
-  const nota = asignado && cur.tramos !== f.envio ? `<span class="sub">Enviado: ${esc(cur.tramos)}</span>` : '';
-  const datos = `data-c="${f.c}" data-tr="${esc(f.envio)}" data-ed="${esc(JSON.stringify(f.edades))}"`;
+  const datos = `data-c="${f.c}"`;
   const selector = `<select class="gol-select camion-sel ${asignado ? 'asignado' : propuesto ? 'alternativas' : ''}" ${datos} aria-label="${propuesto ? 'Elegir recurso para' : 'Recurso de'} ${f.c}">
     ${propuesto ? '<option value="" selected disabled hidden></option>' : '<button type="button"><selectedcontent></selectedcontent></button>'}
     ${fuera && !propuesto ? '<option value="" selected disabled hidden>Elegir recurso</option>' : ''}
-    <option value="">— Sin asignar —</option>${E.map(e => `<option value="${esc(e)}" ${asignado && e === cur.emp ? 'selected' : ''}>${esc(e)}</option>`).join('')}</select>`;
+    <option value="">— Sin asignar —</option>${E.map(e => `<option value="${esc(e)}" ${asignado && e === cur ? 'selected' : ''}>${esc(e)}</option>`).join('')}</select>`;
   const control = propuesto
     ? `<div class="recurso-opciones"><button type="button" class="recurso-directo" data-asignar-gol="${esc(propuesto)}" ${datos} aria-label="Asignar ${esc(propuesto)} a ${f.c}">${esc(propuesto)}</button>${selector}</div>`
     : selector;
-  return control + aviso + nota;
+  return control + aviso;
 }
 function vGol() {
   const vacio = t => ({ contenido: `<section class="card"><div class="aviso-vacio">${t}</div></section>` });
@@ -2039,6 +2031,7 @@ function ir(v) {
   const vieneDelSemaforo = S.vista === 'semaforo';
   S.vista = v;
   if (cambiaFecha) cargarFecha(fecha).then(render);
+  else if (v === 'plan') cargarDia().then(render);
   if (vieneDelSemaforo) cargarPlanilla().then(render);
   if (v === 'gol') consultarGol().then(cambio => { if (cambio && S.vista === 'gol') render(); });
   render();
@@ -2047,17 +2040,15 @@ function ir(v) {
 }
 
 function cargarFecha(fecha) {
-  S.fecha = fecha; avisar(''); S.diaOk = false; S.sinSug.clear();
+  S.fecha = fecha; avisar(''); S.diaOk = false; S.seleccionesGol.clear();
   OV = { add: {}, del: {} }; revRec = null; PLAN = []; aplicarOV();
   return cargarDia();
 }
 
 function elegirRecurso(control, empresa) {
-  const { c, tr, ed } = control.dataset;
+  const { c } = control.dataset;
   if (!puedeAsignar() || (empresa && !recursosGol(S.turno, munDe(c)).includes(empresa))) { render(); return; }
-  const k = c + '|' + S.turno;
-  if (empresa) S.sinSug.delete(k); else S.sinSug.add(k);
-  asignar(c, S.turno, empresa, tr, JSON.parse(ed || 'null'));
+  S.seleccionesGol.set(claveSeleccionGol(c), empresa);
   render();
 }
 
@@ -2098,7 +2089,7 @@ document.addEventListener('click', e => {
   const rm = e.target.closest('[data-rm]');
   if (rm) { if (!edita() || !S.planillaOk) return; const [t, m, ...r] = rm.dataset.rm.split('|'); cambiarRecurso(t, m, r.join('|'), true); guardarRecursos(); return; }
   const del = e.target.closest('[data-del]');
-  if (del) { const p = PLAN[+del.dataset.del]; if (p) { asignar(p.c, p.turno, '', '', null); render(); } return; }
+  if (del) { const p = PLAN[+del.dataset.del]; if (p) quitarAsignacionGuardada(p); return; }
   const directo = e.target.closest('[data-asignar-gol]');
   if (directo) { elegirRecurso(directo, directo.dataset.asignarGol); return; }
   if (e.target.id === 'elegirGol') { $('fGol').click(); return; }
@@ -2238,7 +2229,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
   };
   S.puedeEditar = ROLES_EDITAN.includes(perfil.rol);
-  await cargarDia();
   let [t, v] = location.hash.slice(1).split('/');
   if (!location.hash && performance.getEntriesByType('navigation')[0]?.type === 'back_forward') {
     try { ({ t, v } = JSON.parse(sessionStorage.getItem('azl2.nav')) || {}); } catch {}
@@ -2247,6 +2237,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     S.turno = TURNOS.includes(t) ? t : null;
     S.vista = v;
   }
+  await cargarDia();
   $('dashboard').hidden = false;
   COM2.carga.listo();
   actualizarBases();
